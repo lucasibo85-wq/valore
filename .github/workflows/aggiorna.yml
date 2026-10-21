@@ -1,0 +1,64 @@
+name: Aggiorna dati
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # ogni 3 ore (orario UTC)
+  workflow_dispatch: {}       # avvio manuale dalla scheda Actions
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: aggiorna-dati
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Recupera l'archivio dati
+        run: |
+          git clone --depth 1 --branch archivio "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data \
+            || mkdir -p data
+          rm -rf data/.git
+
+      - name: Scarica statistiche e calcola le proiezioni
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python -m engine.run
+
+      - name: Salva l'archivio dati (ramo "archivio", senza storico)
+        if: always()
+        run: |
+          cd data
+          git init -q -b archivio
+          git config user.name "valore-bot"
+          git config user.email "valore-bot@users.noreply.github.com"
+          git add -A
+          git commit -qm "Archivio dati $(date -u +%F_%H%M)" || exit 0
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" archivio
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
