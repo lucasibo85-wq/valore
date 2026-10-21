@@ -1,0 +1,42 @@
+{
+  "nba": {
+    "enabled": true,
+    "backfill_days": 400
+  },
+  "soccer": {
+    "enabled": true,
+    "backfill_days": 300,
+    "leagues": {
+      "ita.1": "Serie A",
+      "ita.2": "Serie B",
+      "eng.1": "Premier League",
+      "eng.2": "Championship",
+      "esp.1": "LaLiga",
+      "ger.1": "Bundesliga",
+      "fra.1": "Ligue 1",
+      "por.1": "Primeira Liga",
+      "ned.1": "Eredivisie",
+      "bel.1": "Pro League",
+      "tur.1": "Süper Lig",
+      "sco.1": "Premiership",
+      "uefa.champions": "Champions League",
+      "uefa.europa": "Europa League",
+      "uefa.europa.conf": "Conference League",
+      "usa.1": "MLS",
+      "bra.1": "Brasileirão",
+      "arg.1": "Liga Profesional",
+      "mex.1": "Liga MX"
+    }
+  },
+  "days_ahead": 2,
+  "history_days": 420,
+  "max_summaries_per_run": 2500,
+  "request_pause_seconds": 0.3,
+  "odds": {
+    "enabled": true,
+    "daily_credit_budget": 15,
+    "regions": "eu",
+    "nba_prop_markets": ["player_points"],
+    "soccer_h2h": true
+  }
+}
