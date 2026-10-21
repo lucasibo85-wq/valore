@@ -7,6 +7,14 @@ App web per NBA e calcio. Gira gratis su GitHub e la apri dal telefono quando vu
 - **Calcio** (19 campionati, modificabili): tiri, tiri in porta, falli commessi e subiti, cartellino, gol, assist, gol+assist. Ci sono anche le probabilità 1X2, Over 2.5 e Goal delle partite.
 - Inserisci linea e quota del tuo bookmaker e l'app ti dice probabilità, valore atteso (EV) e puntata consigliata (Kelly).
 - Schedina, registro delle scommesse e ROI. Le scommesse sui giocatori si chiudono da sole quando arriva il tabellino.
+- **NFL** (yard passate, corse e ricevute, ricezioni, passaggi, intercetti, touchdown), **MLB** (valide, H+R+RBI, fuoricampo, basi su ball; per i lanciatori partenti strikeout, eliminazioni, punti e valide concesse) e **tennis** ATP/WTA (vincente della partita con modello Elo).
+- **Chicche** (stella in basso): le migliori occasioni del momento, in tre sezioni.
+  - *Valore*: il modello dà più probabilità della quota.
+  - *Errori quota*: un bookmaker paga più della quota giusta di mercato, cioè Pinnacle senza margine o la media dei bookmaker. Serve la chiave delle quote.
+  - *Controlla*: proiezioni molto diverse dalla media recente, da confrontare con la linea del tuo bookmaker.
+- **Multiple:** nella Schedina scegli «Multipla» per vedere quota totale, probabilità, valore e puntata consigliata. Se metti più selezioni della stessa partita compare un avviso.
+- **Avviso EV troppo alto:** sopra il +15% la scommessa viene segnata «Da verificare» e la puntata consigliata scende all'1% del bankroll.
+- **Quote gratuite ESPN:** per il calcio, quando non c'è la chiave, l'app usa le quote 1X2 pubblicate da ESPN, se presenti.
 - **Cerca** (lente in alto): scrivi il nome di un giocatore e apri la scheda completa, con tutti i mercati, la linea, la probabilità e quante volte ha superato la linea nelle ultime 5, 10 e 20 partite e in stagione. Ci sono anche le partite contro l'avversario di stasera.
 - **Linee alternative:** nella scheda di un mercato vedi la probabilità e la quota giusta per ogni linea vicina alla proiezione.
 - **Incolla quote** (icona appunti nella pagina Giocatori): incolli più prop in una volta, una per riga, ad esempio `Tatum over 27.5 punti 1.87` o `Barella cartellino 3.75`, e l'app le valuta tutte.
@@ -56,6 +64,8 @@ Modifica `config.json` direttamente su GitHub (icona della matita):
 |---|---|
 | `soccer.leagues` | Campionati di calcio, con i codici ESPN (es. `"ita.1": "Serie A"`). Altri codici: `ita.coppa_italia`, `esp.2`, `ger.2`, `fra.2`, `aut.1`, `sui.1`, `den.1`, `nor.1`, `swe.1`, `gre.1`, `jpn.1`, `ksa.1`, `fifa.world`… |
 | `days_ahead` | Quanti giorni avanti mostrare le partite. |
+| `nfl.enabled`, `mlb.enabled`, `tennis.enabled` | Attiva o disattiva NFL, MLB e tennis (`true`/`false`). |
+| `nfl.days_ahead` | Per la NFL conviene 7: si gioca una volta a settimana. |
 | `odds.daily_credit_budget` | Crediti di The Odds API da usare al giorno (15 × 30 = 450, sotto i 500 gratuiti). |
 | `odds.nba_prop_markets` | Prop NBA da scaricare. Ogni mercato costa 1 credito per partita. Disponibili: `player_points`, `player_rebounds`, `player_assists`, `player_threes`, `player_blocks`, `player_steals`, `player_points_rebounds_assists`… |
 | `odds.refresh_hours` | Ogni quante ore riscaricare le quote (24 con il piano gratuito). |

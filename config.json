@@ -28,6 +28,23 @@
       "mex.1": "Liga MX"
     }
   },
+  "nfl": {
+    "enabled": true,
+    "backfill_days": 400,
+    "days_ahead": 7
+  },
+  "mlb": {
+    "enabled": true,
+    "backfill_days": 400
+  },
+  "tennis": {
+    "enabled": true,
+    "backfill_days": 365,
+    "tours": [
+      "atp",
+      "wta"
+    ]
+  },
   "days_ahead": 2,
   "history_days": 420,
   "max_summaries_per_run": 2500,
