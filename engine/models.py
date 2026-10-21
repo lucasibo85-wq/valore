@@ -23,6 +23,10 @@ def market_value(row, comps, market):
 
 def pos_group(sport, pos):
     p = (pos or "").upper()
+    if sport == "nfl":
+        return p if p in ("QB", "RB", "WR", "TE") else "X"
+    if sport == "mlb":
+        return "P" if p == "P" else "B"
     if sport == "nba":
         if "C" in p:
             return "C"

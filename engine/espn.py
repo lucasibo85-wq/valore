@@ -56,6 +56,9 @@ def scoreboard(path, dates):
         st = ((ev.get("status") or comp.get("status") or {}).get("type") or {})
         season = ev.get("season") or {}
         out.append({
+            "odds": _espn_odds(comp),
+            "probables": {str((c.get("team") or {}).get("id", "")): str(((c.get("probables") or [{}])[0].get("athlete") or {}).get("id", "")) + "p"
+                          for c in teams if c.get("probables")},
             "stype": int(_num(season.get("type"), 0) or 0),
             "slug": str(season.get("slug") or ""),
             "name": str(ev.get("name") or ev.get("shortName") or ""),
@@ -71,7 +74,31 @@ def scoreboard(path, dates):
     return out
 
 
-def nba_counts(ev):
+def _american(v):
+    x = _num(v, None)
+    if x is None or x == 0:
+        return None
+    return round(1 + (x / 100.0 if x > 0 else 100.0 / -x), 3)
+
+
+def _espn_odds(comp):
+    """Quote pubblicate da ESPN nel calendario (un solo bookmaker): 1X2 / testa a testa."""
+    try:
+        o = (comp.get("odds") or [None])[0]
+        if not o:
+            return None
+        h = _american((o.get("homeTeamOdds") or {}).get("moneyLine"))
+        a = _american((o.get("awayTeamOdds") or {}).get("moneyLine"))
+        d = _american((o.get("drawOdds") or {}).get("moneyLine"))
+        if not h or not a:
+            return None
+        return {"h": h, "a": a, "d": d, "book": ((o.get("provider") or {}).get("name") or "ESPN"),
+                "ou": _num(o.get("overUnder"), None), "spread": _num(o.get("spread"), None)}
+    except (AttributeError, TypeError, IndexError):
+        return None
+
+
+def nba_counts(ev, sport="nba"):
     """True per stagione regolare, play-in e playoff; False per preseason e All-Star.
 
     ESPN: season.type 1 = preseason, 2 = regular season, 3 = postseason,
@@ -79,12 +106,12 @@ def nba_counts(ev):
     """
     if ev.get("stype") in (1, 4) or "pre" in ev.get("slug", ""):
         return False
-    if not ev.get("stype"):  # tipo assente: la preseason NBA si gioca a settembre e fino a meta' ottobre
+    if not ev.get("stype") and sport == "nba":  # tipo assente: la preseason NBA si gioca a settembre e fino a meta' ottobre
         d = ev.get("date", "")[:10]
         if d[5:7] == "09" or (d[5:7] == "10" and d[8:10] <= "17"):
             return False
     name = ev.get("name", "").lower()
-    if "all-star" in name or "all star" in name or "rising stars" in name:
+    if "all-star" in name or "all star" in name or "rising stars" in name or "pro bowl" in name:
         return False
     return True
 

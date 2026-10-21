@@ -57,8 +57,20 @@ def _remaining(headers):
         return None
 
 
+def _median(xs):
+    xs = sorted(xs)
+    n = len(xs)
+    if not n:
+        return None
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
 def soccer_h2h(league, region):
-    """Migliori quote 1X2 per le partite di una lega. Costo: 1 credito per regione."""
+    """Quote 1X2 di una lega con migliore quota per esito e probabilita' "giuste".
+
+    La probabilita' giusta e' la quota di Pinnacle senza margine (se presente),
+    altrimenti la mediana senza margine di tutti i bookmaker. Costo: 1 credito per regione.
+    """
     sk = SOCCER_KEYS.get(league)
     if not sk or not key():
         return [], None
@@ -67,17 +79,34 @@ def soccer_h2h(league, region):
     out = []
     for ev in data or []:
         best = {"1": (0, ""), "X": (0, ""), "2": (0, "")}
+        novig = []
+        pin = None
         for bk in ev.get("bookmakers", []):
+            prices = {}
             for mk in bk.get("markets", []):
                 if mk.get("key") != "h2h":
                     continue
                 for o in mk.get("outcomes", []):
                     side = "X" if o["name"] == "Draw" else ("1" if o["name"] == ev["home_team"] else "2")
+                    prices[side] = o["price"]
                     if o["price"] > best[side][0]:
                         best[side] = (o["price"], bk.get("title", ""))
-        out.append({"home": ev["home_team"], "away": ev["away_team"], "time": ev.get("commence_time", ""),
-                    "o1": best["1"][0], "ox": best["X"][0], "o2": best["2"][0],
-                    "book": best["1"][1]})
+            if len(prices) == 3 and all(v > 1 for v in prices.values()):
+                inv = {k: 1 / v for k, v in prices.items()}
+                tot = sum(inv.values())
+                nv = {k: v / tot for k, v in inv.items()}
+                novig.append(nv)
+                if bk.get("key") == "pinnacle":
+                    pin = nv
+        fair = pin or ({k: _median([n[k] for n in novig]) for k in ("1", "X", "2")} if novig else None)
+        row = {"home": ev["home_team"], "away": ev["away_team"], "time": ev.get("commence_time", ""),
+               "o1": best["1"][0], "ox": best["X"][0], "o2": best["2"][0], "book": best["1"][1],
+               "b1": best["1"][1], "bx": best["X"][1], "b2": best["2"][1], "nb": len(novig),
+               "ref": "Pinnacle" if pin else ("media" if novig else "")}
+        if fair:
+            s_ = sum(fair.values())
+            row.update({"f1": round(fair["1"] / s_, 4), "fx": round(fair["X"] / s_, 4), "f2": round(fair["2"] / s_, 4)})
+        out.append(row)
     return out, _remaining(h)
 
 
@@ -109,7 +138,7 @@ def event_props(sport_key, event_id, markets, region, market_map):
         "apiKey": key(), "regions": region, "markets": ",".join(markets), "oddsFormat": "decimal"})
     if not data:
         return [], _remaining(h)
-    lines = defaultdict(lambda: {"over": (0, ""), "under": (0, ""), "books": 0})
+    lines = defaultdict(lambda: {"over": (0, ""), "under": (0, ""), "books": 0, "pairs": defaultdict(dict)})
     for bk in data.get("bookmakers", []):
         for mk in bk.get("markets", []):
             m = market_map.get(mk.get("key"))
@@ -128,6 +157,7 @@ def event_props(sport_key, event_id, markets, region, market_map):
                 side = "under" if name in ("under", "no") else "over"
                 if o.get("price", 0) > d[side][0]:
                     d[side] = (o["price"], bk.get("title", ""))
+                d["pairs"][bk.get("key") or bk.get("title", "")][side] = o.get("price", 0)
                 if side == "over":
                     d["books"] += 1
     best = {}
@@ -138,8 +168,18 @@ def event_props(sport_key, event_id, markets, region, market_map):
     out = []
     for (player, m), (point, d) in best.items():
         if d["over"][0]:
+            nv = []
+            pin = None
+            for bkey, pr in d["pairs"].items():
+                if pr.get("over", 0) > 1 and pr.get("under", 0) > 1:
+                    a, b = 1 / pr["over"], 1 / pr["under"]
+                    nv.append(a / (a + b))
+                    if bkey == "pinnacle":
+                        pin = a / (a + b)
+            fair = pin if pin is not None else _median(nv)
             out.append({"player": player, "m": m, "line": point, "over": d["over"][0],
-                        "under": d["under"][0] or None, "book": d["over"][1]})
+                        "under": d["under"][0] or None, "book": d["over"][1],
+                        "fair": round(fair, 4) if fair is not None else None, "nb": len(nv)})
     return out, _remaining(h)
 
 

@@ -11,8 +11,9 @@ NBA_COLS = ["gid", "date", "team", "opp", "home", "pid", "name", "pos", "starter
 SOC_COLS = ["gid", "date", "league", "team", "opp", "home", "pid", "name", "pos", "starter",
             "min", "shots", "sot", "fc", "fs", "yc", "rc", "g", "a"]
 MATCH_COLS = ["sport", "league", "gid", "date", "hid", "aid", "hs", "as", "referee"]
-NUMERIC = {"home", "starter", "min", "pts", "reb", "ast", "stl", "blk", "fg3m", "tov",
-           "shots", "sot", "fc", "fs", "yc", "rc", "g", "a", "hs", "as"}
+# colonne di testo: tutte le altre sono numeriche
+TEXT = {"gid", "date", "team", "opp", "pid", "name", "pos", "league", "sport", "referee", "hid", "aid",
+        "p1", "p2", "tour", "winner", "round", "tname"}
 
 
 def path(name):
@@ -28,7 +29,7 @@ def read_csv(name):
     with open(p, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             for k in list(r.keys()):
-                if k in NUMERIC and r[k] not in (None, ""):
+                if k not in TEXT and r[k] not in (None, ""):
                     try:
                         r[k] = float(r[k])
                     except ValueError:
