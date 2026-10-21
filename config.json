@@ -35,8 +35,14 @@
   "odds": {
     "enabled": true,
     "daily_credit_budget": 15,
+    "refresh_hours": 24,
     "regions": "eu",
-    "nba_prop_markets": ["player_points"],
-    "soccer_h2h": true
+    "soccer_h2h": true,
+    "nba_regions": "us",
+    "nba_prop_markets": [
+      "player_points"
+    ],
+    "soccer_prop_regions": "us",
+    "soccer_prop_markets": []
   }
 }

@@ -54,7 +54,11 @@ def scoreboard(path, dates):
         if not home or not away:
             continue
         st = ((ev.get("status") or comp.get("status") or {}).get("type") or {})
+        season = ev.get("season") or {}
         out.append({
+            "stype": int(_num(season.get("type"), 0) or 0),
+            "slug": str(season.get("slug") or ""),
+            "name": str(ev.get("name") or ev.get("shortName") or ""),
             "id": str(ev.get("id")),
             "date": ev.get("date") or comp.get("date", ""),
             "state": st.get("state", "pre"),
@@ -65,6 +69,24 @@ def scoreboard(path, dates):
             "as": _num(away.get("score"), None) if st.get("completed") else None,
         })
     return out
+
+
+def nba_counts(ev):
+    """True per stagione regolare, play-in e playoff; False per preseason e All-Star.
+
+    ESPN: season.type 1 = preseason, 2 = regular season, 3 = postseason,
+    4 = off-season, 5 = play-in.
+    """
+    if ev.get("stype") in (1, 4) or "pre" in ev.get("slug", ""):
+        return False
+    if not ev.get("stype"):  # tipo assente: la preseason NBA si gioca a settembre e fino a meta' ottobre
+        d = ev.get("date", "")[:10]
+        if d[5:7] == "09" or (d[5:7] == "10" and d[8:10] <= "17"):
+            return False
+    name = ev.get("name", "").lower()
+    if "all-star" in name or "all star" in name or "rising stars" in name:
+        return False
+    return True
 
 
 def summary(path, event_id):

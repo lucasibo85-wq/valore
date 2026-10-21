@@ -91,19 +91,43 @@ def main():
                 matches.append(row)
                 match_by_gid[ev["id"]] = row
 
-    # ---------------- NBA
+    # ---------------- NBA (solo stagione regolare, play-in e playoff)
+    nba_excluded = set()
     if cfg["nba"].get("enabled"):
         key = "nba"
-        start = dt.date.fromisoformat(state["scan"][key]) if key in state["scan"] else today - dt.timedelta(days=cfg["nba"]["backfill_days"])
-        log("NBA: scansione dal", start)
+        purge = not state.get("nba_solo_stagione")
+        if purge or key not in state["scan"]:
+            start = today - dt.timedelta(days=cfg["nba"]["backfill_days"])
+        else:
+            start = dt.date.fromisoformat(state["scan"][key])
+        log("NBA: scansione dal", start, "(controllo preseason sull'intero storico)" if purge else "")
+        no_type = 0
         for ev in scan_days("basketball/nba", start, today, per_day=True):
+            if not espn.nba_counts(ev):
+                nba_excluded.add(ev["id"])
+                continue
+            no_type += 1 if not ev.get("stype") else 0
             remember("nba", "nba", ev)
             if ev["completed"] and ev["id"] not in processed["nba"]:
                 queue.append(("nba", "basketball/nba", "nba", ev))
         for ev in scan_days("basketball/nba", today, today + dt.timedelta(days=ahead), per_day=True):
+            if not espn.nba_counts(ev):
+                continue
             remember("nba", "nba", ev)
             if not ev["completed"]:
                 upcoming.append(("nba", "basketball/nba", "nba", ev))
+        if nba_excluded:
+            before = len(nba_logs)
+            nba_logs = [r for r in nba_logs if r["gid"] not in nba_excluded]
+            matches = [m for m in matches if not (m.get("sport") == "nba" and m["gid"] in nba_excluded)]
+            for g in nba_excluded:
+                match_by_gid.pop(g, None)
+            processed["nba"] -= nba_excluded
+            log("NBA: escluse %d partite di preseason/All-Star (%d righe tolte dall'archivio)" % (
+                len(nba_excluded), before - len(nba_logs)))
+        if no_type:
+            log("NBA: %d partite senza tipo di stagione (tenute)" % no_type)
+        state["nba_solo_stagione"] = True
         state["scan"][key] = iso(today - dt.timedelta(days=2))
 
     # ---------------- Calcio
@@ -127,7 +151,7 @@ def main():
 
     # ---------------- Tabellini delle partite concluse (prima le piu' recenti)
     for q in state.get("queue", []):  # rimasti dalle esecuzioni precedenti
-        if q[3]["id"] not in processed[q[0]]:
+        if q[3]["id"] not in processed[q[0]] and q[3]["id"] not in nba_excluded:
             queue.append(tuple(q))
     seen = set()
     queue = [q for q in queue if not (q[3]["id"] in seen or seen.add(q[3]["id"]))]
@@ -205,10 +229,12 @@ def main():
     app = {"generated": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
            "leagues": cfg["soccer"]["leagues"], "nba": {"games": [], "players": []},
            "soccer": {"matches": [], "players": []}}
+    hist = {"nba": {}, "soccer": {}}
     if cfg["nba"].get("enabled"):
-        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache)
+        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist)
     if cfg["soccer"].get("enabled"):
-        build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache)
+        build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist)
+    store.write_json("hist.json", hist, target=os.path.join(OUT_DIR, "hist.json"), compact=True)
     store.write_json("app.json", app, target=os.path.join(OUT_DIR, "app.json"), compact=True)
     store.write_json("results.json", build_results(nba_logs, soc_logs, matches, today),
                      target=os.path.join(OUT_DIR, "results.json"), compact=True)
@@ -224,61 +250,99 @@ def main():
 
 
 # ====================================================================== quote
+def _match_event(events, hn, an, thr=0.34):
+    best, score = None, 0.0
+    for o in events:
+        sh, sa = odds.similar(hn, o.get("home_team", o.get("home", ""))), odds.similar(an, o.get("away_team", o.get("away", "")))
+        if sh >= thr and sa >= thr and sh + sa > score:
+            best, score = o, sh + sa
+    return best
+
+
 def fetch_odds(cfg, state, today, upcoming, teams, cache):
+    """Scarica le quote rispettando il budget giornaliero di crediti.
+
+    Con il piano gratuito: un solo aggiornamento al giorno. Con un piano a pagamento
+    basta alzare daily_credit_budget e abbassare refresh_hours in config.json.
+    """
     oc = cfg["odds"]
     budget = int(oc.get("daily_credit_budget", 15))
+    refresh_h = float(oc.get("refresh_hours", 24))
     st = state.get("odds_usage", {})
+    now = dt.datetime.utcnow()
     if st.get("date") != iso(today):
-        st = {"date": iso(today), "used": 0}
-        cache = {"soccer": {}, "nba": {}}
-    if st["used"] > 0:
-        log("Quote: gia' aggiornate oggi (%d crediti usati), riuso quelle salvate." % st["used"])
+        st = {"date": iso(today), "used": 0, "last": st.get("last", "")}
+    last = st.get("last") or ""
+    fresh = last and (now - dt.datetime.fromisoformat(last)).total_seconds() < refresh_h * 3600
+    if fresh or st["used"] >= budget:
+        log("Quote: riuso quelle salvate (%d crediti usati oggi su %d)." % (st["used"], budget))
         state["odds_usage"] = st
         return cache
     region = oc.get("regions", "eu")
     cost_region = len(region.split(","))
-    cache = {"soccer": {}, "nba": {}}
+    new = {"soccer": {}, "nba": {}, "soccer_props": {}}
+    by_league = defaultdict(list)
+    for s_, p_, l_, e_ in upcoming:
+        if s_ == "soccer":
+            by_league[l_].append(e_)
     # calcio 1X2
     if oc.get("soccer_h2h", True):
-        leagues = sorted(set(l for s, p, l, e in upcoming if s == "soccer"))
-        for lg in leagues:
+        for lg in sorted(by_league):
             if st["used"] + cost_region > budget:
                 break
             rows, rem = odds.soccer_h2h(lg, region)
             st["used"] += cost_region
-            for ev in [e for s, p, l, e in upcoming if l == lg]:
+            for ev in by_league[lg]:
                 hn = teams["soccer"].get(ev["home"]["id"], {}).get("name", "")
                 an = teams["soccer"].get(ev["away"]["id"], {}).get("name", "")
-                best, score = None, 0.0
-                for r in rows:
-                    sh, sa = odds.similar(hn, r["home"]), odds.similar(an, r["away"])
-                    if sh >= 0.34 and sa >= 0.34 and sh + sa > score:
-                        best, score = r, sh + sa
+                best = _match_event(rows, hn, an)
                 if best:
-                    cache["soccer"][ev["id"]] = [best["o1"], best["ox"], best["o2"], best["book"]]
+                    new["soccer"][ev["id"]] = [best["o1"], best["ox"], best["o2"], best["book"]]
     # NBA prop giocatori
     markets = oc.get("nba_prop_markets", ["player_points"])
     nreg = oc.get("nba_regions", "us")
     cost = len(markets) * len(nreg.split(","))
-    nba_up = sorted([e for s, p, l, e in upcoming if s == "nba"], key=lambda e: e["date"])
-    if nba_up and st["used"] + cost <= budget:
-        events = odds.nba_events()
+    nba_up = sorted([e for s_, p_, l_, e in upcoming if s_ == "nba"], key=lambda e: e["date"])
+    if markets and nba_up and st["used"] + cost <= budget:
+        evs = odds.nba_events()
         for ev in nba_up:
             if st["used"] + cost > budget:
                 break
             hn = teams["nba"].get(ev["home"]["id"], {}).get("name", "")
             an = teams["nba"].get(ev["away"]["id"], {}).get("name", "")
-            match = next((o for o in events if odds.similar(hn, o.get("home_team", "")) >= 0.5
-                          and odds.similar(an, o.get("away_team", "")) >= 0.5), None)
+            match = _match_event(evs, hn, an, 0.5)
             if not match:
                 continue
             rows, rem = odds.nba_props(match["id"], markets, nreg)
             st["used"] += cost
             for r in rows:
-                cache["nba"].setdefault(ev["id"], []).append([r["player"], r["m"], r["line"], r["over"], r["under"], r["book"]])
+                new["nba"].setdefault(ev["id"], []).append([r["player"], r["m"], r["line"], r["over"], r["under"], r["book"]])
+    # calcio prop giocatori (facoltative, consumano molti crediti)
+    smarkets = oc.get("soccer_prop_markets", [])
+    sreg = oc.get("soccer_prop_regions", "us")
+    cost = len(smarkets) * len(sreg.split(","))
+    if smarkets:
+        for lg in sorted(by_league):
+            sk = odds.SOCCER_KEYS.get(lg)
+            if not sk or st["used"] + cost > budget:
+                continue
+            evs = odds.events(sk)
+            for ev in sorted(by_league[lg], key=lambda e: e["date"]):
+                if st["used"] + cost > budget:
+                    break
+                hn = teams["soccer"].get(ev["home"]["id"], {}).get("name", "")
+                an = teams["soccer"].get(ev["away"]["id"], {}).get("name", "")
+                match = _match_event(evs, hn, an)
+                if not match:
+                    continue
+                rows, rem = odds.event_props(sk, match["id"], smarkets, sreg, odds.SOCCER_PROP_MAP)
+                st["used"] += cost
+                for r in rows:
+                    new["soccer_props"].setdefault(ev["id"], []).append([r["player"], r["m"], r["line"], r["over"], r["under"], r["book"]])
+    st["last"] = now.replace(microsecond=0).isoformat()
     log("Quote: %d crediti usati oggi su %d" % (st["used"], budget))
     state["odds_usage"] = st
-    return cache
+    return new
 
 
 def name_key(n):
@@ -287,7 +351,7 @@ def name_key(n):
 
 
 # ====================================================================== NBA
-def build_nba(app, logs, upcoming, previews, teams, today, odds_cache):
+def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
     if not logs:
         return
     markets = models.NBA_MARKETS
@@ -367,10 +431,12 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache):
                 if od:
                     p["odds"] = od
                 app["nba"]["players"].append(p)
+                hist["nba"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in models.NBA_BASE]
+                                    for r in games[:100]]
 
 
 # ====================================================================== Calcio
-def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cache):
+def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cache, hist):
     markets = models.SOC_MARKETS
     since_long = iso(today - dt.timedelta(days=365))
     tname = lambda tid: teams["soccer"].get(tid, {}).get("name", "?")
@@ -422,6 +488,9 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
             mrow["ref"] = ref
         app["soccer"]["matches"].append(mrow)
 
+        props = {}
+        for row in odds_cache.get("soccer_props", {}).get(ev["id"], []):
+            props.setdefault(name_key(row[0]), {})[row[1]] = row[2:]
         lineup = pv.get("lineup") or set()
         for side, tid, oid in (("home", h, a), ("away", a, h)):
             tg = team_games.get(tid, [])[-6:][::-1]
@@ -455,7 +524,11 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                         f *= ref_f[ref][m]
                     fac[m] = f
                 proj = models.project(games, "soccer", markets, priors, exp_min, 0.0, fac, 10, 270)
+                hist["soccer"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"])), int(r["starter"])] +
+                                       [int(float(r[b])) for b in models.SOC_BASE] for r in games[:60]]
+                od = props.get(name_key(games[0]["name"]))
                 app["soccer"]["players"].append({
+                    "odds": od,
                     "id": pid, "n": games[0]["name"], "t": tname(tid), "o": tname(oid), "g": ev["id"],
                     "lg": league, "h": 1 if side == "home" else 0, "pos": games[0].get("pos", ""),
                     "ps": round(p_start, 2), "m": round(exp_min), "lu": 1 if lineup else 0,

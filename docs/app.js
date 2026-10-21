@@ -230,7 +230,7 @@ function route() {
 }
 function render() {
   const { parts, q } = route();
-  const tab = parts[0] === 'giocatori' || parts[0] === 'g' ? 'giocatori' : parts[0] === 'schedina' ? 'schedina' : parts[0] === 'roi' ? 'roi' : 'partite';
+  const tab = ['giocatori', 'g', 'p', 'cerca', 'incolla'].includes(parts[0]) ? 'giocatori' : parts[0] === 'schedina' ? 'schedina' : parts[0] === 'roi' ? 'roi' : 'partite';
   document.querySelectorAll('nav.tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
   updateBadge();
   const v = $('#view');
@@ -241,16 +241,23 @@ function render() {
   else if (!S.data) html = `<main style="padding-top:40px"><div class="empty">Caricamento…</div></main>`;
   else if (parts[0] === 'giocatori') html = viewPlayers(q);
   else if (parts[0] === 'g') html = viewPlayer(parts[1], parts[2], parts[3], q.m);
+  else if (parts[0] === 'p') html = viewCard(parts[1], parts[2], parts[3]);
+  else if (parts[0] === 'cerca') html = viewSearch();
+  else if (parts[0] === 'incolla') html = viewPaste();
   else if (parts[0] === 'partita') html = viewMatch(parts[1]);
   else html = viewGames();
   v.innerHTML = html;
   bind();
+  if (parts[0] === 'cerca') { const i = document.querySelector('[data-act=gsearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
 }
 window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
 
-function header(title, kicker, back) {
+const ICON_SEARCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
+const ICON_PASTE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"></rect><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"></path><path d="M9 13h6M9 17h4"></path></svg>';
+const searchBtn = () => `<a class="iconbtn" href="#/cerca" aria-label="Cerca giocatore">${ICON_SEARCH}</a>`;
+function header(title, kicker, back, right) {
   return `<header class="top"><div class="row">${back ? `<a class="iconbtn" href="${back}" aria-label="Indietro">${ICON_BACK}</a>` : ''}
-    <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="kicker">${esc(kicker)}</span><h1>${esc(title)}</h1></div></div>`;
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span class="kicker">${esc(kicker)}</span><h1>${esc(title)}</h1></div>${right || ''}</div>`;
 }
 function sportSeg() {
   return `<div class="seg" role="tablist" aria-label="Sport">${[['nba', 'NBA'], ['soccer', 'Calcio']].map(([k, l]) =>
@@ -290,7 +297,7 @@ function viewGames() {
       for (const m of list) body += matchCard(m);
     }
   }
-  return header('Partite', 'Prossimi giorni') + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${sportSeg()}
+  return header('Partite', 'Prossimi giorni', null, searchBtn()) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${sportSeg()}
     ${S.sport === 'soccer' ? `<div class="chips"><button class="chip ${!S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="0">Tutte</button><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="1">Solo valore</button></div>` : ''}</div></header>
     <main>${body}${updatedLine()}</main>`;
 }
@@ -384,7 +391,7 @@ function viewPlayers(q) {
   const shown = rows.slice(0, 120);
   const list = shown.map(({ p, e }) => playerRow(sport, p, m, e)).join('') ||
     '<div class="empty">Nessun giocatore per questi filtri.</div>';
-  return header('Prop giocatori', 'Statistiche giocatori') + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+  return header('Prop giocatori', 'Statistiche giocatori', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
     ${sportSeg()}
     <div class="chips">${MARKETS[sport].map(([k, l]) => `<button class="chip ${k === m ? 'on' : ''}" data-act="market" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="row">
@@ -441,6 +448,26 @@ function viewPlayer(sport, id, g, mq) {
   const evO = e.over ? ev(e.pOver, e.over, e.push) : null;
   const evU = e.under ? ev(e.pUnder, e.under, e.push) : null;
   const avg10 = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  ensureHist();
+  const ht = hitTable(sport, p, m, e.line, 'over');
+  let altHtml = '';
+  if (!bern) {
+    const step = 1;
+    let lo = Math.max(0.5, e.line - 3 * step);
+    const lines = [];
+    for (let L = lo; lines.length < 7; L += step) lines.push(L);
+    altHtml = `<div class="card" style="gap:0"><h2 style="padding-bottom:8px">Linee alternative</h2>
+      <div style="display:grid;grid-template-columns:0.8fr 1fr 1fr 1fr 1fr 0.8fr;gap:4px;padding-bottom:6px" class="tiny muted"><span>Linea</span><span>P over</span><span>Quota giusta</span><span>P under</span><span>Quota giusta</span><span>U10</span></div>
+      ${lines.map(L => {
+        const pr = probs(L, e.mu, e.r);
+        const h10 = hitTable(sport, p, m, L, 'over').l10;
+        const cur = L === Number(e.line);
+        return `<div style="display:grid;grid-template-columns:0.8fr 1fr 1fr 1fr 1fr 0.8fr;gap:4px;padding:8px 0;border-top:1px solid var(--line);${cur ? 'background:var(--bg);' : ''}" class="mono small">
+          <span class="b">${L}</span><span class="model b">${pct(pr.over, 1)}</span><span>${pr.over > 0 ? (1 / pr.over).toFixed(2) : '—'}</span>
+          <span class="book b">${pct(pr.under, 1)}</span><span>${pr.under > 0 ? (1 / pr.under).toFixed(2) : '—'}</span>${fracCell(h10)}</div>`;
+      }).join('')}
+      <p class="note" style="margin-top:8px">Se il tuo bookmaker paga più della quota giusta, quella linea ha valore.</p></div>`;
+  }
   const sideBox = (side, label, pp, q, e2, k) => {
     const good = e2 !== null && e2 > 0;
     return `<div class="cell ${good ? 'value' : ''}"><div class="row between"><span class="b">${label}</span><span class="mono model b">${pct(pp, 1)}</span></div>
@@ -458,7 +485,7 @@ function viewPlayer(sport, id, g, mq) {
   if (sport === 'soccer' && p.rf && (m === 'card' || m === 'fc')) factors.push(['Arbitro', (p.rf >= 1 ? '+' : '−') + Math.abs((p.rf - 1) * 100).toFixed(0) + '% cartellini']);
   factors.push([p.h ? 'In casa' : 'In trasferta', '']);
   if (p.st) factors.push(['Stato', p.st]);
-  return header(p.n + ' · ' + mkLabel(sport, m), `${sport === 'nba' ? 'NBA' : ((S.data.leagues || {})[p.lg] || 'Calcio')} · ${p.t} vs ${p.o}`, '#/giocatori') + `
+  return header(p.n + ' · ' + mkLabel(sport, m), `${sport === 'nba' ? 'NBA' : ((S.data.leagues || {})[p.lg] || 'Calcio')} · ${p.t} vs ${p.o}`, '#/giocatori', `<a class="chip" style="display:flex;align-items:center;flex-shrink:0" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">Tutti</a>`) + `
     <div style="padding:0 16px"><div class="chips">${MARKETS[sport].map(([k, l]) => `<a class="chip ${k === m ? 'on' : ''}" style="display:flex;align-items:center" href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${k}">${l}</a>`).join('')}</div></div></header>
     <main>
       <div class="card">
@@ -475,15 +502,211 @@ function viewPlayer(sport, id, g, mq) {
         <div class="grid2">${sideBox('over', bern ? 'Sì' : 'Over ' + e.line, e.pOver, e.over, evO, kO)}${sideBox('under', bern ? 'No' : 'Under ' + e.line, e.pUnder, e.under, evU, kU)}</div>
         ${S.manual[key] ? '<button class="chip" data-act="clearOdds" style="align-self:flex-start">Ripristina quote automatiche</button>' : ''}
       </div>
+      <div class="card" style="gap:8px"><h2>Sopra ${e.line}: frequenza</h2>
+        <div class="grid4">${[['Ultime 5', ht.l5], ['Ultime 10', ht.l10], ['Ultime 20', ht.l20], ['Stagione', ht.sea]].map(([k, x]) =>
+          `<div class="kv"><span>${k}</span>${fracCell(x)}</div>`).join('')}</div></div>
       <div class="card"><div class="row between"><h2>Ultime ${vals.length} partite</h2><span class="mono small">linea ${e.line}</span></div>
         <div class="chart"><div class="line" style="bottom:${(e.line / max * H).toFixed(0)}px"></div>
           ${vals.slice().reverse().map(v => `<div class="col"><b>${v}</b><div class="${v > e.line ? 'y' : ''}" style="height:${Math.max(2, v / max * H).toFixed(0)}px"></div></div>`).join('')}</div>
         <div class="xlabels">${p.l.slice().reverse().map(x => `<span title="${esc(x[0])}">${esc(x[1])}</span>`).join('')}</div></div>
+      ${altHtml}
       <div class="card"><h2>Da dove arriva la proiezione</h2>
         <div>${factors.map(([k, v]) => `<div class="list-row"><span style="color:var(--text2)">${esc(k)}</span><span class="mono b">${esc(v)}</span></div>`).join('')}</div>
         <p class="note">Tasso per minuto pesato sulle partite recenti (con correzione verso la media del ruolo), moltiplicato per i minuti attesi e per i fattori avversario${sport === 'soccer' ? ', casa/trasferta e arbitro' : ' e casa/trasferta'}. La distribuzione tiene conto della variabilità del giocatore.</p></div>
       ${updatedLine()}
     </main>`;
+}
+
+// ------------------------------------------------------------------ storico lungo (caricato su richiesta)
+function ensureHist() {
+  if (S.hist || S.histLoading) return;
+  S.histLoading = true;
+  fetch('data/hist.json?t=' + Math.floor(Date.now() / 300000)).then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(h => { S.hist = h || { nba: {}, soccer: {} }; S.histLoading = false; render(); });
+}
+const seasonStart = sport => {
+  const d = new Date();
+  const y = d.getFullYear(), mo = d.getMonth() + 1;
+  return sport === 'nba' ? `${mo >= 10 ? y : y - 1}-10-01` : `${mo >= 7 ? y : y - 1}-07-01`;
+};
+function gamesOf(sport, p) { return (S.hist && S.hist[sport] && S.hist[sport][p.id]) || p.l; }
+/** Frazioni sopra la linea su ultime 5/10/20 e stagione */
+function hitTable(sport, p, m, line, side) {
+  const rows = gamesOf(sport, p), off = L_OFF[sport];
+  const ok = g => { const v = marketValue(sport, m, g, off); return side === 'under' ? v < line : v > line; };
+  const ss = seasonStart(sport);
+  const seas = rows.filter(g => g[0] >= ss);
+  const f = list => list.length ? [list.filter(ok).length, list.length] : null;
+  return { l5: f(rows.slice(0, 5)), l10: f(rows.slice(0, 10)), l20: rows.length >= 11 ? f(rows.slice(0, 20)) : null, sea: f(seas) };
+}
+function fracCell(x) {
+  if (!x) return '<span class="muted mono small">—</span>';
+  const r = x[0] / x[1];
+  const col = r >= 0.6 ? 'var(--model)' : r <= 0.4 ? 'var(--book)' : 'var(--text2)';
+  return `<span class="mono small b" style="color:${col}">${x[0]}/${x[1]}</span>`;
+}
+
+// ------------------------------------------------------------------ vista: ricerca globale
+function normTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function viewSearch() {
+  const term = normTxt(S.gsearch || '').trim();
+  let res = [];
+  if (term.length >= 2) {
+    const toks = term.split(/\s+/);
+    for (const sport of ['nba', 'soccer']) {
+      for (const p of players(sport)) {
+        const hay = normTxt(p.n + ' ' + p.t);
+        if (toks.every(t => hay.includes(t))) res.push({ sport, p });
+      }
+    }
+  }
+  res.sort((a, b) => a.p.n.localeCompare(b.p.n));
+  const list = res.slice(0, 60).map(({ sport, p }) => {
+    const gm = sport === 'nba' ? (S.data.nba.games || []).find(g => g.id === p.g) : (S.data.soccer.matches || []).find(g => g.id === p.g);
+    const lg = sport === 'nba' ? 'NBA' : ((S.data.leagues || {})[p.lg] || 'Calcio');
+    return `<a class="card" style="flex-direction:row;align-items:center;gap:12px" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">
+      <span class="avatar">${esc(initials(p.n))}</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:15px;font-weight:600">${esc(p.n)}</span>
+      <span class="small muted">${esc(lg)} · ${esc(p.t)} vs ${esc(p.o)}${gm ? ' · ' + esc(fmtTime(gm.t)) : ''}</span></div>
+      ${p.st ? `<span class="badge warn">${esc(p.st)}</span>` : ''}</a>`;
+  }).join('');
+  return header('Cerca', 'NBA e calcio', '#/giocatori') + `<div style="padding:0 16px">
+    <input class="search" type="search" placeholder="Nome del giocatore o squadra" aria-label="Cerca giocatore o squadra" data-act="gsearch" value="${esc(S.gsearch || '')}"></div></header>
+    <main>${term.length < 2 ? '<p class="note">Scrivi almeno 2 lettere. Trovi i giocatori delle partite dei prossimi giorni.</p>' : (list || '<div class="empty">Nessun giocatore trovato nelle prossime partite.</div>')}</main>`;
+}
+
+// ------------------------------------------------------------------ vista: scheda completa del giocatore
+function viewCard(sport, id, g) {
+  const p = findPlayer(sport, id, g);
+  if (!p) return header('Giocatore', '', '#/cerca') + '</header><main><div class="empty">Giocatore non presente nelle prossime partite.</div></main>';
+  ensureHist();
+  const rows = MARKETS[sport].map(([m, label]) => {
+    const e = evaluate(sport, p, m);
+    const ht = hitTable(sport, p, m, e.line, e.side);
+    const bern = BERNOULLI.has(m);
+    const val = e.ev !== null && e.ev > 0;
+    const sideLbl = bern ? (e.side === 'over' ? 'Sì' : 'No') : (e.side === 'over' ? 'O' : 'U');
+    return `<a href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${m}" style="display:grid;grid-template-columns:minmax(0,1.3fr) 0.9fr 0.8fr repeat(4,0.62fr);gap:4px;align-items:center;padding:10px 0;border-top:1px solid var(--line)">
+      <span style="font-size:13px;font-weight:600">${label}${val ? ` <span class="badge val" style="font-size:10px;padding:1px 6px">${sgn(e.ev, 0)}</span>` : ''}</span>
+      <span class="mono small b">${sideLbl} ${e.line}${e.odds ? `<span class="tiny muted" style="display:block">@${e.odds.toFixed(2)}</span>` : ''}</span>
+      <span class="mono small b model">${pct(e.p)}<span class="tiny muted" style="display:block">${bern ? '' : 'proj ' + e.mu.toFixed(1)}</span></span>
+      ${fracCell(ht.l5)}${fracCell(ht.l10)}${fracCell(ht.l20)}${fracCell(ht.sea)}</a>`;
+  }).join('');
+  const vs = gamesOf(sport, p).filter(x => x[1] === p.o).slice(0, 6);
+  const cols = sport === 'nba' ? [['PTS', 'pts'], ['REB', 'reb'], ['AST', 'ast'], ['3PT', 'fg3m'], ['STL', 'stl'], ['BLK', 'blk']]
+    : [['Tiri', 'shots'], ['In porta', 'sot'], ['Falli', 'fc'], ['Subiti', 'fs'], ['Gialli', 'card'], ['Gol', 'g']];
+  const off = L_OFF[sport];
+  const vsHtml = vs.length ? `<div style="display:grid;grid-template-columns:1.2fr repeat(7,1fr);gap:4px;font-size:11px" class="muted"><span>Data</span><span>Min</span>${cols.map(c => `<span>${c[0]}</span>`).join('')}</div>` +
+    vs.map(x => `<div style="display:grid;grid-template-columns:1.2fr repeat(7,1fr);gap:4px;padding:6px 0;border-top:1px solid var(--line)" class="mono small">
+      <span>${esc(fmtDate(x[0]))}</span><span>${x[2]}</span>${cols.map(c => `<span class="b">${marketValue(sport, c[1], x, off)}</span>`).join('')}</div>`).join('')
+    : `<p class="note">Nessuna partita contro ${esc(p.o)} nello storico disponibile.</p>`;
+  const lg = sport === 'nba' ? 'NBA' : ((S.data.leagues || {})[p.lg] || 'Calcio');
+  return header(p.n, `${lg} · ${p.t} vs ${p.o}`, 'javascript:history.back()') + `</header><main>
+    <div class="grid3">
+      <div class="card" style="padding:12px;gap:2px"><span class="tiny muted">Minuti attesi</span><span class="mono b">${sport === 'nba' ? p.m.toFixed(1) : p.m + "'"}</span></div>
+      <div class="card" style="padding:12px;gap:2px"><span class="tiny muted">${sport === 'nba' ? 'Ruolo' : 'Titolare'}</span><span class="mono b">${sport === 'nba' ? esc(p.pos || '—') : pct(p.ps) + (p.lu ? ' ✓' : '')}</span></div>
+      <div class="card" style="padding:12px;gap:2px"><span class="tiny muted">${p.h ? 'In casa' : 'Trasferta'}</span><span class="mono b" style="font-size:13px">${p.st ? esc(p.st) : 'Disponibile'}</span></div>
+    </div>
+    <div class="card" style="gap:0">
+      <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 0.9fr 0.8fr repeat(4,0.62fr);gap:4px;padding-bottom:8px" class="tiny muted">
+        <span>Mercato</span><span>Linea</span><span>Prob.</span><span>U5</span><span>U10</span><span>U20</span><span>Stag.</span></div>
+      ${rows}
+      <p class="note" style="margin-top:10px">U5/U10/U20 = volte sopra la linea nelle ultime 5, 10, 20 partite; Stag. = stagione in corso.${S.hist ? '' : ' Carico lo storico completo…'} Tocca un mercato per inserire le quote.</p>
+    </div>
+    <div class="card"><h2>Contro ${esc(p.o)}</h2>${vsHtml}</div>
+    ${updatedLine()}</main>`;
+}
+
+// ------------------------------------------------------------------ vista: incolla quote
+const MK_WORDS = {
+  nba: [['p+r+a', 'pra'], ['pra', 'pra'], ['punti+rimbalzi+assist', 'pra'], ['punti rimbalzi assist', 'pra'], ['p+r', 'pr'], ['punti+rimbalzi', 'pr'], ['p+a', 'pa'], ['punti+assist', 'pa'],
+    ['r+a', 'ra'], ['rimbalzi+assist', 'ra'], ['rub+stop', 'sb'], ['stocks', 'sb'], ['palle perse', 'tov'], ['turnovers', 'tov'], ['tov', 'tov'],
+    ['tiri da tre', 'fg3m'], ['triple', 'fg3m'], ['tripla', 'fg3m'], ['threes', 'fg3m'], ['3pt', 'fg3m'], ['3pm', 'fg3m'],
+    ['stoppate', 'blk'], ['stoppata', 'blk'], ['blocks', 'blk'], ['blk', 'blk'], ['rubate', 'stl'], ['rubata', 'stl'], ['steals', 'stl'], ['stl', 'stl'],
+    ['rimbalzi', 'reb'], ['rebounds', 'reb'], ['reb', 'reb'], ['punti', 'pts'], ['points', 'pts'], ['pts', 'pts'], ['assist', 'ast'], ['ast', 'ast'], ['pr', 'pr'], ['pa', 'pa'], ['ra', 'ra']],
+  soccer: [['tiri in porta', 'sot'], ['tiro in porta', 'sot'], ['shots on target', 'sot'], ['sot', 'sot'], ['tip', 'sot'], ['falli subiti', 'fs'], ['falli commessi', 'fc'], ['falli', 'fc'], ['fouls', 'fc'],
+    ['cartellino', 'card'], ['ammonito', 'card'], ['ammonizione', 'card'], ['giallo', 'card'], ['card', 'card'], ['gol+assist', 'ga'], ['g+a', 'ga'],
+    ['marcatore', 'g'], ['segna', 'g'], ['gol', 'g'], ['goal', 'g'], ['tiri', 'shots'], ['tiro', 'shots'], ['shots', 'shots'], ['assist', 'a']],
+};
+function parseLine(raw) {
+  let t = ' ' + normTxt(raw).replace(/(\d),(\d)/g, '$1.$2').replace(/[;|\t'-]/g, ' ') + ' ';
+  let side = 'over';
+  const sideRe = [[/\s(under|sotto|meno|no|u)\s/, 'under'], [/\s(over|sopra|piu|si|yes|o)\s/, 'over']];
+  for (const [re, sd] of sideRe) { const m = t.match(re); if (m) { side = sd; t = t.replace(re, ' '); break; } }
+  const found = {};
+  for (const sp of ['nba', 'soccer']) {
+    for (const [w, m] of MK_WORDS[sp]) {
+      const re = new RegExp('(^|\\s)' + w.replace(/[+]/g, '\\+') + '(\\s|$)');
+      if (re.test(t)) { found[sp] = { m, w }; break; }
+    }
+  }
+  let nums = (t.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+  let words = t;
+  for (const sp in found) words = words.replace(new RegExp('(^|\\s)' + found[sp].w.replace(/[+]/g, '\\+') + '(?=\\s|$)'), ' ');
+  words = words.replace(/\d+(?:\.\d+)?/g, ' ').replace(/[@+]/g, ' ').split(/\s+/).filter(x => x.length >= 2);
+  // giocatore
+  let best = null;
+  for (const sp of ['nba', 'soccer']) {
+    if (Object.keys(found).length && !found[sp]) continue;
+    for (const p of players(sp)) {
+      const nt = normTxt(p.n).split(/[\s'-]+/);
+      let sc = 0;
+      for (const w of words) if (nt.some(x => x === w || (w.length >= 4 && (x.startsWith(w) || w.startsWith(x)) && x.length >= 4))) sc++;
+      if (!sc && nt.length >= 2 && words.some(w => w.length >= 2 && w === nt.map(x => x[0]).join(''))) sc = words.length; // sigle: SGA, KAT
+      if (!sc) continue;
+      const score = sc / Math.max(words.length, 1) + (nt.includes(words[words.length - 1]) ? 0.01 : 0);
+      if (!best || score > best.score) best = { score, sport: sp, p };
+    }
+  }
+  const r = { raw, side, line: null, odds: null, p: null, sport: null, m: null, err: '' };
+  if (!best || best.score < 0.5) { r.err = 'giocatore non trovato'; return r; }
+  r.p = best.p; r.sport = best.sport;
+  r.m = found[r.sport] ? found[r.sport].m : null;
+  if (!r.m) { r.err = 'mercato non riconosciuto'; return r; }
+  const bern = BERNOULLI.has(r.m) || r.m === 'g' || r.m === 'a';
+  // i numeri vanno letti dopo aver tolto il nome del giocatore
+  let rest = t;
+  for (const x of normTxt(r.p.n).split(/[\s'-]+/).filter(Boolean)) rest = rest.replace(new RegExp('(^|\\s)' + x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'g'), ' ');
+  nums = (rest.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+  if (nums.length >= 2) { r.line = nums[0]; r.odds = nums[nums.length - 1]; }
+  else if (nums.length === 1) { if (bern && nums[0] > 1) { r.line = 0.5; r.odds = nums[0]; } else r.line = nums[0]; }
+  else if (bern) r.line = 0.5;
+  if (r.line === null) r.err = 'linea mancante';
+  if (r.odds !== null && !(r.odds > 1 && r.odds < 100)) { r.odds = null; }
+  return r;
+}
+function parsePaste(text) { return String(text || '').split(/\n+/).map(x => x.trim()).filter(Boolean).slice(0, 60).map(parseLine); }
+function savePasteOdds(r) {
+  const k = oddsKey(r.sport, r.p, r.m);
+  const cur = S.manual[k] && S.manual[k].line === r.line ? S.manual[k] : { line: r.line, over: null, under: null };
+  cur.line = r.line;
+  if (r.odds) cur[r.side] = r.odds;
+  S.manual[k] = cur;
+}
+function viewPaste() {
+  const rows = (S.pasteRows || []).map((r, i) => {
+    if (r.err) return `<div class="list-row"><span class="small">${esc(r.raw)}</span><span class="badge warn">${esc(r.err)}</span></div>`;
+    const [mu, rr] = r.p.mk[r.m] || [0, null];
+    const pr = probs(r.line, mu, rr);
+    const pp = r.side === 'over' ? pr.over : pr.under;
+    const e = r.odds ? ev(pp, r.odds, pr.push) : null;
+    const bern = BERNOULLI.has(r.m);
+    return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)">
+      <div class="row between"><a href="#/g/${r.sport}/${esc(r.p.id)}/${esc(r.p.g)}?m=${r.m}" class="b" style="font-size:14px">${esc(r.p.n)}</a>
+        ${e !== null ? `<span class="badge ${e > 0 ? 'val' : 'no'}">EV ${sgn(e)}</span>` : '<span class="badge no">senza quota</span>'}</div>
+      <div class="row between"><span class="small muted">${esc(mkLabel(r.sport, r.m))} · ${bern ? (r.side === 'over' ? 'Sì' : 'No') : (r.side === 'over' ? 'Over' : 'Under') + ' ' + r.line}${r.odds ? ' @' + r.odds.toFixed(2) : ''} · ${esc(r.p.t)} vs ${esc(r.p.o)}</span>
+        <span class="mono small b model">${pct(pp, 1)}</span></div>
+      ${r.odds ? `<button class="btn small ${e > 0 ? '' : 'ghost'}" data-act="pasteAdd" data-i="${i}">Aggiungi alla schedina</button>` : ''}</div>`;
+  }).join('');
+  return header('Incolla quote', 'Più prop in una volta', '#/giocatori') + `</header><main>
+    <div class="card">
+      <label class="small muted" for="pasteBox">Una prop per riga: giocatore, over/under, linea, mercato, quota</label>
+      <textarea id="pasteBox" data-act="paste" rows="6" style="width:100%;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:10px;font:500 15px var(--mono);color:var(--text);resize:vertical" placeholder="Tatum over 27.5 punti 1.87&#10;Jokic u 10.5 assist 1.95&#10;Lautaro over 1.5 tiri in porta 2.05&#10;Barella cartellino 3.75">${esc(S.pasteText || '')}</textarea>
+      <button class="btn" data-act="parse">Valuta</button>
+    </div>
+    ${rows ? `<div class="card" style="gap:0"><div class="row between" style="padding-bottom:8px"><h2>Risultato</h2><button class="chip" data-act="pasteSave">Salva quote nelle schede</button></div>${rows}</div>` : ''}
+    <p class="note">Funziona con i giocatori delle partite dei prossimi giorni. Abbreviazioni accettate: o/u, pts, reb, ast, 3pt, blk, stl, pra, p+r, p+a, r+a, sot, tiri, falli, cartellino, gol.</p>
+  </main>`;
 }
 
 // ------------------------------------------------------------------ vista: schedina
@@ -591,9 +814,12 @@ function viewRoi() {
 function bind() {
   document.querySelectorAll('[data-act]').forEach(el => {
     const act = el.dataset.act;
-    const evName = el.tagName === 'INPUT' ? (el.type === 'file' ? 'change' : 'change') : el.tagName === 'SELECT' ? 'change' : 'click';
+    const evName = ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) ? 'change' : 'click';
     el.addEventListener(evName, ev => handle(act, el, ev));
-    if (act === 'search') el.addEventListener('input', () => { S.search = el.value; clearTimeout(bind._t); bind._t = setTimeout(() => { render(); const s = document.querySelector('[data-act=search]'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 250); });
+    if (act === 'search' || act === 'gsearch') el.addEventListener('input', () => {
+      S[act] = el.value; clearTimeout(bind._t);
+      bind._t = setTimeout(() => { render(); const s = document.querySelector('[data-act=' + act + ']'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 250);
+    });
   });
 }
 function currentPlayer() {
@@ -612,6 +838,26 @@ function handle(act, el) {
     case 'sort': S.sort = S.sort === 'valore' ? 'proiezione' : 'valore'; break;
     case 'game': S.game = el.value; if (location.hash.includes('g=')) { history.replaceState(null, '', '#/giocatori'); } break;
     case 'search': S.search = el.value; break;
+    case 'gsearch': S.gsearch = el.value; break;
+    case 'paste': S.pasteText = el.value; return;
+    case 'parse': { const t = document.querySelector('[data-act=paste]'); S.pasteText = t ? t.value : S.pasteText; S.pasteRows = parsePaste(S.pasteText); break; }
+    case 'pasteSave': {
+      let n = 0;
+      for (const r of S.pasteRows || []) { if (r.p && r.odds) { savePasteOdds(r); n++; } }
+      save(); toast(n + ' quote salvate nelle schede'); break;
+    }
+    case 'pasteAdd': {
+      const r = (S.pasteRows || [])[+el.dataset.i]; if (!r || !r.p) return;
+      savePasteOdds(r);
+      const e = evaluate(r.sport, r.p, r.m);
+      const odds = r.side === 'over' ? e.over : e.under;
+      const pp = r.side === 'over' ? e.pOver : e.pUnder;
+      const bern = BERNOULLI.has(r.m);
+      addToSlip({ sport: r.sport, g: r.p.g, pid: r.p.id, m: r.m, side: r.side, line: e.line, odds, p: pp, push: e.push,
+        label: `${r.p.n} ${bern ? (r.side === 'over' ? 'Sì' : 'No') : (r.side === 'over' ? 'Over' : 'Under') + ' ' + e.line} ${mkLabel(r.sport, r.m).toLowerCase()}`,
+        ctx: `${r.sport === 'nba' ? 'NBA' : 'Calcio'} · ${r.p.t} vs ${r.p.o}` });
+      break;
+    }
     case 'odds': {
       const c = currentPlayer(); if (!c) return;
       const k = oddsKey(c.sport, c.p, c.m);
@@ -693,7 +939,11 @@ function handle(act, el) {
     }
     default: return;
   }
-  save(); render();
+  save();
+  // dopo una modifica in un campo il rendering e' ritardato: cosi' un tocco su un pulsante
+  // (che fa perdere il fuoco al campo) arriva comunque al pulsante giusto
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) { clearTimeout(handle._r); handle._r = setTimeout(render, 180); }
+  else { clearTimeout(handle._r); render(); }
 }
 
 load();

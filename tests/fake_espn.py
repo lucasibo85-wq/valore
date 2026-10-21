@@ -5,6 +5,7 @@ I giocatori hanno tassi "veri" noti, cosi' si puo' verificare che il modello li 
 import datetime as dt
 import hashlib
 import math
+import os
 import random
 import re
 from urllib.parse import urlparse
@@ -87,7 +88,8 @@ def nba_box(eid, date, h, a):
                 athletes.append({"athlete": {"id": p["id"], "displayName": p["name"], "position": {"abbreviation": p["pos"]}},
                                  "didNotPlay": True, "stats": []})
                 continue
-            mins = max(4, int(r.gauss(p["min"], 4)))
+            pre = 0.55 if (date.month == 10 and date.day < 20) else 1.0
+            mins = max(4, int(r.gauss(p["min"] * pre, 4)))
             f = TEAM_DEF[oid]
             v = {k: nb_sample(r, p[k] * mins * f) for k in ("pts", "reb", "ast", "stl", "blk", "fg3m", "tov")}
             stats = [str(mins), "%d-%d" % (v["pts"] // 2, v["pts"]), "%d-%d" % (v["fg3m"], v["fg3m"] + 3), "2-2", "1",
@@ -169,9 +171,9 @@ def soccer_box(eid, h, a):
 
 
 # ------------------------------------------------------------------ router
-def ev_json(eid, date, h, a, completed, score=None):
+def ev_json(eid, date, h, a, completed, score=None, stype=2):
     hs, as_ = score or (None, None)
-    return {"id": eid, "date": date.isoformat() + "T19:00Z",
+    return {"id": eid, "date": date.isoformat() + "T19:00Z", "season": {"type": stype},
             "status": {"type": {"state": "post" if completed else "pre", "completed": completed}},
             "competitions": [{"competitors": [
                 {"homeAway": "home", "team": {"id": h[0], "abbreviation": h[1][:3].upper() if len(h[1]) > 3 else h[1], "displayName": h[1]}, "score": str(hs) if hs is not None else "0"},
@@ -207,7 +209,8 @@ def fake_get_json(url, params=None, headers=None, tries=3, pause=None):
             if sport == "basketball/nba":
                 for eid, date, h, a in nba_events(d):
                     EVENT_INDEX[eid] = ("nba", date, h, a)
-                    events.append(ev_json(eid, date, h, a, completed, (100, 98) if completed else None))
+                    pre = (1 if (date.month == 10 and date.day < 20) or (date.month == 9) else 2) if not os.environ.get("NOTYPE") else 0
+                    events.append(ev_json(eid, date, h, a, completed, (100, 98) if completed else None, pre))
             else:
                 lg = sport.split("/")[1]
                 for eid, date, h, a in soccer_events(lg, d):

@@ -81,37 +81,55 @@ def soccer_h2h(league, region):
     return out, _remaining(h)
 
 
-def nba_events():
+SOCCER_PROP_MAP = {
+    "player_shots_on_target": "sot", "player_shots": "shots", "player_assists": "a",
+    "player_goal_scorer_anytime": "g", "player_to_receive_card": "card",
+}
+
+
+def events(sport_key):
+    """Elenco eventi (gratuito, non consuma crediti)."""
     if not key():
         return []
-    data, _ = get_json(BASE + "basketball_nba/events", params={"apiKey": key()})
+    data, _ = get_json(BASE + sport_key + "/events", params={"apiKey": key()})
     return data or []
 
 
-def nba_props(event_id, markets, region):
-    """Linee e migliori quote over/under per giocatore. Costo: mercati x regioni."""
-    data, h = get_json(BASE + "basketball_nba/events/%s/odds" % event_id, params={
+def nba_events():
+    return events("basketball_nba")
+
+
+def event_props(sport_key, event_id, markets, region, market_map):
+    """Linee e migliori quote per giocatore. Costo: mercati x regioni.
+
+    Gestisce sia i mercati over/under (con "point") sia quelli si'/no
+    (marcatore, cartellino), che diventano linea 0.5.
+    """
+    data, h = get_json(BASE + "%s/events/%s/odds" % (sport_key, event_id), params={
         "apiKey": key(), "regions": region, "markets": ",".join(markets), "oddsFormat": "decimal"})
     if not data:
         return [], _remaining(h)
     lines = defaultdict(lambda: {"over": (0, ""), "under": (0, ""), "books": 0})
     for bk in data.get("bookmakers", []):
         for mk in bk.get("markets", []):
-            m = NBA_MARKET_MAP.get(mk.get("key"))
+            m = market_map.get(mk.get("key"))
             if not m:
                 continue
             for o in mk.get("outcomes", []):
+                name = (o.get("name") or "").lower()
                 player = o.get("description") or ""
+                if not player and name not in ("over", "under", "yes", "no"):
+                    player, name = o.get("name", ""), "yes"
                 point = o.get("point")
-                if point is None or not player:
+                point = 0.5 if point is None else float(point)
+                if not player:
                     continue
-                d = lines[(player, m, float(point))]
-                side = "over" if o.get("name", "").lower() == "over" else "under"
-                if o["price"] > d[side][0]:
+                d = lines[(player, m, point)]
+                side = "under" if name in ("under", "no") else "over"
+                if o.get("price", 0) > d[side][0]:
                     d[side] = (o["price"], bk.get("title", ""))
                 if side == "over":
                     d["books"] += 1
-    # per ogni giocatore/mercato tiene la linea quotata da piu' bookmaker
     best = {}
     for (player, m, point), d in lines.items():
         k = (player, m)
@@ -119,7 +137,11 @@ def nba_props(event_id, markets, region):
             best[k] = (point, d)
     out = []
     for (player, m), (point, d) in best.items():
-        if d["over"][0] and d["under"][0]:
+        if d["over"][0]:
             out.append({"player": player, "m": m, "line": point, "over": d["over"][0],
-                        "under": d["under"][0], "book": d["over"][1]})
+                        "under": d["under"][0] or None, "book": d["over"][1]})
     return out, _remaining(h)
+
+
+def nba_props(event_id, markets, region):
+    return event_props("basketball_nba", event_id, markets, region, NBA_MARKET_MAP)
