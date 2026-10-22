@@ -10,7 +10,8 @@ NBA_COLS = ["gid", "date", "team", "opp", "home", "pid", "name", "pos", "starter
             "min", "pts", "reb", "ast", "stl", "blk", "fg3m", "tov"]
 SOC_COLS = ["gid", "date", "league", "team", "opp", "home", "pid", "name", "pos", "starter",
             "min", "shots", "sot", "fc", "fs", "yc", "rc", "g", "a"]
-MATCH_COLS = ["sport", "league", "gid", "date", "hid", "aid", "hs", "as", "referee"]
+MATCH_COLS = ["sport", "league", "gid", "date", "hid", "aid", "hs", "as", "referee",
+              "hs1", "as1", "hc", "ac", "hk", "ak", "ts"]
 # colonne di testo: tutte le altre sono numeriche
 TEXT = {"gid", "date", "team", "opp", "pid", "name", "pos", "league", "sport", "referee", "hid", "aid",
         "p1", "p2", "tour", "winner", "round", "tname"}

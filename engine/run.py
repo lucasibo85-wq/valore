@@ -11,7 +11,7 @@ import sys
 import time
 from collections import defaultdict
 
-from . import espn, models, net, odds, props, store, tennis
+from . import calib, espn, models, net, odds, props, secure, store, tennis
 
 ROOT = store.ROOT
 OUT_DIR = os.environ.get("VALORE_OUT") or os.path.join(ROOT, "docs", "data")
@@ -64,6 +64,10 @@ def main():
     max_summ = args.max_summaries or int(cfg.get("max_summaries_per_run", 1500))
 
     today = dt.datetime.utcnow().date()
+    now = dt.datetime.utcnow()
+    if os.environ.get("VALORE_TODAY"):  # solo per i test
+        today = dt.date.fromisoformat(os.environ["VALORE_TODAY"])
+        now = dt.datetime.combine(today, dt.time(8, 0))
     ahead = int(cfg.get("days_ahead", 2))
     state = store.read_json("state.json", {})
     state.setdefault("processed", {"nba": [], "soccer": []})
@@ -140,14 +144,23 @@ def main():
         for league in cfg["soccer"]["leagues"]:
             path = "soccer/" + league
             start = dt.date.fromisoformat(state["scan"][league]) if league in state["scan"] else today - dt.timedelta(days=cfg["soccer"]["backfill_days"])
-            evs = scan_days(path, start, today, per_day=False)
+            # ESPN accetta gli intervalli di date? Verifica una volta per lega confrontando con le singole giornate
+            rok = state.setdefault("range_ok", {})
+            if league not in rok:
+                a_ = {e["id"] for e in scan_days(path, today - dt.timedelta(days=10), today, per_day=False)}
+                b_ = {e["id"] for e in scan_days(path, today - dt.timedelta(days=10), today, per_day=True)}
+                rok[league] = b_ <= a_
+                if not rok[league]:
+                    log("Calcio %s: gli intervalli di date non funzionano, scansione giorno per giorno" % league)
+                    start = min(start, today - dt.timedelta(days=cfg["soccer"]["backfill_days"])) if league not in state["scan"] else start
+            evs = scan_days(path, start, today, per_day=not rok[league])
             n_new = 0
             for ev in evs:
                 remember("soccer", league, ev)
                 if ev["completed"] and ev["id"] not in processed["soccer"]:
                     queue.append(("soccer", path, league, ev))
                     n_new += 1
-            for ev in scan_days(path, today, today + dt.timedelta(days=ahead), per_day=False):
+            for ev in scan_days(path, today, today + dt.timedelta(days=ahead), per_day=True):
                 remember("soccer", league, ev)
                 if not ev["completed"] and ev["state"] == "pre":
                     upcoming.append(("soccer", path, league, ev))
@@ -193,6 +206,21 @@ def main():
         t_up = list(up.values())
         log("Tennis: %d partite in archivio, %d in programma" % (len(t_matches), len(t_up)))
 
+    # ---------------- Dati di squadra (angoli, cartellini, 1° tempo) per partite gia' lette in passato
+    refetch = 0
+    soc_paths = {lg: "soccer/" + lg for lg in cfg["soccer"].get("leagues", {})} if cfg["soccer"].get("enabled") else {}
+    rf_since = iso(today - dt.timedelta(days=365))
+    for m in sorted(matches, key=lambda m: m["date"], reverse=True):
+        if refetch >= int(cfg.get("max_team_refetch_per_run", 600)):
+            break
+        if (m.get("sport") == "soccer" and m.get("ts") in (None, "") and m["gid"] in processed["soccer"]
+                and m["date"] >= rf_since and m.get("league") in soc_paths):
+            queue.append(("soccer", soc_paths[m["league"]], m["league"],
+                          {"id": m["gid"], "date": m["date"], "home": {"id": m["hid"]}, "away": {"id": m["aid"]}, "refetch": True}))
+            refetch += 1
+    if refetch:
+        log("Calcio: %d partite gia' in archivio da completare con angoli/cartellini/1° tempo" % refetch)
+
     # ---------------- Tabellini delle partite concluse (prima le piu' recenti)
     for q in state.get("queue", []):  # rimasti dalle esecuzioni precedenti
         if q[3]["id"] not in processed[q[0]] and q[3]["id"] not in nba_excluded:
@@ -225,10 +253,30 @@ def main():
         elif sport in us_logs:
             us_logs[sport].extend(rows)
         else:
-            soc_logs.extend(rows)
-            ref = espn.parse_referee(summ)
-            if ref and ev["id"] in match_by_gid:
-                match_by_gid[ev["id"]]["referee"] = ref
+            if not ev.get("refetch"):
+                soc_logs.extend(rows)
+            mrow_ = match_by_gid.get(ev["id"])
+            if mrow_ is not None:
+                ref = espn.parse_referee(summ)
+                if ref:
+                    mrow_["referee"] = ref
+                tdat = espn.parse_soccer_team(summ)
+                th, ta = tdat["teams"].get(h, {}), tdat["teams"].get(a, {})
+                if h in tdat["ht"] and a in tdat["ht"]:
+                    mrow_["hs1"], mrow_["as1"] = tdat["ht"][h], tdat["ht"][a]
+                if "corners" in th and "corners" in ta:
+                    mrow_["hc"], mrow_["ac"] = th["corners"], ta["corners"]
+                if "yc" in th and "yc" in ta:
+                    mrow_["hk"] = th["yc"] + th.get("rc", 0)
+                    mrow_["ak"] = ta["yc"] + ta.get("rc", 0)
+                elif rows:  # cartellini dalla somma dei giocatori
+                    mrow_["hk"] = sum(r["yc"] + r["rc"] for r in rows if r["team"] == h)
+                    mrow_["ak"] = sum(r["yc"] + r["rc"] for r in rows if r["team"] == a)
+                mrow_["ts"] = 1
+            if ev.get("refetch"):
+                processed[sport].add(ev["id"])
+                done += 1
+                continue
         if not rows:
             empty += 1
         processed[sport].add(ev["id"])
@@ -255,7 +303,7 @@ def main():
 
     # ---------------- Anteprime: infortuni, formazioni, arbitro
     previews = {}
-    soon = (dt.datetime.utcnow() + dt.timedelta(hours=40)).isoformat()
+    soon = (now + dt.timedelta(hours=40)).isoformat()
     for sport, path, league, ev in upcoming:
         if ev["date"][:19] <= soon or sport == "nfl":
             summ = espn.summary(path, ev["id"])
@@ -299,13 +347,17 @@ def main():
         app["tennis"] = {"matches": []}
         tennis.build(app, t_matches, t_up)
     if cfg["nba"].get("enabled"):
-        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist)
+        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"))
     if cfg["soccer"].get("enabled"):
-        build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist)
-    store.write_json("hist.json", hist, target=os.path.join(OUT_DIR, "hist.json"), compact=True)
-    store.write_json("app.json", app, target=os.path.join(OUT_DIR, "app.json"), compact=True)
-    store.write_json("results.json", build_results(nba_logs, soc_logs, matches, today, us_logs, t_matches),
-                     target=os.path.join(OUT_DIR, "results.json"), compact=True)
+        build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
+                     calib_factors(state, "soccer"))
+    results = build_results(nba_logs, soc_logs, matches, today, us_logs, t_matches)
+    # autocalibrazione: prima misura le previsioni passate, poi salva quelle nuove
+    calib.evaluate(state, {"nba": nba_logs, "soccer": soc_logs}, results, today)
+    calib.record(state, app, now, {"nba": calib_factors(state, "nba"), "soccer": calib_factors(state, "soccer")})
+    diag = build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today)
+    diag["calib"] = calib.report(state, today)
+    secure.write_outputs(OUT_DIR, {"app": app, "hist": hist, "results": results, "diag": diag})
     state["queue"] = [list(q) for q in queue if q[3]["id"] not in processed[q[0]] and q[3]["date"][:10] >= cutoff]
     state["last_run"] = app["generated"]
     store.write_json("state.json", state)
@@ -422,10 +474,54 @@ def name_key(n):
 
 
 # ====================================================================== NBA
-def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
+AVAIL = (("out", 0.0), ("doubtful", 0.25), ("questionable", 0.5), ("day-to-day", 0.75), ("game time", 0.6), ("probable", 0.9))
+
+
+def availability(status):
+    s = (status or "").lower()
+    for k, v in AVAIL:
+        if s.startswith(k):
+            return v
+    return 1.0
+
+
+def spread_home(odds, home_abbr, away_abbr):
+    """Handicap della squadra di casa (negativo = favorita) dalle quote ESPN."""
+    if not odds:
+        return None
+    det = str(odds.get("details") or "")
+    parts = det.replace("+", " +").split()
+    if len(parts) >= 2:
+        try:
+            v = float(parts[-1])
+            ab = parts[0].upper()
+            if ab == str(home_abbr).upper():
+                return v
+            if ab == str(away_abbr).upper():
+                return -v
+        except ValueError:
+            pass
+    sp = odds.get("spread")
+    return float(sp) if sp not in (None, "") else None
+
+
+def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, calib=None):
+    """Proiezioni NBA.
+
+    1. Tasso per minuto pesato sulle partite recenti, corretto verso la media del ruolo.
+    2. Minuti attesi; poi i minuti lasciati liberi dagli assenti (Out / dubbi) vengono ridistribuiti
+       ai compagni, fino a 240 minuti di squadra.
+    3. Fattori di contesto: difesa avversaria per statistica, casa/trasferta, back-to-back,
+       rischio di partita a senso unico (handicap ampio).
+    4. Coerenza con la squadra: la somma delle proiezioni deve tornare con i punti attesi della squadra
+       (dalle quote ESPN se presenti, altrimenti dalla media), lo stesso per rimbalzi e assist.
+    5. Autocalibrazione: correzione per mercato in base agli errori delle ultime settimane.
+    """
     if not logs:
         return
+    calib = calib or {}
     markets = models.NBA_MARKETS
+    base = models.NBA_BASE
     since_long = iso(today - dt.timedelta(days=365))
     priors = models.league_priors("nba", logs, markets, since_long)
     since_opp = iso(today - dt.timedelta(days=150))
@@ -436,15 +532,32 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
 
     by_player = defaultdict(list)
     tg_set = defaultdict(dict)
+    tot = defaultdict(lambda: defaultdict(float))  # (gid, team) -> somme statistiche
     for r in logs:
         by_player[r["pid"]].append(r)
         tg_set[r["team"]][r["gid"]] = r["date"]
+        t_ = tot[(r["gid"], r["team"])]
+        for b in base:
+            t_[b] += float(r[b])
+        t_["_opp"] = r["opp"]
+        t_["_date"] = r["date"]
     team_games = {t: sorted(d.items(), key=lambda x: x[1]) for t, d in tg_set.items()}
     for pid in by_player:
         by_player[pid].sort(key=lambda r: r["date"], reverse=True)
     current = defaultdict(list)
     for pid, games in by_player.items():
         current[games[0]["team"]].append(pid)
+    # medie di squadra (ultime 15): statistiche fatte e punti subiti
+    team_avg = {}
+    for t, gl in team_games.items():
+        last = [g for g, _ in gl[-15:]]
+        if not last:
+            continue
+        rows = [tot[(g, t)] for g in last]
+        allowed = [tot.get((g, rows[i]["_opp"]), {}).get("pts", 0.0) for i, g in enumerate(last)]
+        team_avg[t] = {b: sum(r_[b] for r_ in rows) / len(rows) for b in base}
+        team_avg[t]["allowed"] = sum(allowed) / len(allowed) if allowed else team_avg[t]["pts"]
+    lg_pts = sum(v["pts"] for v in team_avg.values()) / max(1, len(team_avg))
 
     tabbr = lambda tid: teams["nba"].get(tid, {}).get("abbr", "?")
     for sport, path, league, ev in upcoming:
@@ -452,9 +565,13 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
             continue
         pv = previews.get(ev["id"], {})
         inj = pv.get("inj", {})
-        app["nba"]["games"].append({"id": ev["id"], "t": ev["date"], "h": tabbr(ev["home"]["id"]),
-                                    "a": tabbr(ev["away"]["id"]), "hn": ev["home"]["name"], "an": ev["away"]["name"],
-                                    "odds": ev.get("odds")})
+        odds_ev = ev.get("odds") or {}
+        habbr, aabbr = tabbr(ev["home"]["id"]), tabbr(ev["away"]["id"])
+        total = odds_ev.get("ou")
+        hsp = spread_home(odds_ev, habbr, aabbr)
+        app["nba"]["games"].append({"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr,
+                                    "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"),
+                                    "tot": total, "sp": hsp})
         props = {}
         for row in odds_cache.get("nba", {}).get(ev["id"], []):
             props.setdefault(name_key(row[0]), {})[row[1]] = row[2:]
@@ -462,6 +579,12 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
             tid, oid = ev[side]["id"], ev[opp_side]["id"]
             tg = team_games.get(tid, [])
             this_season = [g for g, d in tg if d >= season_start]
+            # back-to-back: la squadra ha giocato nelle ultime ~30 ore
+            ev_dt = dt.datetime.fromisoformat(ev["date"][:16].replace("Z", ""))
+            b2b = bool(tg) and (ev_dt.date() - dt.date.fromisoformat(tg[-1][1])).days <= 1 and tg[-1][1] < ev["date"][:10]
+            spread = None if hsp is None else (hsp if side == "home" else -hsp)
+            cands = []
+            missing = []  # giocatori di rotazione assenti
             for pid in current.get(tid, []):
                 games = by_player[pid]
                 if this_season and len(this_season) >= 2 and games[0]["date"] < season_start:
@@ -469,46 +592,142 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist):
                 if games[0]["date"] < iso(today - dt.timedelta(days=200)):
                     continue
                 status = inj.get(pid, "")
-                if status.lower().startswith("out"):
-                    continue
-                # partite di squadra saltate di recente
-                after = [g for g, d in tg if d > games[0]["date"]]
-                if len(after) >= 4:
-                    continue
                 last10 = games[:10]
                 ws = models.decay_weights(len(last10), 4)
                 mins = [float(r["min"]) for r in last10]
                 exp_min = models.wmean(mins, ws)
-                if exp_min < 10:
+                after = [g for g, d in tg if d > games[0]["date"]]
+                av = availability(status)
+                if av == 0.0 or len(after) >= 4:
+                    if exp_min >= 12:
+                        missing.append((games[0]["name"], exp_min, sum(float(r["pts"]) for r in last10) / len(last10)))
                     continue
-                var_min = min(36.0, models.wmean([(m - exp_min) ** 2 for m in mins], ws))
+                if exp_min < 8:
+                    continue
+                cands.append({"pid": pid, "games": games, "status": status, "av": av, "exp": exp_min,
+                              "mins": mins, "ws": ws, "after": after})
+            if not cands:
+                continue
+            # --- ridistribuzione dei minuti verso 240
+            tot_min = sum(c["exp"] * c["av"] for c in cands)
+            notes_team = []
+            if tot_min < 236:
+                free = 240 - tot_min
+                room = {c["pid"]: max(0.0, 40 - c["exp"]) * (1 if c["exp"] >= 15 else 0.5) for c in cands}
+                rs = sum(room.values()) or 1.0
+                for c in cands:
+                    c["add"] = min(room[c["pid"]], free * room[c["pid"]] / rs)
+            elif tot_min > 250:
+                k_ = 245 / tot_min
+                for c in cands:
+                    c["add"] = c["exp"] * (k_ - 1)
+            for c in cands:
+                c["exp2"] = max(4.0, c["exp"] + c.get("add", 0.0))
+                if b2b and c["exp2"] >= 28:
+                    c["exp2"] *= 0.97
+                if spread is not None and abs(spread) >= 10:
+                    c["exp2"] *= 0.96 if c["exp2"] >= 28 else 1.04
+            if missing:
+                notes_team.append("Assenti: " + ", ".join("%s (%.0f min)" % (n, m_) for n, m_, _ in sorted(missing, key=lambda x: -x[1])[:4]))
+            if b2b:
+                notes_team.append("Back-to-back (ha giocato ieri)")
+            if spread is not None and abs(spread) >= 10:
+                notes_team.append("Handicap %+.1f: rischio partita a senso unico, titolari un po' meno minuti" % spread)
+            # --- proiezioni individuali
+            for c in cands:
                 fac = {}
                 for m in markets:
                     fac[m] = opp_f.get(oid, {}).get(m, 1.0) * (home_f.get(m, 1.0) if side == "home" else (2 - home_f.get(m, 1.0)))
-                proj = models.project(games, "nba", markets, priors, exp_min, var_min, fac, 12, 60)
-                if after and not status:
-                    status = "Assente ultime %d" % len(after)
+                var_min = min(36.0, models.wmean([(m_ - c["exp"]) ** 2 for m_ in c["mins"]], c["ws"]))
+                c["proj"] = models.project(c["games"], "nba", markets, priors, c["exp2"], var_min, fac, 12, 60)
+            # --- coerenza con i totali di squadra
+            ta = team_avg.get(tid)
+            k_base = {}
+            if ta:
+                exp_pts_team = ta["pts"] * opp_f.get(oid, {}).get("pts", 1.0)
+                if total and hsp is not None:
+                    implied = total / 2 - (hsp / 2 if side == "home" else -hsp / 2)
+                    exp_pts_team = 0.35 * exp_pts_team + 0.65 * implied
+                    pace = total / max(150.0, ta["pts"] + ta["allowed"]) if ta.get("allowed") else 1.0
+                    notes_team.append("Punti attesi squadra %.0f (quote ESPN: totale %.1f, handicap %+.1f)" % (implied, total, spread or 0))
+                else:
+                    pace = 1.0
+                targets = {"pts": exp_pts_team,
+                           "reb": ta["reb"] * opp_f.get(oid, {}).get("reb", 1.0) * (pace ** 0.4),
+                           "ast": ta["ast"] * opp_f.get(oid, {}).get("ast", 1.0) * (pace ** 0.6),
+                           "fg3m": ta["fg3m"] * opp_f.get(oid, {}).get("fg3m", 1.0) * (pace ** 0.6)}
+                for b, tgt in targets.items():
+                    ssum = sum(c["proj"][b][0] * c["av"] for c in cands)
+                    # la rotazione proiettata copre ~ il 97% della produzione di squadra
+                    if ssum > 0:
+                        k_base[b] = max(0.88, min(1.12, 1 + 0.6 * ((tgt * 0.97) / ssum - 1)))
+            for c in cands:
+                games = c["games"]
+                proj = {}
+                for m, comps in markets.items():
+                    mu, r = c["proj"][m]
+                    ks = [(k_base.get(b, 1.0), c["proj"][b][0]) for b in comps if b in c["proj"]]
+                    wsum = sum(w for _, w in ks)
+                    k = sum(kk * w for kk, w in ks) / wsum if wsum > 0 else 1.0
+                    k *= calib.get(m, 1.0)
+                    proj[m] = [round(mu * k, 3), r]
+                status = c["status"]
+                if c["after"] and not status:
+                    status = "Assente ultime %d" % len(c["after"])
+                mins = c["mins"]
+                mmean = sum(mins) / len(mins)
+                cv = (sum((x - mmean) ** 2 for x in mins) / len(mins)) ** 0.5 / mmean if mmean else 1
+                rel = "A" if len(games) >= 20 and cv < 0.18 and not status else ("B" if len(games) >= 10 and cv < 0.3 else "C")
+                adj = list(notes_team)
+                if abs(c["exp2"] - c["exp"]) >= 1.0:
+                    adj.insert(0, "Minuti %+.1f rispetto alla media recente" % (c["exp2"] - c["exp"]))
                 p = {
-                    "id": pid, "n": games[0]["name"], "t": tabbr(tid), "o": tabbr(oid), "g": ev["id"],
+                    "id": c["pid"], "n": games[0]["name"], "t": tabbr(tid), "o": tabbr(oid), "g": ev["id"],
                     "h": 1 if side == "home" else 0, "pos": games[0].get("pos", ""), "st": status,
-                    "m": round(exp_min, 1),
-                    "mk": {m: list(v) for m, v in proj.items()},
+                    "m": round(c["exp2"], 1), "m0": round(c["exp"], 1), "rel": rel, "cv": round(cv, 2),
+                    "adj": adj, "mk": proj,
                     "of": {m: round(opp_f.get(oid, {}).get(m, 1.0), 3) for m in markets},
-                    "a30": {m: round(sum(models.market_value(r, c, m) for r in games[:30]) / len(games[:30]), 2)
-                            for m, c in markets.items()},
-                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in models.NBA_BASE]
+                    "a30": {m: round(sum(models.market_value(r, cc, m) for r in games[:30]) / len(games[:30]), 2)
+                            for m, cc in markets.items()},
+                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base]
                           for r in games[:10]],
                 }
                 od = props.get(name_key(p["n"]))
                 if od:
                     p["odds"] = od
                 app["nba"]["players"].append(p)
-                hist["nba"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in models.NBA_BASE]
-                                    for r in games[:100]]
+                hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base]
+                                         for r in games[:100]]
 
 
 # ====================================================================== Calcio
-def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cache, hist):
+def calib_factors(state, sport):
+    return calib.factors(state, sport)
+
+
+def build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today):
+    """Copertura dei dati per la pagina Stato dati dell'app."""
+    gids_pl = set(r["gid"] for r in soc_logs)
+    since = iso(today - dt.timedelta(days=60))
+    lg = {}
+    for code, name in cfg["soccer"].get("leagues", {}).items():
+        ms = [m for m in matches if m.get("sport") == "soccer" and m.get("league") == code]
+        rec = [m for m in ms if m["date"] >= since]
+        up = [m for m in app.get("soccer", {}).get("matches", []) if m["lg"] == code]
+        pl = [p for p in app.get("soccer", {}).get("players", []) if p.get("lg") == code]
+        lg[code] = {"name": name, "partite": len(ms), "recenti": len(rec),
+                    "con_giocatori": sum(1 for m in rec if m["gid"] in gids_pl),
+                    "con_angoli": sum(1 for m in rec if m.get("hc") not in (None, "")),
+                    "con_1t": sum(1 for m in rec if m.get("hs1") not in (None, "")),
+                    "prossime": len(up), "con_modello": sum(1 for m in up if m.get("p1") is not None),
+                    "giocatori": len(pl), "intervalli_ok": state.get("range_ok", {}).get(code)}
+    nb = {"partite": len(set(r["gid"] for r in nba_logs)), "recenti": len(set(r["gid"] for r in nba_logs if r["date"] >= since)),
+          "prossime": len(app.get("nba", {}).get("games", [])), "giocatori": len(app.get("nba", {}).get("players", [])),
+          "con_quote_espn": sum(1 for g in app.get("nba", {}).get("games", []) if g.get("tot"))}
+    return {"generated": app["generated"], "soccer": lg, "nba": nb, "queue": len(state.get("queue", []))}
+
+
+def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cache, hist, calib_f=None):
     markets = models.SOC_MARKETS
     since_long = iso(today - dt.timedelta(days=365))
     tname = lambda tid: teams["soccer"].get(tid, {}).get("name", "?")
@@ -522,8 +741,27 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
     for m in matches:
         if m.get("sport") == "soccer":
             by_league[m["league"]].append(m)
+    soc_all = [m for m in matches if m.get("sport") == "soccer"]
+    T = iso(today)
+    # coppe europee (e in generale competizioni con squadre di leghe diverse): modello unico su tutte le partite
+    joint = {"g": models.team_strengths(soc_all, T), "c": models.team_strengths(soc_all, T, hf="hc", af="ac", prior_games=6, min_rows=40),
+             "k": models.team_strengths(soc_all, T, hf="hk", af="ak", prior_games=6, min_rows=40),
+             "f1": models.first_half_share(soc_all), "rc": models.league_dispersion(soc_all, "hc", "ac"),
+             "rk": models.league_dispersion(soc_all, "hk", "ak")}
+    lg_models = {}
     for lg, ms in by_league.items():
-        strengths[lg] = models.team_strengths(ms, iso(today))
+        strengths[lg] = models.team_strengths(ms, T)
+        lg_models[lg] = {"g": strengths[lg], "c": models.team_strengths(ms, T, hf="hc", af="ac", prior_games=6, min_rows=40),
+                         "k": models.team_strengths(ms, T, hf="hk", af="ak", prior_games=6, min_rows=40),
+                         "f1": models.first_half_share(ms, joint["f1"]),
+                         "rc": models.league_dispersion(ms, "hc", "ac") or joint["rc"],
+                         "rk": models.league_dispersion(ms, "hk", "ak") or joint["rk"]}
+    is_cup = lambda lg: lg.startswith("uefa.") or "cup" in lg or "coppa" in lg or lg.endswith("_qual")
+
+    def pair(sm, h, a):
+        if sm and h in sm["att"] and a in sm["att"]:
+            return sm["avg_h"] * sm["att"][h] * sm["def"][a], sm["avg_a"] * sm["att"][a] * sm["def"][h]
+        return None
 
     by_player = defaultdict(list)
     team_games = defaultdict(list)
@@ -547,12 +785,24 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
         ref = pv.get("ref", "")
         mrow = {"id": ev["id"], "lg": league, "t": ev["date"], "h": tname(h), "a": tname(a),
                 "ha": tabbr(h), "aa": tabbr(a)}
-        s = strengths.get(league)
-        if s and h in s["att"] and a in s["att"]:
-            lh = s["avg_h"] * s["att"][h] * s["def"][a]
-            la = s["avg_a"] * s["att"][a] * s["def"][h]
+        LM = joint if is_cup(league) or league not in lg_models else lg_models[league]
+        gl = pair(LM["g"], h, a) or pair(joint["g"], h, a)
+        if gl:
+            lh, la = gl
             mrow.update({"lh": round(lh, 3), "la": round(la, 3)})
             mrow.update(models.match_probs(lh, la))
+            cpair = pair(LM["c"], h, a) or pair(joint["c"], h, a)
+            kpair = pair(LM["k"], h, a) or pair(joint["k"], h, a)
+            corners = (sum(cpair), LM["rc"]) if cpair else None
+            cards = None
+            if kpair:
+                kf = ref_f[ref]["card"] if ref and ref in ref_f else 1.0
+                cards = (sum(kpair) * kf, LM["rk"])
+                mrow["mk_k"] = round(cards[0], 2)
+            if corners:
+                mrow["mk_c"] = round(corners[0], 2)
+            mrow["f1"] = round(LM["f1"], 3)
+            mrow["mk"] = models.soccer_markets(lh, la, LM["f1"], corners, cards)
         oc = odds_cache.get("soccer", {}).get(ev["id"])
         eo = ev.get("odds")
         if oc:
@@ -579,7 +829,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                 p_start = models.wmean(starts, ws) if tg else 0.0
                 if lineup:
                     p_start = 1.0 if pid in lineup else 0.1
-                if p_start < 0.25 and sum(apps) < 3:
+                if p_start < 0.15 and sum(apps) < 2:
                     continue
                 st_games = [r for r in games[:10] if r["starter"]]
                 if p_start >= 0.5 and st_games:
@@ -588,7 +838,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                     exp_min = sum(float(r["min"]) for r in games[:10]) / len(games[:10])
                 cands.append((p_start, pid, exp_min))
             cands.sort(reverse=True)
-            for p_start, pid, exp_min in cands[:18]:
+            for p_start, pid, exp_min in cands[:22]:
                 games = by_player[pid]
                 fac = {}
                 for m in markets:
@@ -599,6 +849,9 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                         f *= ref_f[ref][m]
                     fac[m] = f
                 proj = models.project(games, "soccer", markets, priors, exp_min, 0.0, fac, 10, 270)
+                for m_, f_ in (calib_f or {}).items():
+                    if m_ in proj:
+                        proj[m_] = (round(proj[m_][0] * f_, 4), proj[m_][1])
                 hist["soccer"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"])), int(r["starter"])] +
                                        [int(float(r[b])) for b in models.SOC_BASE] for r in games[:60]]
                 od = props.get(name_key(games[0]["name"]))
@@ -626,7 +879,10 @@ def build_results(nba_logs, soc_logs, matches, today, us_logs=None, t_matches=No
         out[sp] = {}
     for m in matches:
         if m["date"] >= since and m.get("hs") not in (None, "") and m.get("sport") in out:
-            out[m["sport"]].setdefault(m["gid"], {"s": [m["hs"], m["as"]], "p": {}})
+            sc = [m["hs"], m["as"]]
+            if m["sport"] == "soccer":
+                sc += [m.get(k) if m.get(k) not in (None, "") else None for k in ("hs1", "as1", "hc", "ac", "hk", "ak")]
+            out[m["sport"]].setdefault(m["gid"], {"s": sc, "p": {}})
     for r in nba_logs:
         if r["date"] >= since and r["gid"] in out["nba"]:
             out["nba"][r["gid"]]["p"][r["pid"]] = [round(float(r["min"]))] + [int(float(r[b])) for b in models.NBA_BASE]

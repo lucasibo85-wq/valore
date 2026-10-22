@@ -11,9 +11,9 @@ NBA_MARKETS = {
 SOC_BASE = ["shots", "sot", "fc", "fs", "yc", "rc", "g", "a"]
 SOC_MARKETS = {
     "shots": ["shots"], "sot": ["sot"], "fc": ["fc"], "fs": ["fs"], "card": ["yc", "rc"],
-    "g": ["g"], "a": ["a"], "ga": ["g", "a"],
+    "g": ["g"], "a": ["a"], "ga": ["g", "a"], "goa": ["g", "a"],
 }
-BERNOULLI = {"card"}  # conta solo "almeno uno"
+BERNOULLI = {"card", "goa", "td", "hr"}  # conta solo "almeno uno"
 
 
 def market_value(row, comps, market):
@@ -215,7 +215,9 @@ def project(games, sport, markets, priors, exp_min, min_var, factors, half_life,
         pm = num / den if den > 0 else pr
         mu = pm * exp_min * factors.get(m, 1.0)
         if m in BERNOULLI:
-            out[m] = (round(mu, 4), None)
+            # mu qui e' la probabilita' di "almeno uno": la converto nel parametro di Poisson equivalente
+            p_ = min(max(mu, 0.0), 0.95)
+            out[m] = (round(-math.log(1 - p_), 4), None)
             continue
         e_num = sum(w * (x - pm * mn) ** 2 for w, x, mn in zip(ws, xs, mins))
         e_den = sum(w * pm * mn for w, mn in zip(ws, mins))
@@ -228,18 +230,19 @@ def project(games, sport, markets, priors, exp_min, min_var, factors, half_life,
 
 
 # ------------------------------------------------------------ squadre calcio
-def team_strengths(matches, today, half_life_days=150, prior_games=4):
-    """Forza d'attacco/difesa per squadra in una lega (rapporti con la media)."""
+def team_strengths(matches, today, half_life_days=150, prior_games=4, hf="hs", af="as", min_rows=10):
+    """Forza "d'attacco" e "di difesa" per squadra (rapporti con la media) per una statistica
+    di squadra: gol (hs/as), angoli (hc/ac), cartellini (hk/ak)..."""
     import datetime as dt
     t0 = dt.date.fromisoformat(today)
     rows = []
     for m in matches:
-        if m.get("hs") in (None, "") or m.get("as") in (None, ""):
+        if m.get(hf) in (None, "") or m.get(af) in (None, ""):
             continue
         d = dt.date.fromisoformat(m["date"][:10])
         w = 0.5 ** ((t0 - d).days / half_life_days)
-        rows.append((m["hid"], m["aid"], float(m["hs"]), float(m["as"]), w))
-    if len(rows) < 10:
+        rows.append((m["hid"], m["aid"], float(m[hf]), float(m[af]), w))
+    if len(rows) < min_rows:
         return None
     sw = sum(r[4] for r in rows)
     avg_h = sum(r[2] * r[4] for r in rows) / sw
@@ -268,15 +271,12 @@ def team_strengths(matches, today, half_life_days=150, prior_games=4):
 
 
 def match_probs(lh, la, max_goals=10):
-    def pmf(k, mu):
-        return math.exp(-mu) * mu ** k / math.factorial(k)
-    ph = [pmf(i, lh) for i in range(max_goals + 1)]
-    pa = [pmf(i, la) for i in range(max_goals + 1)]
+    M = dc_matrix(lh, la, -0.05, max_goals)
     p1 = px = p2 = o25 = btts = 0.0
     scores = []
     for i in range(max_goals + 1):
         for j in range(max_goals + 1):
-            p = ph[i] * pa[j]
+            p = M[i][j]
             if i > j:
                 p1 += p
             elif i == j:
@@ -294,3 +294,141 @@ def match_probs(lh, la, max_goals=10):
         "o25": round(o25, 4), "btts": round(btts, 4),
         "top": [[s, round(p, 4)] for p, s in scores[:6]],
     }
+
+
+# ------------------------------------------------------------ mercati di squadra (calcio)
+def _pois(k, mu):
+    return math.exp(-mu) * mu ** k / math.factorial(k)
+
+
+def dc_matrix(lh, la, rho=-0.05, max_goals=10):
+    """Matrice dei risultati con la correzione Dixon-Coles sui punteggi bassi
+    (rende piu' realistici 0-0, 1-0, 0-1 e 1-1)."""
+    M = [[_pois(i, lh) * _pois(j, la) for j in range(max_goals + 1)] for i in range(max_goals + 1)]
+    if rho:
+        M[0][0] *= max(0.0, 1 - lh * la * rho)
+        M[0][1] *= max(0.0, 1 + lh * rho)
+        M[1][0] *= max(0.0, 1 + la * rho)
+        M[1][1] *= max(0.0, 1 - rho)
+    tot = sum(sum(r) for r in M)
+    return [[v / tot for v in r] for r in M]
+
+
+def _sum(M, cond):
+    return sum(M[i][j] for i in range(len(M)) for j in range(len(M)) if cond(i, j))
+
+
+def nb_over(line, mu, r):
+    return prob_over(line, mu, r)
+
+
+def soccer_markets(lh, la, f1=0.445, corners=None, cards=None, rho=-0.05):
+    """Tutti i mercati di squadra: lista di [chiave, gruppo, etichetta, probabilita']."""
+    M = dc_matrix(lh, la, rho)
+    M1 = dc_matrix(lh * f1, la * f1, rho * 0.5)
+    M2 = dc_matrix(lh * (1 - f1), la * (1 - f1), rho * 0.5)
+    out = []
+
+    def add(k, g, label, p):
+        out.append([k, g, label, round(max(0.0, min(1.0, p)), 4)])
+
+    p1, px, p2 = _sum(M, lambda i, j: i > j), _sum(M, lambda i, j: i == j), _sum(M, lambda i, j: i < j)
+    g = "Esito finale"
+    add("1", g, "1 (casa)", p1); add("X", g, "X (pareggio)", px); add("2", g, "2 (ospite)", p2)
+    add("1X", g, "1X", p1 + px); add("X2", g, "X2", px + p2); add("12", g, "12", p1 + p2)
+    add("dnb1", g, "Draw no bet 1", p1 / (p1 + p2)); add("dnb2", g, "Draw no bet 2", p2 / (p1 + p2))
+    g = "Gol / No gol"
+    gg = _sum(M, lambda i, j: i > 0 and j > 0)
+    add("gg", g, "Goal (segnano entrambe)", gg); add("ng", g, "No goal", 1 - gg)
+    g = "Under / Over"
+    for n in (0.5, 1.5, 2.5, 3.5, 4.5, 5.5):
+        k = "%02d" % int(n * 10)
+        po = _sum(M, lambda i, j: i + j > n)
+        add("o" + k, g, "Over %.1f" % n, po); add("u" + k, g, "Under %.1f" % n, 1 - po)
+    g = "Multigol"
+    for a, b in ((1, 2), (1, 3), (2, 3), (2, 4), (3, 5), (4, 6), (0, 2)):
+        add("mg%d-%d" % (a, b), g, "Multigol %d-%d" % (a, b), _sum(M, lambda i, j: a <= i + j <= b))
+    for side, lab in (("h", "Casa"), ("a", "Ospite")):
+        g = "Gol " + lab.lower()
+        for n in (0.5, 1.5, 2.5):
+            k = "%02d" % int(n * 10)
+            po = _sum(M, (lambda i, j: i > n) if side == "h" else (lambda i, j: j > n))
+            add(side + "o" + k, g, "%s over %.1f" % (lab, n), po); add(side + "u" + k, g, "%s under %.1f" % (lab, n), 1 - po)
+    g = "Combo"
+    combos = [("1+o15", lambda i, j: i > j and i + j > 1.5), ("1+o25", lambda i, j: i > j and i + j > 2.5),
+              ("2+o15", lambda i, j: i < j and i + j > 1.5), ("2+o25", lambda i, j: i < j and i + j > 2.5),
+              ("1+gg", lambda i, j: i > j and j > 0), ("2+gg", lambda i, j: i < j and i > 0),
+              ("x+u25", lambda i, j: i == j and i + j < 2.5), ("1x+o15", lambda i, j: i >= j and i + j > 1.5),
+              ("x2+o15", lambda i, j: i <= j and i + j > 1.5), ("1x+u35", lambda i, j: i >= j and i + j < 3.5),
+              ("x2+u35", lambda i, j: i <= j and i + j < 3.5), ("gg+o25", lambda i, j: i > 0 and j > 0 and i + j > 2.5),
+              ("ng+u25", lambda i, j: (i == 0 or j == 0) and i + j < 2.5)]
+    names = {"1+o15": "1 + Over 1.5", "1+o25": "1 + Over 2.5", "2+o15": "2 + Over 1.5", "2+o25": "2 + Over 2.5",
+             "1+gg": "1 + Goal", "2+gg": "2 + Goal", "x+u25": "X + Under 2.5", "1x+o15": "1X + Over 1.5",
+             "x2+o15": "X2 + Over 1.5", "1x+u35": "1X + Under 3.5", "x2+u35": "X2 + Under 3.5",
+             "gg+o25": "Goal + Over 2.5", "ng+u25": "No goal + Under 2.5"}
+    for k, f in combos:
+        add(k, g, names[k], _sum(M, f))
+    g = "1° tempo"
+    a1, ax, a2 = _sum(M1, lambda i, j: i > j), _sum(M1, lambda i, j: i == j), _sum(M1, lambda i, j: i < j)
+    add("1t1", g, "1° tempo: 1", a1); add("1tx", g, "1° tempo: X", ax); add("1t2", g, "1° tempo: 2", a2)
+    for n in (0.5, 1.5, 2.5):
+        k = "%02d" % int(n * 10)
+        po = _sum(M1, lambda i, j: i + j > n)
+        add("1to" + k, g, "1° tempo over %.1f" % n, po); add("1tu" + k, g, "1° tempo under %.1f" % n, 1 - po)
+    add("1tgg", g, "1° tempo: Goal", _sum(M1, lambda i, j: i > 0 and j > 0))
+    g = "2° tempo"
+    b1, bx, b2 = _sum(M2, lambda i, j: i > j), _sum(M2, lambda i, j: i == j), _sum(M2, lambda i, j: i < j)
+    add("2t1", g, "2° tempo: 1", b1); add("2tx", g, "2° tempo: X", bx); add("2t2", g, "2° tempo: 2", b2)
+    for n in (0.5, 1.5, 2.5):
+        k = "%02d" % int(n * 10)
+        po = _sum(M2, lambda i, j: i + j > n)
+        add("2to" + k, g, "2° tempo over %.1f" % n, po); add("2tu" + k, g, "2° tempo under %.1f" % n, 1 - po)
+    # tempo con piu' gol (1T, 2T o uguale), con i due tempi indipendenti
+    t1 = [sum(M1[i][j] for i in range(len(M1)) for j in range(len(M1)) if i + j == n) for n in range(21)]
+    t2 = [sum(M2[i][j] for i in range(len(M2)) for j in range(len(M2)) if i + j == n) for n in range(21)]
+    more1 = sum(t1[a] * t2[b] for a in range(21) for b in range(21) if a > b)
+    more2 = sum(t1[a] * t2[b] for a in range(21) for b in range(21) if a < b)
+    add("tpg1", g, "Tempo con più gol: 1°", more1); add("tpg2", g, "Tempo con più gol: 2°", more2)
+    add("tpgx", g, "Tempo con più gol: uguale", 1 - more1 - more2)
+    if corners:
+        mu, r = corners
+        g = "Calci d'angolo"
+        for n in (7.5, 8.5, 9.5, 10.5, 11.5):
+            k = "%03d" % int(n * 10)
+            po = prob_over(n, mu, r)
+            add("co" + k, g, "Angoli over %.1f" % n, po); add("cu" + k, g, "Angoli under %.1f" % n, 1 - po)
+    if cards:
+        mu, r = cards
+        g = "Cartellini"
+        for n in (2.5, 3.5, 4.5, 5.5):
+            k = "%02d" % int(n * 10)
+            po = prob_over(n, mu, r)
+            add("ko" + k, g, "Cartellini over %.1f" % n, po); add("ku" + k, g, "Cartellini under %.1f" % n, 1 - po)
+    g = "Risultato esatto"
+    sc = sorted(((M[i][j], i, j) for i in range(7) for j in range(7)), reverse=True)[:10]
+    for p, i, j in sc:
+        add("cs%d-%d" % (i, j), g, "%d-%d" % (i, j), p)
+    return out
+
+
+def league_dispersion(matches, hf, af):
+    """Parametro r della binomiale negativa per il totale di una statistica di squadra."""
+    tots = [float(m[hf]) + float(m[af]) for m in matches if m.get(hf) not in (None, "") and m.get(af) not in (None, "")]
+    if len(tots) < 30:
+        return None
+    mean = sum(tots) / len(tots)
+    var = sum((t - mean) ** 2 for t in tots) / (len(tots) - 1)
+    return round(mean * mean / (var - mean), 2) if var > mean * 1.02 else None
+
+
+def first_half_share(matches, default=0.445):
+    num = den = 0.0
+    for m in matches:
+        if m.get("hs1") in (None, "") or m.get("hs") in (None, ""):
+            continue
+        num += float(m["hs1"]) + float(m["as1"])
+        den += float(m["hs"]) + float(m["as"])
+    if den <= 0:
+        return default
+    n = den / 2.7
+    return default + (num / den - default) * (n / (n + 100))

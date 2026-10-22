@@ -91,8 +91,13 @@ def _espn_odds(comp):
         a = _american((o.get("awayTeamOdds") or {}).get("moneyLine"))
         d = _american((o.get("drawOdds") or {}).get("moneyLine"))
         if not h or not a:
-            return None
+            ou = _num(o.get("overUnder"), None)
+            if ou is None:
+                return None
+            return {"h": None, "a": None, "d": None, "book": ((o.get("provider") or {}).get("name") or "ESPN"),
+                    "details": o.get("details"), "ou": ou, "spread": _num(o.get("spread"), None)}
         return {"h": h, "a": a, "d": d, "book": ((o.get("provider") or {}).get("name") or "ESPN"),
+                "details": o.get("details"),
                 "ou": _num(o.get("overUnder"), None), "spread": _num(o.get("spread"), None)}
     except (AttributeError, TypeError, IndexError):
         return None
@@ -280,3 +285,69 @@ def parse_referee(summ):
         if not best and "assistant" not in pos and "var" not in pos and "fourth" not in pos:
             best = name
     return best
+
+
+# ---------------------------------------------------------------- calcio: dati di squadra
+TEAM_FIELDS = {
+    "corners": ("wonCorners", "cornerKicks", "corners", "Corner Kicks", "Corners"),
+    "yc": ("yellowCards", "Yellow Cards"),
+    "rc": ("redCards", "Red Cards"),
+    "fouls": ("foulsCommitted", "Fouls"),
+    "shots": ("totalShots", "Shots"),
+    "sot": ("shotsOnTarget", "On Target", "Shots on Target"),
+}
+
+
+def parse_soccer_team(summ):
+    """Statistiche di squadra (angoli, cartellini, tiri) e gol del primo tempo.
+
+    Ritorna {"teams": {team_id: {...}}, "ht": {team_id: gol 1T}}; campi assenti = non presenti.
+    """
+    out = {"teams": {}, "ht": {}}
+    box = (summ or {}).get("boxscore") or {}
+    for t in box.get("teams", []) or []:
+        tid = str((t.get("team") or {}).get("id", ""))
+        if not tid:
+            continue
+        sm = {}
+        for st in t.get("statistics", []) or []:
+            v = st.get("value")
+            if v is None:
+                v = st.get("displayValue")
+            for k in ("name", "label", "abbreviation", "displayName"):
+                if st.get(k):
+                    sm[str(st[k])] = _num(v, None)
+        row = {}
+        for f, alts in TEAM_FIELDS.items():
+            for a in alts:
+                if sm.get(a) is not None:
+                    row[f] = sm[a]
+                    break
+        if row:
+            out["teams"][tid] = row
+    # gol del primo tempo: linescores dell'intestazione, altrimenti eventi "scoringPlay" del 1° periodo
+    hdr = ((summ or {}).get("header") or {}).get("competitions") or [{}]
+    for c in hdr[0].get("competitors", []) or []:
+        ls = c.get("linescores") or []
+        tid = str(c.get("id") or (c.get("team") or {}).get("id", ""))
+        if ls and tid:
+            v = ls[0].get("displayValue", ls[0].get("value"))
+            if v not in (None, ""):
+                out["ht"][tid] = _num(v)
+    if not out["ht"]:
+        goals = {}
+        found = False
+        for e in (summ or {}).get("keyEvents", []) or []:
+            if not e.get("scoringPlay"):
+                continue
+            found = True
+            per = (e.get("period") or {}).get("number")
+            tid = str((e.get("team") or {}).get("id", ""))
+            if per == 1 and tid:
+                goals[tid] = goals.get(tid, 0) + 1
+        if found or goals:
+            for c in hdr[0].get("competitors", []) or []:
+                tid = str(c.get("id") or (c.get("team") or {}).get("id", ""))
+                if tid:
+                    out["ht"][tid] = float(goals.get(tid, 0))
+    return out

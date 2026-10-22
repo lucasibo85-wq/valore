@@ -10,7 +10,7 @@ import random
 import re
 from urllib.parse import urlparse
 
-TODAY = dt.datetime.utcnow().date()
+TODAY = dt.date.fromisoformat(os.environ["VALORE_TODAY"]) if os.environ.get("VALORE_TODAY") else dt.datetime.utcnow().date()
 
 
 def stable(x):
@@ -167,7 +167,17 @@ def soccer_box(eid, h, a):
                            "starter": st, "subbedIn": sub_in, "subbedOut": sub_out, "stats": stats})
         goals[tid] = g_tot
         rosters.append({"homeAway": "home" if tid == h[0] else "away", "team": {"id": tid, "displayName": name}, "roster": roster})
-    return {"rosters": rosters, "gameInfo": {"officials": [{"displayName": "Arbitro %d" % (int(eid) % 7), "position": {"name": "Referee"}}]}}, goals
+    teams_st, comps = [], []
+    for (tid, name), (oid, _) in ((h, a), (a, h)):
+        rr = rng_for("team", eid, tid)
+        cards = sum(int(st["value"]) for ro in rosters if ro["team"]["id"] == tid for p in ro["roster"] for st in p.get("stats", []) if st["name"] == "yellowCards")
+        teams_st.append({"team": {"id": tid}, "statistics": [{"name": "wonCorners", "displayValue": str(nb_sample(rr, 5.0 * (1.1 if tid == h[0] else 0.9)))},
+                                                             {"name": "yellowCards", "displayValue": str(cards)}, {"name": "redCards", "displayValue": "0"}]})
+        g = goals[tid]
+        g1 = sum(1 for _ in range(g) if rr.random() < 0.45)
+        comps.append({"id": tid, "homeAway": "home" if tid == h[0] else "away", "linescores": [{"displayValue": str(g1)}, {"displayValue": str(g - g1)}]})
+    return {"rosters": rosters, "boxscore": {"teams": teams_st}, "header": {"competitions": [{"competitors": comps}]},
+            "gameInfo": {"officials": [{"displayName": "Arbitro %d" % (int(eid) % 7), "position": {"name": "Referee"}}]}}, goals
 
 
 # ------------------------------------------------------------------ router
@@ -334,7 +344,10 @@ def fake_get_json(url, params=None, headers=None, tries=3, pause=None):
                 for eid, date, h, a in nba_events(d):
                     EVENT_INDEX[eid] = ("nba", date, h, a)
                     pre = (1 if (date.month == 10 and date.day < 20) or (date.month == 9) else 2) if not os.environ.get("NOTYPE") else 0
-                    events.append(ev_json(eid, date, h, a, completed, (100, 98) if completed else None, pre))
+                    ej = ev_json(eid, date, h, a, completed, (100, 98) if completed else None, pre)
+                    ej["competitions"][0]["odds"] = [{"provider": {"name": "ESPN BET"}, "details": "%s -%.1f" % (h[1], 4.5), "overUnder": 226.5,
+                                                      "homeTeamOdds": {"moneyLine": -180}, "awayTeamOdds": {"moneyLine": 150}}]
+                    events.append(ej)
             else:
                 lg = sport.split("/")[1]
                 for eid, date, h, a in soccer_events(lg, d):

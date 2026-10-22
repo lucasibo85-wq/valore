@@ -15,6 +15,11 @@ App web per NBA e calcio. Gira gratis su GitHub e la apri dal telefono quando vu
 - **Multiple:** nella Schedina scegli «Multipla» per vedere quota totale, probabilità, valore e puntata consigliata. Se metti più selezioni della stessa partita compare un avviso.
 - **Avviso EV troppo alto:** sopra il +15% la scommessa viene segnata «Da verificare» e la puntata consigliata scende all'1% del bankroll.
 - **Quote gratuite ESPN:** per il calcio, quando non c'è la chiave, l'app usa le quote 1X2 pubblicate da ESPN, se presenti.
+- **Calcio, tutti i mercati di squadra:** esito finale, doppia chance, draw no bet, Goal/No goal, Under/Over da 0.5 a 5.5, multigol, gol di casa e ospite, combo (es. 1 + Over 2.5), primo e secondo tempo (esito, over, goal, tempo con più gol), calci d'angolo, cartellini e risultato esatto. Accanto a ogni mercato scrivi la quota del tuo bookmaker e vedi subito il valore. Le scommesse si chiudono da sole quando arriva il risultato.
+- **Coppe europee:** per Champions, Europa e Conference League il modello confronta squadre di campionati diversi usando tutte le partite dell'archivio.
+- **NBA migliorata:** ridistribuisce i minuti dei giocatori assenti o in dubbio ai compagni, usa totale e handicap della partita (quote ESPN gratuite) per i punti attesi della squadra e tiene conto di back-to-back e rischio di partita a senso unico. Accanto a ogni giocatore trovi un'affidabilità (alta/media/bassa).
+- **Autocalibrazione:** l'app confronta ogni giorno le sue proiezioni con i risultati veri e corregge da sola gli errori sistematici. Lo vedi nella pagina **Stato dati** (icona «i» in Partite), che mostra anche quali dati arrivano per ogni campionato.
+- **Codice d'accesso (facoltativo):** vedi sotto.
 - **Cerca** (lente in alto): scrivi il nome di un giocatore e apri la scheda completa, con tutti i mercati, la linea, la probabilità e quante volte ha superato la linea nelle ultime 5, 10 e 20 partite e in stagione. Ci sono anche le partite contro l'avversario di stasera.
 - **Linee alternative:** nella scheda di un mercato vedi la probabilità e la quota giusta per ogni linea vicina alla proiezione.
 - **Incolla quote** (icona appunti nella pagina Giocatori): incolli più prop in una volta, una per riga, ad esempio `Tatum over 27.5 punti 1.87` o `Barella cartellino 3.75`, e l'app le valuta tutte.
@@ -55,6 +60,14 @@ Senza chiave l'app funziona lo stesso: inserisci tu linea e quota nella scheda d
 Apri l'indirizzo con Safari (iPhone) o Chrome (Android) → *Condividi* / menu ⋮ → **Aggiungi a schermata Home**. Da lì si apre come un'app.
 
 ---
+
+## Codice d'accesso (consigliato)
+Senza codice chiunque conosca l'indirizzo può aprire l'app. Con il codice i dati vengono **cifrati**, quindi senza codice non si leggono, nemmeno scaricando i file.
+1. Su GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+2. Nome: `APP_PASSWORD`, valore: il codice che vuoi (almeno 8 caratteri) → **Add secret**.
+3. Rilancia **Actions → Aggiorna dati**. Al primo accesso l'app chiede il codice e, se vuoi, lo ricorda su quel dispositivo.
+
+Per cambiare il codice basta modificare il secret: dopo il prossimo aggiornamento serve quello nuovo.
 
 ## Personalizzare
 
