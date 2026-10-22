@@ -160,9 +160,13 @@ def main():
                 if ev["completed"] and ev["id"] not in processed["soccer"]:
                     queue.append(("soccer", path, league, ev))
                     n_new += 1
+            cnt = state.setdefault("scan_counts", {}).setdefault(league, {})
+            cnt.clear()
             for ev in scan_days(path, today, today + dt.timedelta(days=ahead), per_day=True):
                 remember("soccer", league, ev)
-                if not ev["completed"] and ev["state"] == "pre":
+                k_ = "%s_%s" % ("oggi" if ev["date"][:10] == iso(today) else "poi", ev["state"])
+                cnt[k_] = cnt.get(k_, 0) + 1
+                if not ev["completed"] and ev["state"] in ("pre", "in"):
                     upcoming.append(("soccer", path, league, ev))
             state["scan"][league] = iso(today - dt.timedelta(days=3))
             log("Calcio %s: %d partite trovate, %d nuove" % (league, len(evs), n_new))
@@ -720,7 +724,8 @@ def build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today):
                     "con_angoli": sum(1 for m in rec if m.get("hc") not in (None, "")),
                     "con_1t": sum(1 for m in rec if m.get("hs1") not in (None, "")),
                     "prossime": len(up), "con_modello": sum(1 for m in up if m.get("p1") is not None),
-                    "giocatori": len(pl), "intervalli_ok": state.get("range_ok", {}).get(code)}
+                    "giocatori": len(pl), "intervalli_ok": state.get("range_ok", {}).get(code),
+                    "espn": state.get("scan_counts", {}).get(code, {})}
     nb = {"partite": len(set(r["gid"] for r in nba_logs)), "recenti": len(set(r["gid"] for r in nba_logs if r["date"] >= since)),
           "prossime": len(app.get("nba", {}).get("games", [])), "giocatori": len(app.get("nba", {}).get("players", [])),
           "con_quote_espn": sum(1 for g in app.get("nba", {}).get("games", []) if g.get("tot"))}
@@ -785,6 +790,8 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
         ref = pv.get("ref", "")
         mrow = {"id": ev["id"], "lg": league, "t": ev["date"], "h": tname(h), "a": tname(a),
                 "ha": tabbr(h), "aa": tabbr(a)}
+        if ev.get("state") == "in":
+            mrow["live"] = 1
         LM = joint if is_cup(league) or league not in lg_models else lg_models[league]
         gl = pair(LM["g"], h, a) or pair(joint["g"], h, a)
         if gl:
