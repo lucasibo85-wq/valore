@@ -417,12 +417,19 @@ function updatedLine() {
 }
 
 // ------------------------------------------------------------------ vista: partite
+/** La partita contiene tutte le parole cercate (squadre, giocatori del tennis, campionato)? */
+function matchHit(sport, g) {
+  const term = normTxt(S.msearch || '').trim();
+  if (!term) return true;
+  const hay = normTxt(sport === 'soccer' ? `${g.h} ${g.a} ${(S.data.leagues || {})[g.lg] || ''}` : sport === 'tennis' ? `${g.p1} ${g.p2} ${g.tn} ${g.tour}` : `${g.hn} ${g.an} ${g.h} ${g.a}`);
+  return term.split(/\s+/).every(t => hay.includes(t));
+}
 function viewGames() {
   let body = '';
   let lgChips = '';
   const segHtml = sportSeg(true);
   if (S.sport === 'tennis') {
-    const ms = ((S.data.tennis || {}).matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
+    const ms = ((S.data.tennis || {}).matches || []).filter(m => matchHit('tennis', m)).sort((a, b) => a.t.localeCompare(b.t));
     if (!ms.length) body = '<div class="empty">Nessuna partita di tennis in programma.</div>';
     const groups = {};
     for (const m of ms) (groups[m.tour + ' · ' + m.tn] = groups[m.tour + ' · ' + m.tn] || []).push(m);
@@ -433,7 +440,7 @@ function viewGames() {
     }
   } else if (S.sport !== 'soccer') {
     const sp = S.sport;
-    const games = gamesList(sp).slice().sort((a, b) => a.t.localeCompare(b.t));
+    const games = gamesList(sp).filter(g => matchHit(sp, g)).sort((a, b) => a.t.localeCompare(b.t));
     if (!games.length) body = `<div class="empty">Nessuna partita ${SPORT_LABEL[sp]} nei prossimi giorni${sp === 'mlb' ? ' (la stagione MLB riparte ad aprile)' : ''}.</div>`;
     for (const g of games) {
       const ps = players(sp).filter(p => p.g === g.id);
@@ -453,7 +460,7 @@ function viewGames() {
     if (S.lgFilter && !counts[S.lgFilter]) S.lgFilter = '';
     lgChips = `<div class="chips"><button class="chip ${!S.lgFilter ? 'on' : ''}" data-act="lgFilter" data-v="">Tutti (${all.length})</button>${lgList.map(k =>
       `<button class="chip ${S.lgFilter === k ? 'on' : ''}" data-act="lgFilter" data-v="${esc(k)}">${esc(leagues[k] || k)} (${counts[k]})</button>`).join('')}</div>`;
-    const ms = all.filter(m => (!S.lgFilter || m.lg === S.lgFilter) && (!S.onlyValue || matchValue(m).best > 0));
+    const ms = all.filter(m => (!S.lgFilter || m.lg === S.lgFilter) && (!S.onlyValue || matchValue(m).best > 0) && matchHit('soccer', m));
     if (!all.length) body = '<div class="empty">Nessuna partita di calcio nei prossimi giorni per i campionati scelti.</div>';
     else if (!ms.length) body = '<div class="empty">Nessuna partita per questo filtro.</div>';
     // in ordine di orario, divise per giorno; su ogni partita il nome del campionato
@@ -470,6 +477,7 @@ function viewGames() {
     }
   }
   return header('Partite', 'Prossimi giorni', null, `<div class="row"><a class="iconbtn" href="#/stato" aria-label="Stato dati e affidabilità"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg></a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}
+    <input class="search" type="search" placeholder="Cerca una partita o una squadra" aria-label="Cerca una partita o una squadra" data-act="msearch" value="${esc(S.msearch || '')}">
     ${S.sport === 'soccer' ? lgChips : ''}
     ${S.sport === 'soccer' || S.sport === 'tennis' ? `<div class="chips"><button class="chip ${!S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="0">Tutte</button><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="1">Solo valore</button></div>` : ''}</div></header>
     <main>${body}${updatedLine()}</main>`;
@@ -984,6 +992,23 @@ function viewSearch() {
     }
   }
   res.sort((a, b) => a.p.n.localeCompare(b.p.n));
+  // partite (tutti gli sport) che contengono le parole cercate
+  let games = [];
+  if (term.length >= 2) {
+    const saved = S.msearch; S.msearch = term;
+    for (const sp of ['soccer', 'nba', 'nfl', 'mlb', 'tennis']) {
+      const lst = sp === 'tennis' ? ((S.data.tennis || {}).matches || []) : gamesList(sp);
+      for (const g of lst) if (matchHit(sp, g)) games.push({ sp, g });
+    }
+    S.msearch = saved;
+    games.sort((a, b) => a.g.t.localeCompare(b.g.t));
+  }
+  const gHtml = games.slice(0, 20).map(({ sp, g }) => {
+    const href = sp === 'soccer' ? `#/partita/${g.id}` : sp === 'tennis' ? `#/tennis/${g.id}` : `#/giocatori?g=${g.id}`;
+    const title = sp === 'soccer' ? `${g.h} – ${g.a}` : sp === 'tennis' ? `${g.p1} – ${g.p2}` : `${g.an} @ ${g.hn}`;
+    const ctx = sp === 'soccer' ? ((S.data.leagues || {})[g.lg] || 'Calcio') : sp === 'tennis' ? `${g.tour} · ${g.tn}` : SPORT_LABEL[sp];
+    return `<a class="card" style="gap:2px" href="${href}"><span class="b" style="font-size:15px">${esc(title)}</span><span class="small muted">${esc(ctx)} · ${esc(fmtTime(g.t))}${g.live ? ' · IN CORSO' : ''}</span></a>`;
+  }).join('');
   const list = res.slice(0, 60).map(({ sport, p }) => {
     const gm = gamesList(sport).find(g => g.id === p.g);
     const lg = sportCtx(sport, p);
@@ -994,8 +1019,9 @@ function viewSearch() {
       ${p.st ? `<span class="badge warn">${esc(p.st)}</span>` : ''}</a>`;
   }).join('');
   return header('Cerca', 'Tutti gli sport', '#/giocatori') + `<div style="padding:0 16px">
-    <input class="search" type="search" placeholder="Nome del giocatore o squadra" aria-label="Cerca giocatore o squadra" data-act="gsearch" value="${esc(S.gsearch || '')}"></div></header>
-    <main>${term.length < 2 ? '<p class="note">Scrivi almeno 2 lettere. Trovi i giocatori delle partite dei prossimi giorni.</p>' : (list || '<div class="empty">Nessun giocatore trovato nelle prossime partite.</div>')}</main>`;
+    <input class="search" type="search" placeholder="Squadra, partita o giocatore" aria-label="Cerca squadra, partita o giocatore" data-act="gsearch" value="${esc(S.gsearch || '')}"></div></header>
+    <main>${term.length < 2 ? '<p class="note">Scrivi almeno 2 lettere: trovi partite, squadre e giocatori dei prossimi giorni.</p>'
+      : ((gHtml ? '<div class="league">Partite</div>' + gHtml : '') + (list ? '<div class="league">Giocatori</div>' + list : '') || '<div class="empty">Nessun risultato nelle prossime partite.</div>')}</main>`;
 }
 
 // ------------------------------------------------------------------ vista: scheda completa del giocatore
@@ -1294,7 +1320,7 @@ function bind() {
     const act = el.dataset.act;
     const evName = ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) ? 'change' : 'click';
     el.addEventListener(evName, ev => handle(act, el, ev));
-    if (act === 'search' || act === 'gsearch') el.addEventListener('input', () => {
+    if (act === 'search' || act === 'gsearch' || act === 'msearch') el.addEventListener('input', () => {
       S[act] = el.value; clearTimeout(bind._t);
       bind._t = setTimeout(() => { render(); const s = document.querySelector('[data-act=' + act + ']'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 250);
     });
@@ -1364,6 +1390,7 @@ function handle(act, el) {
     }
     case 'mGroup': S.mGroup = v; break;
     case 'lgFilter': S.lgFilter = v; break;
+    case 'msearch': S.msearch = el.value; break;
     case 'codeIn': return;
     case 'unlock': {
       const c = (document.getElementById('codeIn') || {}).value || '';
