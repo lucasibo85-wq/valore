@@ -41,6 +41,7 @@ jobs:
       - name: Scarica statistiche e calcola le proiezioni
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: python -m engine.run
 
       - name: Salva l'archivio dati (ramo "archivio", senza storico)
