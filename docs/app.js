@@ -419,6 +419,7 @@ function updatedLine() {
 // ------------------------------------------------------------------ vista: partite
 function viewGames() {
   let body = '';
+  let lgChips = '';
   const segHtml = sportSeg(true);
   if (S.sport === 'tennis') {
     const ms = ((S.data.tennis || {}).matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
@@ -444,21 +445,32 @@ function viewGames() {
         ${ml}<div class="small muted">${ps.length} giocatori analizzati · tocca per le prop</div></a>`;
     }
   } else {
-    const ms = (S.data.soccer.matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
-    if (!ms.length) body = '<div class="empty">Nessuna partita di calcio nei prossimi giorni per i campionati scelti.</div>';
+    const all = (S.data.soccer.matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
     const leagues = S.data.leagues || {};
-    const order = Object.keys(leagues);
-    const groups = {};
-    for (const m of ms) (groups[m.lg] = groups[m.lg] || []).push(m);
-    for (const lg of order.concat(Object.keys(groups).filter(x => !order.includes(x)))) {
-      if (!groups[lg]) continue;
-      const list = groups[lg].filter(m => !S.onlyValue || matchValue(m).best > 0);
-      if (!list.length) continue;
-      body += `<div class="league">${esc(leagues[lg] || lg)}</div>`;
-      for (const m of list) body += matchCard(m);
+    const counts = {};
+    for (const m of all) counts[m.lg] = (counts[m.lg] || 0) + 1;
+    const lgList = Object.keys(leagues).filter(k => counts[k]).concat(Object.keys(counts).filter(k => !(k in leagues)));
+    if (S.lgFilter && !counts[S.lgFilter]) S.lgFilter = '';
+    lgChips = `<div class="chips"><button class="chip ${!S.lgFilter ? 'on' : ''}" data-act="lgFilter" data-v="">Tutti (${all.length})</button>${lgList.map(k =>
+      `<button class="chip ${S.lgFilter === k ? 'on' : ''}" data-act="lgFilter" data-v="${esc(k)}">${esc(leagues[k] || k)} (${counts[k]})</button>`).join('')}</div>`;
+    const ms = all.filter(m => (!S.lgFilter || m.lg === S.lgFilter) && (!S.onlyValue || matchValue(m).best > 0));
+    if (!all.length) body = '<div class="empty">Nessuna partita di calcio nei prossimi giorni per i campionati scelti.</div>';
+    else if (!ms.length) body = '<div class="empty">Nessuna partita per questo filtro.</div>';
+    // in ordine di orario, divise per giorno; su ogni partita il nome del campionato
+    let lastDay = '';
+    for (const m of ms) {
+      const d = new Date(m.t);
+      const day = isNaN(d) ? '' : d.toDateString();
+      if (day !== lastDay) {
+        lastDay = day;
+        const lab = fmtTime(m.t).replace(/ \d\d:\d\d$/, '');
+        body += `<div class="league">${esc(lab)}</div>`;
+      }
+      body += matchCard(m, leagues[m.lg] || m.lg);
     }
   }
   return header('Partite', 'Prossimi giorni', null, `<div class="row"><a class="iconbtn" href="#/stato" aria-label="Stato dati e affidabilità"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg></a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}
+    ${S.sport === 'soccer' ? lgChips : ''}
     ${S.sport === 'soccer' || S.sport === 'tennis' ? `<div class="chips"><button class="chip ${!S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="0">Tutte</button><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="1">Solo valore</button></div>` : ''}</div></header>
     <main>${body}${updatedLine()}</main>`;
 }
@@ -493,7 +505,7 @@ function matchValue(m) {
   }
   return out;
 }
-function matchCard(m) {
+function matchCard(m, lgName) {
   const o = matchOdds(m);
   const v = matchValue(m);
   const cells = m.p1 == null ? '<div class="small muted">Storico insufficiente per il modello squadre.</div>' :
@@ -505,7 +517,7 @@ function matchCard(m) {
         <span class="tiny model b">Modello ${pct(p)}</span></div>`;
     }).join('')}</div>`;
   return `<a class="card" href="#/partita/${esc(m.id)}">
-    <div class="row between small muted"><span>${esc(fmtTime(m.t))}</span>${v.best !== null ? (v.best > 0 ? `<span class="badge val">VALORE ${sgn(v.best)}</span>` : '<span class="badge no">Nessun valore</span>') : ''}</div>
+    <div class="row between small muted"><span>${lgName ? esc(lgName) + ' · ' : ''}${esc(fmtTime(m.t).replace(/^(Oggi|Domani) /, ''))}${m.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${v.best !== null ? (v.best > 0 ? `<span class="badge val">VALORE ${sgn(v.best)}</span>` : '<span class="badge no">Nessun valore</span>') : ''}</div>
     <div class="row between"><span style="font-size:16px;font-weight:600">${esc(m.h)} – ${esc(m.a)}</span>${m.lh ? `<span class="mono small muted" style="white-space:nowrap">xG ${m.lh.toFixed(2)}–${m.la.toFixed(2)}</span>` : ''}</div>
     ${cells}
     ${m.mk ? (() => { const d = Object.fromEntries(m.mk.map(x => [x[0], x[3]])); return `<div class="small muted">Over 2.5 <b class="model">${pct(d.o25)}</b> · Goal <b class="model">${pct(d.gg)}</b> · 1T over 0.5 <b class="model">${pct(d['1to05'])}</b>${m.mk_c ? ` · angoli ${m.mk_c.toFixed(1)}` : ''}</div>`; })() : ''}
@@ -626,7 +638,7 @@ function viewStato() {
   const pc = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
   const col = (a, b) => !b ? 'var(--muted)' : a / b >= 0.8 ? 'var(--model)' : a / b >= 0.4 ? 'var(--text2)' : 'var(--book)';
   const lgRows = Object.values(D.soccer || {}).map(l => `<div style="display:grid;grid-template-columns:minmax(0,1.4fr) repeat(5,minmax(0,0.7fr));gap:4px;padding:8px 0;border-top:1px solid var(--line);font-size:12px;align-items:center">
-      <span class="b">${esc(l.name)}</span>
+      <span style="display:flex;flex-direction:column"><span class="b">${esc(l.name)}</span>${l.espn ? `<span class="tiny muted">ESPN oggi: ${(l.espn.oggi_pre || 0)} da giocare, ${(l.espn.oggi_in || 0)} in corso, ${(l.espn.oggi_post || 0)} finite</span>` : ''}</span>
       <span class="mono">${l.recenti}</span>
       <span class="mono" style="color:${col(l.con_giocatori, l.recenti)}">${pc(l.con_giocatori, l.recenti)}</span>
       <span class="mono" style="color:${col(l.con_angoli, l.recenti)}">${pc(l.con_angoli, l.recenti)}</span>
@@ -1351,6 +1363,7 @@ function handle(act, el) {
       break;
     }
     case 'mGroup': S.mGroup = v; break;
+    case 'lgFilter': S.lgFilter = v; break;
     case 'codeIn': return;
     case 'unlock': {
       const c = (document.getElementById('codeIn') || {}).value || '';
