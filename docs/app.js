@@ -315,8 +315,11 @@ function evalSoccerKey(k, s) {
 function legOutcome(b) {
   const R = ((S.results || {})[b.sport] || {})[b.g];
   if (!R) return null;
-  if (b.sport === 'tennis') return R.w ? (R.w === b.win ? 'won' : 'lost') : null;
-  if (b.m === 'tm') { const r = evalSoccerKey(b.side, R.s); return r === null ? null : r === 'void' ? 'void' : (r ? 'won' : 'lost'); }
+  if (b.sport === 'tennis' && b.m !== 'tm') return R.w ? (R.w === b.win ? 'won' : 'lost') : null;
+  if (b.m === 'tm') {
+    const r = b.sport === 'soccer' ? evalSoccerKey(b.side, R.s) : b.sport === 'tennis' ? evalTennisKey(b, R) : evalUSKey(b.side, R.s);
+    return r === null || r === undefined ? null : r === 'void' ? 'void' : (r ? 'won' : 'lost');
+  }
   if (!b.pid) {
     const [hs, as] = R.s;
     const res = hs > as ? '1' : hs < as ? '2' : 'X';
@@ -389,6 +392,7 @@ function render() {
   else if (parts[0] === 'incolla') html = viewPaste();
   else if (parts[0] === 'partita') html = viewMatch(parts[1]);
   else if (parts[0] === 'tennis') html = viewTennis(parts[1]);
+  else if (parts[0] === 'gara') html = viewGara(parts[1], parts[2]);
   else if (parts[0] === 'chicche') html = viewChicche();
   else if (parts[0] === 'stato') html = viewStato();
   else html = viewGames();
@@ -446,10 +450,13 @@ function viewGames() {
       const ps = players(sp).filter(p => p.g === g.id);
       const vals = ps.flatMap(p => mkList(sp, p).map(m => evaluate(sp, p, m[0]))).filter(e => e.ev !== null && e.ev > 0);
       const ml = g.odds && g.odds.h ? `<span class="mono small muted">${esc(g.a)} ${g.odds.a.toFixed(2)} · ${esc(g.h)} ${g.odds.h.toFixed(2)}${g.odds.ou ? ' · tot ' + g.odds.ou : ''}</span>` : '';
-      body += `<a class="card" href="#/giocatori?g=${esc(g.id)}">
-        <div class="row between small muted"><span>${SPORT_LABEL[sp]} · ${esc(fmtTime(g.t))}</span>${vals.length ? `<span class="badge val">${vals.length} con valore</span>` : ''}</div>
-        <div class="row between"><span style="font-size:16px;font-weight:600">${esc(g.an)} @ ${esc(g.hn)}</span></div>
-        ${ml}<div class="small muted">${ps.length} giocatori analizzati · tocca per le prop</div></a>`;
+      const d = g.mk ? Object.fromEntries(g.mk.map(x => [x[0], x[3]])) : null;
+      const tv = tmValue(sp, g);
+      body += `<a class="card" href="#/gara/${sp}/${esc(g.id)}">
+        <div class="row between small muted"><span>${SPORT_LABEL[sp]} · ${esc(fmtTime(g.t))}${g.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${tv.best !== null && tv.best > 0 ? `<span class="badge val">VALORE ${sgn(tv.best)}</span>` : vals.length ? `<span class="badge val">${vals.length} prop con valore</span>` : ''}</div>
+        <div class="row between"><span style="font-size:16px;font-weight:600">${esc(g.an)} @ ${esc(g.hn)}</span>${g.mh ? `<span class="mono small muted" style="white-space:nowrap">${g.ma.toFixed(sp === 'mlb' ? 1 : 0)}–${g.mh.toFixed(sp === 'mlb' ? 1 : 0)}</span>` : ''}</div>
+        ${d ? `<div class="grid2">${[[g.an, d.ml2, 'ml2'], [g.hn, d.ml1, 'ml1']].map(([n, p, k]) => `<div class="cell"><div class="row between tiny muted"><span>${esc(n)}</span><span>${tmOddsG(sp, g)[k] ? tmOddsG(sp, g)[k].toFixed(2) : ''}</span></div><div class="bar"><div style="width:${(p * 100).toFixed(0)}%;background:var(--model)"></div></div><span class="tiny model b">Modello ${pct(p)}</span></div>`).join('')}</div>` : ''}
+        ${ml}<div class="small muted">${ps.length} giocatori analizzati · tocca per mercati e prop</div></a>`;
     }
   } else {
     const all = (S.data.soccer.matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
@@ -587,7 +594,7 @@ function viewMatch(id) {
 }
 
 // ------------------------------------------------------------------ tennis
-function tennisOdds(m) { return S.manual['tennis|match|' + m.id] || null; }
+function tennisOdds(m) { const o = tmOddsG('tennis', m); return o.w1 || o.w2 ? { o1: o.w1, o2: o.w2 } : null; }
 function tennisValue(m) {
   const o = tennisOdds(m);
   const out = { best: null, side: null };
@@ -616,21 +623,23 @@ function tennisCard(m) {
 function viewTennis(id) {
   const m = ((S.data.tennis || {}).matches || []).find(x => x.id === id);
   if (!m) return header('Partita', 'Tennis', '#/') + '</header><main><div class="empty">Partita non trovata.</div></main>';
-  const o = tennisOdds(m) || {};
   const few = m.n1 < 15 || m.n2 < 15;
-  const side = (k, name, p, q, elo, n, f) => {
-    const e = q ? ev(p, q) : null;
-    return `<div class="list-row"><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="b">${esc(name)}</span>
-      <span class="tiny muted">Elo ${elo} · ${n} partite nello storico · quota giusta ${(1 / p).toFixed(2)}</span><span style="display:flex;gap:3px">${formDots(f)}</span></div>
-      <div class="row"><span class="mono b model">${pct(p, 1)}</span>${e !== null ? `<span class="mono b ${e > 0 ? 'acc' : 'muted'}">${sgn(e)}</span>` : ''}
-      ${q ? `<button class="btn small ${e > 0 ? '' : 'ghost'}" data-act="addTennis" data-id="${esc(m.id)}" data-side="${k}">+</button>` : ''}</div></div>`;
-  };
-  return header(`${m.p1} – ${m.p2}`, `${m.tour} · ${m.tn} · ${fmtTime(m.t)}`, '#/') + `</header><main>
-    <div class="card"><h2>Quote del tuo bookmaker</h2>
-      <div class="grid2">${[['o1', m.p1], ['o2', m.p2]].map(([k, n]) => `<div class="field"><label for="to-${k}">${esc(n)}</label><input id="to-${k}" inputmode="decimal" data-act="tennisOdds" data-k="${k}" data-id="${esc(m.id)}" value="${o[k] || ''}" placeholder="—"></div>`).join('')}</div>
-      ${side('1', m.p1, m.pr1, o.o1, m.e1, m.n1, m.f1)}${side('2', m.p2, 1 - m.pr1, o.o2, m.e2, m.n2, m.f2)}
-      ${few ? '<div class="warnbox"><span>Uno dei due giocatori ha poche partite nello storico: la stima Elo è meno affidabile.</span></div>' : ''}
-      <p class="note">Modello Elo sui risultati ATP/WTA degli ultimi 12 mesi, con aggiornamenti più forti per chi ha giocato poco. Non tiene conto della superficie né degli infortuni. I pallini mostrano le ultime 10 partite (azzurro = vinta).</p></div>
+  const odds = tmOddsG('tennis', m);
+  const groups = [...new Set((m.mk || []).map(x => x[1]))];
+  const grp = groups.includes(S.mGroup) ? S.mGroup : groups[0];
+  const rows = (m.mk || []).filter(x => x[1] === grp);
+  const SF = { hard: 'cemento', clay: 'terra', grass: 'erba' };
+  const pl = (name, elo, n, f) => `<div class="list-row"><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="b">${esc(name)}</span>
+      <span class="tiny muted">Elo ${elo} · ${n} partite nello storico</span><span style="display:flex;gap:3px">${formDots(f)}</span></div></div>`;
+  return header(`${m.p1} – ${m.p2}`, `${m.tour} · ${m.tn} · ${fmtTime(m.t)}`, '#/') + (groups.length ? `<div style="padding:0 16px">${groupChips(groups, grp)}</div>` : '') + `</header><main>
+    <div class="card" style="gap:6px">
+      <div class="grid3"><div class="kv"><span>Superficie</span><span style="font-size:14px">${SF[m.sf] || '—'}</span></div>
+        <div class="kv"><span>Formato</span><span style="font-size:14px">al meglio di ${m.bo || 3}</span></div>
+        <div class="kv"><span>Precedenti</span><span style="font-size:14px">${m.h2h ? m.h2h[0] + '–' + m.h2h[1] : '—'}</span></div></div>
+      ${pl(m.p1, m.e1, m.n1, m.f1)}${pl(m.p2, m.e2, m.n2, m.f2)}
+      ${few ? '<div class="warnbox"><span>Uno dei due giocatori ha poche partite nello storico: la stima è meno affidabile.</span></div>' : ''}</div>
+    ${rows.length ? `<div class="card" style="gap:0">${marketRows('tennis', m, rows, odds)}</div>` : ''}
+    <div class="card"><p class="note">Elo sui risultati ATP/WTA degli ultimi 12 mesi, combinato con l'Elo sulla superficie del torneo (riconosciuta dal nome). I mercati sui set derivano dalla probabilità di vincere un set coerente con quella della partita. In caso di ritiro le scommesse sui set vengono annullate. I pallini sono le ultime 10 partite (azzurro = vinta).</p></div>
     ${updatedLine()}</main>`;
 }
 
@@ -683,6 +692,110 @@ function viewStato() {
       ${tmRows ? `<div class="league">Calcio · mercati di squadra</div><div style="display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,0.8fr));gap:4px;font-size:11px" class="muted"><span>Mercato</span><span>N</span><span>Previsto</span><span>Reale</span></div>${tmRows}` : ''}
     </div>
     ${updatedLine()}</main>`;
+}
+
+// ------------------------------------------------------------------ mercati di squadra NBA / NFL / MLB / tennis
+/** Quote dei mercati: inserite a mano; vincente automatico dalle quote ESPN (NBA/NFL/MLB) */
+function tmOddsG(sport, m) {
+  if (sport === 'soccer') return tmOdds(m);
+  const out = {};
+  if (m.odds && m.odds.h && m.odds.a) { out.ml1 = m.odds.h; out.ml2 = m.odds.a; }
+  if (sport === 'tennis') { const old = S.manual['tennis|match|' + m.id]; if (old) { if (old.o1) out.w1 = old.o1; if (old.o2) out.w2 = old.o2; } }
+  for (const [k, v] of Object.entries(S.manual[sport + '|mk|' + m.id] || {})) if (v) out[k] = v; else delete out[k];
+  return out;
+}
+function tmValue(sport, m) {
+  const out = { best: null, side: null };
+  if (!m.mk) return out;
+  const od = tmOddsG(sport, m);
+  for (const [k, g, l, p] of m.mk) {
+    const q = od[k];
+    if (!q) continue;
+    const e = ev(p, q);
+    if (out.best === null || e > out.best) Object.assign(out, { best: e, side: l });
+  }
+  return out;
+}
+function findGame(sport, id) {
+  if (sport === 'soccer') return (S.data.soccer.matches || []).find(x => x.id === id);
+  if (sport === 'tennis') return ((S.data.tennis || {}).matches || []).find(x => x.id === id);
+  return gamesList(sport).find(x => x.id === id);
+}
+function marketRows(sport, m, rows, odds) {
+  return rows.map(([k, g, label, p]) => {
+    const q = odds[k];
+    const e = q ? ev(p, q) : null;
+    return `<div style="display:grid;grid-template-columns:minmax(0,1.6fr) 0.8fr 0.9fr 44px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="b" style="font-size:14px">${esc(label)}</span>
+        <span class="tiny muted">${pct(p, 1)} · giusta ${p > 0.001 ? (1 / p).toFixed(2) : '—'}${e !== null ? ` · <b style="color:${e > 0 ? 'var(--accent)' : 'var(--book)'}">EV ${sgn(e)}</b>` : ''}</span></div>
+      <div class="bar" style="height:8px"><div style="width:${(p * 100).toFixed(0)}%;background:${e !== null && e > 0 ? 'var(--accent)' : 'var(--model)'}"></div></div>
+      <input inputmode="decimal" aria-label="Quota ${esc(label)}" placeholder="quota" data-act="tmOdds" data-sp="${sport}" data-id="${esc(m.id)}" data-k="${esc(k)}" value="${q || ''}"
+        style="height:38px;border-radius:9px;border:1px solid var(--line);background:var(--bg);padding:0 8px;font:700 14px var(--mono);width:100%;color:var(--text)">
+      <button class="iconbtn" style="width:44px;height:38px;${e !== null && e > 0 ? 'background:var(--accent);color:var(--accent-ink);border-color:var(--accent)' : ''}" aria-label="Aggiungi ${esc(label)}" data-act="addTm" data-sp="${sport}" data-id="${esc(m.id)}" data-k="${esc(k)}" ${q ? '' : 'disabled'}>+</button></div>`;
+  }).join('');
+}
+function groupChips(groups, grp) {
+  return `<div class="chips">${groups.map(g => `<button class="chip ${g === grp ? 'on' : ''}" data-act="mGroup" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`;
+}
+function viewGara(sport, id) {
+  const m = findGame(sport, id);
+  if (!m) return header('Partita', SPORT_LABEL[sport] || '', '#/') + '</header><main><div class="empty">Partita non trovata.</div></main>';
+  const ps = players(sport).filter(p => p.g === m.id);
+  const odds = tmOddsG(sport, m);
+  const groups = [...new Set((m.mk || []).map(x => x[1]))];
+  const grp = groups.includes(S.mGroup) ? S.mGroup : groups[0];
+  const rows = (m.mk || []).filter(x => x[1] === grp);
+  const unit = sport === 'mlb' ? 'Run' : 'Punti';
+  const esp = m.odds && m.odds.ou ? `${m.odds.details || ''}${m.odds.details ? ' · ' : ''}totale ${m.odds.ou}${m.odds.book ? ' (' + esc(m.odds.book) + ')' : ''}` : '';
+  const info = m.mk ? `<div class="card" style="gap:8px"><div class="grid2">
+      <div class="kv"><span>${unit} attesi (modello)</span><span class="model">${esc(m.a)} ${m.ma.toFixed(1)} – ${esc(m.h)} ${m.mh.toFixed(1)}</span></div>
+      <div class="kv"><span>Linee ESPN</span><span style="font-size:13px">${esp || '—'}</span></div></div>
+      ${(m.notes || []).map(n => `<span class="small" style="color:var(--text2)">${esc(n)}</span>`).join('')}
+      <p class="note">Scrivi la quota del tuo bookmaker accanto al mercato per vedere il valore.${m.odds && m.odds.h ? ' Le quote del vincente sono quelle pubblicate da ESPN.' : ''} Il modello usa attacco e difesa delle squadre (più peso alle partite recenti)${sport === 'mlb' ? ' e il lanciatore partente' : ''}: confrontalo sempre con le linee del mercato, che in questi sport sono molto precise.</p></div>`
+    : '<div class="card"><p class="note">Storico insufficiente per il modello di squadra.</p></div>';
+  return header(`${m.an} @ ${m.hn}`, `${SPORT_LABEL[sport]} · ${fmtTime(m.t)}`, '#/') + (groups.length ? `<div style="padding:0 16px">${groupChips(groups, grp)}</div>` : '') + `</header><main>
+    ${info}
+    ${rows.length ? `<div class="card" style="gap:0">${marketRows(sport, m, rows, odds)}</div>` : ''}
+    <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Prop giocatori (${ps.length})</a>
+    ${updatedLine()}</main>`;
+}
+/** Esiti NBA/NFL/MLB: chiavi ml1/ml2, hsp:L, asp:L, o:L, u:L, ho:L ... */
+function evalUSKey(k, s) {
+  if (!s || s[0] == null || s[1] == null) return null;
+  const h = +s[0], a = +s[1];
+  const cmp = (x, y) => x === y ? 'void' : x > y;
+  if (k === 'ml1') return cmp(h, a);
+  if (k === 'ml2') return cmp(a, h);
+  const [pre, Ls] = k.split(':');
+  const L = parseFloat(Ls);
+  if (pre === 'hsp') return cmp(h + L, a);
+  if (pre === 'asp') return cmp(a + L, h);
+  if (pre === 'o') return cmp(h + a, L);
+  if (pre === 'u') return cmp(L, h + a);
+  if (pre === 'ho') return cmp(h, L);
+  if (pre === 'hu') return cmp(L, h);
+  if (pre === 'ao') return cmp(a, L);
+  if (pre === 'au') return cmp(L, a);
+  return null;
+}
+/** Esiti tennis: w1/w2, sX-Y (risultato in set), ts:o2.5, hs1:-1.5 ... */
+function evalTennisKey(b, R) {
+  if (!R || !R.w) return null;
+  const k = b.side;
+  if (k === 'w1') return R.w === b.id1;
+  if (k === 'w2') return R.w === b.id2;
+  const s = R.s || [];
+  if (s[0] == null || s[1] == null) return null;
+  const s1 = +s[0], s2 = +s[1];
+  const need = b.bo === 5 ? 3 : 2;
+  if (Math.max(s1, s2) < need) return 'void'; // ritiro: mercati sui set annullati
+  if (k.startsWith('s') && k.includes('-') && !k.includes(':')) { const [x, y] = k.slice(1).split('-').map(Number); return s1 === x && s2 === y; }
+  const [pre, Ls] = k.split(':');
+  const L = parseFloat(Ls);
+  if (pre === 'ts') return Ls.startsWith('o') ? s1 + s2 > parseFloat(Ls.slice(1)) : s1 + s2 < parseFloat(Ls.slice(1));
+  if (pre === 'hs1') return s1 + L > s2;
+  if (pre === 'hs2') return s2 + L > s1;
+  return null;
 }
 
 // ------------------------------------------------------------------ chicche
@@ -749,14 +862,23 @@ function buildChicche() {
         sel: row ? { sport: 'soccer', g: m.id, pid: null, m: 'tm', side, line: null, odds: q, p: row[3], push: 0, label: row[2], ctx: title } : null });
     }
   }
-  for (const m of (S.data.tennis || {}).matches || []) {
-    const o = tennisOdds(m);
-    if (!o) continue;
-    for (const [side, pm, q, name] of [['1', m.pr1, o.o1, m.p1], ['2', 1 - m.pr1, o.o2, m.p2]]) {
-      if (!q) continue;
-      const e = ev(pm, q);
-      if (e >= 0.02) val.push({ score: e, title: `${m.p1} – ${m.p2}`, sub: `Vincente · ${name} @${q.toFixed(2)} · Elo ${pct(pm)}`, ctx: `${m.tour} · ${fmtTime(m.t)}`, href: `#/tennis/${m.id}`,
-        badge: `<span class="badge val">EV ${sgn(e)}</span>`, sel: { sport: 'tennis', g: m.id, pid: null, m: 'win', side, win: side === '1' ? m.id1 : m.id2, line: null, odds: q, p: pm, push: 0, label: `${name} vincente`, ctx: `${m.tour} · ${m.p1} – ${m.p2}` } });
+  for (const sp of ['nba', 'nfl', 'mlb', 'tennis']) {
+    const lst = sp === 'tennis' ? ((S.data.tennis || {}).matches || []) : gamesList(sp);
+    for (const m of lst) {
+      if (!m.mk) continue;
+      const od = tmOddsG(sp, m);
+      const title = sp === 'tennis' ? `${m.p1} – ${m.p2}` : `${m.an} @ ${m.hn}`;
+      const ctx = `${sp === 'tennis' ? m.tour : SPORT_LABEL[sp]} · ${fmtTime(m.t)}`;
+      for (const [k, g, label, pm] of m.mk) {
+        const q = od[k];
+        if (!q) continue;
+        const e = ev(pm, q);
+        if (e < 0.02 || pm < 0.1) continue;
+        val.push({ score: e, title, sub: `${g} · ${label} @${q.toFixed(2)} · modello ${pct(pm)}`, ctx, href: sp === 'tennis' ? `#/tennis/${m.id}` : `#/gara/${sp}/${m.id}`,
+          badge: e > 0.15 ? `<span class="badge warn">Da verificare ${sgn(e, 0)}</span>` : `<span class="badge val">EV ${sgn(e)}</span>`,
+          sel: { sport: sp, g: m.id, pid: null, m: 'tm', side: k, line: null, odds: q, p: pm, push: 0,
+            label: sp === 'tennis' ? label : `${label} (${m.a} @ ${m.h})`, ctx: title, id1: m.id1, id2: m.id2, bo: m.bo } });
+      }
     }
   }
   const by = (a, b) => b.score - a.score;
@@ -1402,19 +1524,22 @@ function handle(act, el) {
     }
     case 'logout': S.code = null; LS.set('code', null); S.data = null; load(); return;
     case 'tmOdds': {
-      const k = 'soccer|mk|' + el.dataset.id;
+      const k = (el.dataset.sp || 'soccer') + '|mk|' + el.dataset.id;
       const cur = S.manual[k] || {};
       const x = num(el.value);
       cur[el.dataset.k] = x && x > 1 ? x : 0;
       S.manual[k] = cur; break;
     }
     case 'addTm': {
-      const m = S.data.soccer.matches.find(x => x.id === el.dataset.id);
-      const row = (m.mk || []).find(x => x[0] === el.dataset.k);
-      const q = tmOdds(m)[el.dataset.k];
+      const sp = el.dataset.sp || 'soccer';
+      const m = findGame(sp, el.dataset.id);
+      const row = m && (m.mk || []).find(x => x[0] === el.dataset.k);
+      const q = m && tmOddsG(sp, m)[el.dataset.k];
       if (!row || !q) return;
-      addToSlip({ sport: 'soccer', g: m.id, pid: null, m: 'tm', side: row[0], line: null, odds: q, p: row[3], push: 0,
-        label: row[2], ctx: `${m.h} – ${m.a}` });
+      const ctx = sp === 'soccer' ? `${m.h} – ${m.a}` : sp === 'tennis' ? `${m.tour} · ${m.p1} – ${m.p2}` : `${SPORT_LABEL[sp]} · ${m.an} @ ${m.hn}`;
+      const label = sp === 'soccer' || sp === 'tennis' ? row[2] : `${row[2]} (${m.a} @ ${m.h})`;
+      addToSlip({ sport: sp, g: m.id, pid: null, m: 'tm', side: row[0], line: null, odds: q, p: row[3], push: 0,
+        label, ctx, id1: m.id1, id2: m.id2, bo: m.bo });
       break;
     }
     case 'matchOdds': {
