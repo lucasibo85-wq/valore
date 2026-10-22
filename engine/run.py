@@ -11,7 +11,7 @@ import sys
 import time
 from collections import defaultdict
 
-from . import calib, espn, models, net, odds, props, secure, store, tennis
+from . import calib, espn, models, net, odds, props, secure, store, teamus, tennis
 
 ROOT = store.ROOT
 OUT_DIR = os.environ.get("VALORE_OUT") or os.path.join(ROOT, "docs", "data")
@@ -346,19 +346,21 @@ def main():
     for sp in US:
         app[sp] = {"games": [], "players": []}
         hist[sp] = {}
-        props.build(sp, app, us_logs[sp], upcoming, previews, teams, today, hist)
+        props.build(sp, app, us_logs[sp], upcoming, previews, teams, today, hist, matches, calib_factors(state, sp))
     if cfg.get("tennis", {}).get("enabled"):
         app["tennis"] = {"matches": []}
         tennis.build(app, t_matches, t_up)
     if cfg["nba"].get("enabled"):
-        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"))
+        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"), matches)
     if cfg["soccer"].get("enabled"):
         build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
                      calib_factors(state, "soccer"))
     results = build_results(nba_logs, soc_logs, matches, today, us_logs, t_matches)
     # autocalibrazione: prima misura le previsioni passate, poi salva quelle nuove
-    calib.evaluate(state, {"nba": nba_logs, "soccer": soc_logs}, results, today)
-    calib.record(state, app, now, {"nba": calib_factors(state, "nba"), "soccer": calib_factors(state, "soccer")})
+    ev_logs = {"nba": nba_logs, "soccer": soc_logs}
+    ev_logs.update(us_logs)
+    calib.evaluate(state, ev_logs, results, today)
+    calib.record(state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb")})
     diag = build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today)
     diag["calib"] = calib.report(state, today)
     secure.write_outputs(OUT_DIR, {"app": app, "hist": hist, "results": results, "diag": diag})
@@ -509,7 +511,7 @@ def spread_home(odds, home_abbr, away_abbr):
     return float(sp) if sp not in (None, "") else None
 
 
-def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, calib=None):
+def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, calib=None, matches=None):
     """Proiezioni NBA.
 
     1. Tasso per minuto pesato sulle partite recenti, corretto verso la media del ruolo.
@@ -562,6 +564,8 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
         team_avg[t] = {b: sum(r_[b] for r_ in rows) / len(rows) for b in base}
         team_avg[t]["allowed"] = sum(allowed) / len(allowed) if allowed else team_avg[t]["pts"]
     lg_pts = sum(v["pts"] for v in team_avg.values()) / max(1, len(team_avg))
+    nba_m = [m for m in (matches or []) if m.get("sport") == "nba"]
+    tstr = models.team_strengths(nba_m, iso(today), half_life_days=60, prior_games=6) if nba_m else None
 
     tabbr = lambda tid: teams["nba"].get(tid, {}).get("abbr", "?")
     for sport, path, league, ev in upcoming:
@@ -573,9 +577,16 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
         habbr, aabbr = tabbr(ev["home"]["id"]), tabbr(ev["away"]["id"])
         total = odds_ev.get("ou")
         hsp = spread_home(odds_ev, habbr, aabbr)
-        app["nba"]["games"].append({"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr,
-                                    "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"),
-                                    "tot": total, "sp": hsp})
+        game = {"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr,
+                "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"), "tot": total, "sp": hsp}
+        if ev.get("state") == "in":
+            game["live"] = 1
+        hid_, aid_ = ev["home"]["id"], ev["away"]["id"]
+        if tstr and hid_ in tstr["att"] and aid_ in tstr["att"]:
+            mh = tstr["avg_h"] * tstr["att"][hid_] * tstr["def"][aid_]
+            ma = tstr["avg_a"] * tstr["att"][aid_] * tstr["def"][hid_]
+            game.update({"mh": round(mh, 1), "ma": round(ma, 1), "mk": teamus.normal_markets("nba", mh, ma, hsp, total)})
+        app["nba"]["games"].append(game)
         props = {}
         for row in odds_cache.get("nba", {}).get(ev["id"], []):
             props.setdefault(name_key(row[0]), {})[row[1]] = row[2:]

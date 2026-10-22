@@ -103,7 +103,7 @@ def record(state, app, now, factors):
     """Salva le proiezioni delle partite che iniziano entro 36 ore (senza la correzione gia' applicata)."""
     preds = state.setdefault("preds", {})
     limit = now + dt.timedelta(hours=36)
-    for sport in ("nba", "soccer"):
+    for sport in ("nba", "soccer", "nfl", "mlb"):
         if sport not in app:
             continue
         times = {g["id"]: g["t"] for g in app[sport].get("games", []) + app[sport].get("matches", [])}
@@ -139,7 +139,11 @@ def evaluate(state, logs_by_sport, results, today):
             if r["gid"] in P:
                 rows[(r["gid"], r["pid"])] = r
         have = {g for g, _ in rows}
-        markets = models.NBA_MARKETS if sport == "nba" else models.SOC_MARKETS
+        if sport in ("nfl", "mlb"):
+            from . import props
+            markets = props.SPORTS[sport]["markets"]
+        else:
+            markets = models.NBA_MARKETS if sport == "nba" else models.SOC_MARKETS
         C = cal.setdefault(sport, {})
         for gid in list(P):
             if gid not in have:
@@ -222,7 +226,7 @@ def factors(state, sport, today=None):
 
 def report(state, today):
     rep = {}
-    for sport in ("nba", "soccer"):
+    for sport in ("nba", "soccer", "nfl", "mlb"):
         rows = {}
         for m, days in state.get("calib", {}).get(sport, {}).items():
             n, smu, sact, sabs, sp, sy, sb = _agg(days, 7, today)
@@ -237,5 +241,5 @@ def report(state, today):
         if n > 0:
             rows[k] = {"n": int(n), "p": round(sp / n, 4), "y": round(sy / n, 4), "brier": round(sb / n, 4)}
     rep["soccer_tm"] = rows
-    rep["factors"] = {sp: factors(state, sp, today) for sp in ("nba", "soccer")}
+    rep["factors"] = {sp: factors(state, sp, today) for sp in ("nba", "soccer", "nfl", "mlb")}
     return rep
