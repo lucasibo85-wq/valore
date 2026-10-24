@@ -23,6 +23,8 @@ App web per NBA e calcio. Gira gratis su GitHub e la apri dal telefono quando vu
 - **NFL:** se un ricevitore o un running back è assente, bersagli e corse passano ai compagni; yard e touchdown seguono i punti attesi della squadra.
 - **MLB:** il lanciatore partente cambia i run attesi; le prop dei battitori tengono conto di run attesi e lanciatore avversario.
 - **Tennis:** Elo combinato con la superficie (terra, erba, cemento, riconosciuta dal nome del torneo), formato al meglio di 3 o 5 set, precedenti, risultato esatto in set, totale set e handicap set.
+- **Preferiti** (cuore in basso): tocca il cuore accanto a un mercato (scheda giocatore, tabella «Tutti», mercati della partita, Chicche) per salvarlo. Nella pagina Preferiti le giocate sono divise per partita, con probabilità e quote aggiornate e l'andamento live. Quando la partita finisce spariscono da sole.
+- **Live:** risultato e statistiche delle partite in corso, letti da ESPN ogni 40 secondi direttamente dal telefono.
 - **Codice d'accesso (facoltativo):** vedi sotto.
 - **Cerca** (lente in alto): scrivi il nome di un giocatore e apri la scheda completa, con tutti i mercati, la linea, la probabilità e quante volte ha superato la linea nelle ultime 5, 10 e 20 partite e in stagione. Ci sono anche le partite contro l'avversario di stasera.
 - **Linee alternative:** nella scheda di un mercato vedi la probabilità e la quota giusta per ogni linea vicina alla proiezione.
