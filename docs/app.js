@@ -373,7 +373,7 @@ function route() {
   const q = Object.fromEntries(new URLSearchParams(qs || ''));
   return { parts, q };
 }
-function render() {
+function render(opts) {
   const { parts, q } = route();
   const tab = ['giocatori', 'g', 'p', 'cerca', 'incolla'].includes(parts[0]) ? 'giocatori' : ['schedina', 'roi', 'chicche'].includes(parts[0]) ? parts[0] : 'partite';
   document.querySelectorAll('nav.tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
@@ -396,11 +396,22 @@ function render() {
   else if (parts[0] === 'chicche') html = viewChicche();
   else if (parts[0] === 'stato') html = viewStato();
   else html = viewGames();
+  // mentre si scrive in un campo di ricerca si aggiorna solo l'elenco: il campo (e la tastiera) restano dove sono
+  if (opts && opts.keepHeader) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const nm = tmp.querySelector('main'), om = v.querySelector('main');
+    if (nm && om) { om.replaceWith(nm); tidy(nm); bind(nm); return; }
+  }
   v.innerHTML = html;
-  bind();
-  if (parts[0] === 'cerca') { const i = document.querySelector('[data-act=gsearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  tidy(v);
+  bind(v);
+  if (parts[0] === 'cerca' && !(opts && opts.keepHeader) && !S.searchFocused) {
+    S.searchFocused = true;
+    const i = document.querySelector('[data-act=gsearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
 }
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { S.searchFocused = false; render(); window.scrollTo(0, 0); });
 
 const ICON_SEARCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 const ICON_PASTE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"></rect><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"></path><path d="M9 13h6M9 17h4"></path></svg>';
@@ -465,7 +476,7 @@ function viewGames() {
     for (const m of all) counts[m.lg] = (counts[m.lg] || 0) + 1;
     const lgList = Object.keys(leagues).filter(k => counts[k]).concat(Object.keys(counts).filter(k => !(k in leagues)));
     if (S.lgFilter && !counts[S.lgFilter]) S.lgFilter = '';
-    lgChips = `<div class="chips"><button class="chip ${!S.lgFilter ? 'on' : ''}" data-act="lgFilter" data-v="">Tutti (${all.length})</button>${lgList.map(k =>
+    lgChips = `<div class="chips"><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="${S.onlyValue ? 0 : 1}">Solo valore</button><button class="chip ${!S.lgFilter ? 'on' : ''}" data-act="lgFilter" data-v="">Tutti (${all.length})</button>${lgList.map(k =>
       `<button class="chip ${S.lgFilter === k ? 'on' : ''}" data-act="lgFilter" data-v="${esc(k)}">${esc(leagues[k] || k)} (${counts[k]})</button>`).join('')}</div>`;
     const ms = all.filter(m => (!S.lgFilter || m.lg === S.lgFilter) && (!S.onlyValue || matchValue(m).best > 0) && matchHit('soccer', m));
     if (!all.length) body = '<div class="empty">Nessuna partita di calcio nei prossimi giorni per i campionati scelti.</div>';
@@ -486,7 +497,7 @@ function viewGames() {
   return header('Partite', 'Prossimi giorni', null, `<div class="row"><a class="iconbtn" href="#/stato" aria-label="Stato dati e affidabilità"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg></a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}
     <input class="search" type="search" placeholder="Cerca una partita o una squadra" aria-label="Cerca una partita o una squadra" data-act="msearch" value="${esc(S.msearch || '')}">
     ${S.sport === 'soccer' ? lgChips : ''}
-    ${S.sport === 'soccer' || S.sport === 'tennis' ? `<div class="chips"><button class="chip ${!S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="0">Tutte</button><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="1">Solo valore</button></div>` : ''}</div></header>
+    ${S.sport === 'tennis' ? `<div class="chips"><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="${S.onlyValue ? 0 : 1}">Solo valore</button></div>` : ''}</div></header>
     <main>${body}${updatedLine()}</main>`;
 }
 function matchOdds(m) {
@@ -917,13 +928,15 @@ function viewPlayers(q) {
     for (const sp of PROP_SPORTS) if (gamesList(sp).some(x => x.id === q.g)) { S.sport = sp; return viewPlayers({}); }
   }
   const m = mkOf(sport);
-  const all = players(sport).filter(p => p.mk && p.mk[m]);
+  const term = normTxt(S.search).trim();
+  const toks = term ? term.split(/\s+/) : [];
+  // cercando un nome si mostrano tutti i giocatori, anche senza il mercato selezionato
+  const all = players(sport).filter(p => p.mk && (p.mk[m] || toks.length));
   const games = gamesList(sport).map(g => sport === 'soccer' ? [g.id, `${g.h} – ${g.a}`, g.t] : [g.id, `${g.a} @ ${g.h}`, g.t]);
   games.sort((a, b) => a[2].localeCompare(b[2]));
   if (S.game && !games.some(g => g[0] === S.game)) S.game = '';
-  const term = S.search.trim().toLowerCase();
-  let rows = all.filter(p => (!S.game || p.g === S.game) && (!term || p.n.toLowerCase().includes(term) || p.t.toLowerCase().includes(term)))
-    .map(p => ({ p, e: evaluate(sport, p, m) }));
+  let rows = all.filter(p => (!S.game || p.g === S.game) && (!toks.length || toks.every(t => normTxt(p.n + ' ' + p.t + ' ' + p.o).includes(t))))
+    .map(p => { const mm = p.mk[m] ? m : mkList(sport, p)[0][0]; return { p, mm, e: evaluate(sport, p, mm) }; });
   if (S.onlyValue) rows = rows.filter(r => r.e.ev !== null && r.e.ev > 0);
   rows.sort((a, b) => {
     if (S.sort === 'valore') {
@@ -933,7 +946,7 @@ function viewPlayers(q) {
     return b.e.mu - a.e.mu;
   });
   const shown = rows.slice(0, 120);
-  const list = shown.map(({ p, e }) => playerRow(sport, p, m, e)).join('') ||
+  const list = shown.map(({ p, e, mm }) => playerRow(sport, p, mm, e, mm !== m)).join('') ||
     '<div class="empty">Nessun giocatore per questi filtri.</div>';
   return header('Prop giocatori', 'Statistiche giocatori', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
     ${segHtml}
@@ -949,7 +962,7 @@ function viewPlayers(q) {
     <main>${list}${rows.length > 120 ? `<p class="note">Mostrati 120 di ${rows.length}: usa i filtri.</p>` : ''}
     <p class="note">Senza quote la linea mostrata è quella più vicina alla proiezione. Inserisci linea e quota del tuo bookmaker nella scheda del giocatore per vedere il valore.</p>${updatedLine()}</main>`;
 }
-function playerRow(sport, p, m, e) {
+function playerRow(sport, p, m, e, showMk) {
   const hits = hitRate(sport, p, m, e.line, e.side);
   const nh = hits.filter(Boolean).length;
   const val = e.ev !== null && e.ev > 0;
@@ -963,7 +976,7 @@ function playerRow(sport, p, m, e) {
     <div class="row between" style="align-items:flex-start">
       <div class="row" style="min-width:0"><span class="avatar">${esc(initials(p.n))}</span>
         <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:600">${esc(p.n)}</span>
-        <span class="small muted">${esc(p.t)} vs ${esc(p.o)}${sub}</span></div></div>${badge}</div>
+        <span class="small muted">${esc(p.t)} vs ${esc(p.o)}${sub}${showMk ? ' · <b>' + esc(mkLabel(sport, m)) + '</b>' : ''}</span></div></div>${badge}</div>
     <div class="grid4">
       <div class="kv"><span>Linea${e.src ? '' : ' (stima)'}</span><span>${sideLbl} ${e.line}</span></div>
       <div class="kv"><span>Quota</span><span>${e.odds ? e.odds.toFixed(2) : '—'}</span></div>
@@ -1437,15 +1450,32 @@ function viewRoi() {
 }
 
 // ------------------------------------------------------------------ eventi
-function bind() {
-  document.querySelectorAll('[data-act]').forEach(el => {
+/** Le spiegazioni lunghe restano chiuse sotto "Come funziona": la pagina resta pulita */
+function tidy(root) {
+  root.querySelectorAll('p.note').forEach(p => {
+    if (p.textContent.length < 170 || p.closest('details')) return;
+    const d = document.createElement('details');
+    d.className = 'how';
+    d.innerHTML = '<summary>Come funziona</summary>';
+    p.replaceWith(d);
+    d.appendChild(p);
+  });
+}
+const SEARCH_ACTS = new Set(['search', 'gsearch', 'msearch']);
+function bind(root) {
+  (root || document).querySelectorAll('[data-act]').forEach(el => {
     const act = el.dataset.act;
+    if (SEARCH_ACTS.has(act)) {
+      // ricerca: solo l'elenco si aggiorna, il campo non viene mai ricreato
+      el.addEventListener('input', () => {
+        S[act] = el.value; clearTimeout(bind._t);
+        bind._t = setTimeout(() => render({ keepHeader: true }), 200);
+      });
+      el.addEventListener('keydown', ev => { if (ev.key === 'Enter') el.blur(); });
+      return;
+    }
     const evName = ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) ? 'change' : 'click';
     el.addEventListener(evName, ev => handle(act, el, ev));
-    if (act === 'search' || act === 'gsearch' || act === 'msearch') el.addEventListener('input', () => {
-      S[act] = el.value; clearTimeout(bind._t);
-      bind._t = setTimeout(() => { render(); const s = document.querySelector('[data-act=' + act + ']'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 250);
-    });
   });
 }
 function currentPlayer() {
