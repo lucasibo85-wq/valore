@@ -773,6 +773,13 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                          "rc": models.league_dispersion(ms, "hc", "ac") or joint["rc"],
                          "rk": models.league_dispersion(ms, "hk", "ak") or joint["rk"]}
     is_cup = lambda lg: lg.startswith("uefa.") or "cup" in lg or "coppa" in lg or lg.endswith("_qual")
+    # gol medi segnati da ogni squadra nelle ultime 10 partite (tutte le competizioni)
+    goals_hist = defaultdict(list)
+    for m in sorted(soc_all, key=lambda m: m["date"]):
+        if m.get("hs") not in (None, "") and m.get("as") not in (None, ""):
+            goals_hist[m["hid"]].append(float(m["hs"]))
+            goals_hist[m["aid"]].append(float(m["as"]))
+    goals_avg = {t: (sum(v[-10:]) + 1.35 * 3) / (len(v[-10:]) + 3) for t, v in goals_hist.items()}
 
     def pair(sm, h, a):
         if sm and h in sm["att"] and a in sm["att"]:
@@ -805,8 +812,10 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
             mrow["live"] = 1
         LM = joint if is_cup(league) or league not in lg_models else lg_models[league]
         gl = pair(LM["g"], h, a) or pair(joint["g"], h, a)
+        exp_goals = {}
         if gl:
             lh, la = gl
+            exp_goals = {h: lh, a: la}
             mrow.update({"lh": round(lh, 3), "la": round(la, 3)})
             mrow.update(models.match_probs(lh, la))
             cpair = pair(LM["c"], h, a) or pair(joint["c"], h, a)
@@ -870,6 +879,12 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                 for m_, f_ in (calib_f or {}).items():
                     if m_ in proj:
                         proj[m_] = (round(proj[m_][0] * f_, 4), proj[m_][1])
+                # coerenza con i gol attesi della squadra in questa partita (modello di squadra)
+                if tid in exp_goals and goals_avg.get(tid):
+                    kg = max(0.7, min(1.45, exp_goals[tid] / goals_avg[tid]))
+                    for m_, ex in (("g", 1.0), ("a", 1.0), ("ga", 1.0), ("goa", 0.9), ("shots", 0.5), ("sot", 0.6)):
+                        if m_ in proj:
+                            proj[m_] = (round(proj[m_][0] * kg ** ex, 4), proj[m_][1])
                 hist["soccer"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"])), int(r["starter"])] +
                                        [int(float(r[b])) for b in models.SOC_BASE] for r in games[:60]]
                 od = props.get(name_key(games[0]["name"]))
