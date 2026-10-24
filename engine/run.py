@@ -317,6 +317,7 @@ def main():
                     "lineup": espn.parse_lineup(summ) if sport == "soccer" else set(),
                     "ref": espn.parse_referee(summ) if sport == "soccer" else "",
                     "probables": (props.probables(summ) or ev.get("probables") or {}) if sport == "mlb" else {},
+                    "pick": espn.parse_pickcenter(summ),
                 }
 
     # ---------------- Quote automatiche
@@ -581,6 +582,10 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                 "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"), "tot": total, "sp": hsp}
         if ev.get("state") == "in":
             game["live"] = 1
+        eo = pick_keys("nba", pv.get("pick"))
+        if eo:
+            game["eo"] = eo
+            game["eob"] = pv["pick"].get("book")
         hid_, aid_ = ev["home"]["id"], ev["away"]["id"]
         if tstr and hid_ in tstr["att"] and aid_ in tstr["att"]:
             mh = tstr["avg_h"] * tstr["att"][hid_] * tstr["def"][aid_]
@@ -716,6 +721,49 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
 
 
 # ====================================================================== Calcio
+def pick_keys(sport, pk):
+    """Trasforma le quote ESPN (pickcenter) nelle chiavi dei mercati di squadra."""
+    if not pk:
+        return {}
+    out = {}
+    if sport == "soccer":
+        for k, v in (("1", pk.get("h")), ("X", pk.get("d")), ("2", pk.get("a"))):
+            if v:
+                out[k] = v
+        if pk.get("ou") is not None:
+            code = "%02d" % int(round(float(pk["ou"]) * 10))
+            if pk.get("over"):
+                out["o" + code] = pk["over"]
+            if pk.get("under"):
+                out["u" + code] = pk["under"]
+        sp = pk.get("spread")
+        if sp is not None and abs(abs(float(sp)) - 0.5) < 1e-6:
+            # handicap asiatico +/-0.5 = doppia chance / vittoria secca
+            if float(sp) > 0:
+                if pk.get("hs"):
+                    out["1X"] = pk["hs"]
+            else:
+                if pk.get("as"):
+                    out["X2"] = pk["as"]
+        return out
+    if pk.get("h"):
+        out["ml1"] = pk["h"]
+    if pk.get("a"):
+        out["ml2"] = pk["a"]
+    if pk.get("ou") is not None:
+        if pk.get("over"):
+            out["o:%g" % float(pk["ou"])] = pk["over"]
+        if pk.get("under"):
+            out["u:%g" % float(pk["ou"])] = pk["under"]
+    if pk.get("spread") is not None:
+        L = float(pk["spread"])
+        if pk.get("hs"):
+            out["hsp:%g" % L] = pk["hs"]
+        if pk.get("as"):
+            out["asp:%g" % (-L)] = pk["as"]
+    return out
+
+
 def calib_factors(state, sport):
     return calib.factors(state, sport)
 
@@ -838,6 +886,10 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
             mrow["odds"] = [eo["h"], eo["d"], eo["a"], eo["book"]]
         if ref:
             mrow["ref"] = ref
+        eo = pick_keys("soccer", pv.get("pick"))
+        if eo:
+            mrow["eo"] = eo
+            mrow["eob"] = pv["pick"].get("book")
         app["soccer"]["matches"].append(mrow)
 
         props = {}

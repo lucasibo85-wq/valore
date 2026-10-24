@@ -248,6 +248,11 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
                 "an": ev["away"]["name"], "odds": ev.get("odds")}
         if ev.get("state") == "in":
             game["live"] = 1
+        from .run import pick_keys
+        eo = pick_keys(sport, pv.get("pick"))
+        if eo:
+            game["eo"] = eo
+            game["eob"] = pv["pick"].get("book")
         # --- punti/run attesi delle due squadre
         exp_team = {}
         if strengths and h_id in strengths["att"] and a_id in strengths["att"]:

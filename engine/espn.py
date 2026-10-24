@@ -225,8 +225,27 @@ def _flag(v):
     return bool(v)
 
 
+def _sub_minutes(summ):
+    """Minuti di entrata/uscita dai keyEvents: sostituzioni (participants[0] entra, [1] esce) ed espulsioni."""
+    t_in, t_out = {}, {}
+    for e in (summ or {}).get("keyEvents", []) or []:
+        txt = str(((e.get("type") or {}).get("text")) or "").lower()
+        sec = (e.get("clock") or {}).get("value")
+        if sec is None:
+            continue
+        minute = max(1.0, min(120.0, float(sec) / 60.0))
+        parts = [str(((p.get("athlete") or {}).get("id")) or "") for p in (e.get("participants") or [])]
+        if "substitution" in txt and len(parts) >= 2:
+            t_in[parts[0]] = minute
+            t_out[parts[1]] = minute
+        elif "red card" in txt and parts:
+            t_out[parts[0]] = minute
+    return t_in, t_out
+
+
 def parse_soccer_box(summ):
     rows = []
+    t_in, t_out = _sub_minutes(summ)
     for team in (summ or {}).get("rosters", []) or []:
         team_id = str((team.get("team") or {}).get("id", ""))
         for p in team.get("roster", []) or []:
@@ -237,11 +256,15 @@ def parse_soccer_box(summ):
             appeared = starter or sub_in or sm.get("appearances", 0) > 0
             if not appeared:
                 continue
+            a = p.get("athlete") or {}
+            pid_ = str(a.get("id", ""))
+            # minuti esatti dalle sostituzioni, altrimenti stima
             if starter:
-                mins = 68.0 if sub_out else 90.0
+                mins = t_out.get(pid_, 68.0 if sub_out else 90.0) if (sub_out or pid_ in t_out) else 90.0
+            elif pid_ in t_in:
+                mins = max(1.0, t_out.get(pid_, 90.0) - t_in[pid_])
             else:
                 mins = 22.0
-            a = p.get("athlete") or {}
             pos = (p.get("position") or a.get("position") or {})
             row = {
                 "pid": str(a.get("id", "")),
@@ -350,4 +373,21 @@ def parse_soccer_team(summ):
                 tid = str(c.get("id") or (c.get("team") or {}).get("id", ""))
                 if tid:
                     out["ht"][tid] = float(goals.get(tid, 0))
+    return out
+
+
+def parse_pickcenter(summ):
+    """Quote pubblicate da ESPN nel riepilogo (di solito DraftKings): vincente, handicap, totale."""
+    pcs = (summ or {}).get("pickcenter") or []
+    if not pcs:
+        return None
+    pc = pcs[0]
+    h = pc.get("homeTeamOdds") or {}
+    a = pc.get("awayTeamOdds") or {}
+    out = {"book": ((pc.get("provider") or {}).get("name") or "ESPN"),
+           "h": _american(h.get("moneyLine")), "a": _american(a.get("moneyLine")),
+           "d": _american((pc.get("drawOdds") or {}).get("moneyLine")),
+           "ou": _num(pc.get("overUnder"), None), "over": _american(pc.get("overOdds")), "under": _american(pc.get("underOdds")),
+           "spread": _num(pc.get("spread"), None), "hs": _american(h.get("spreadOdds")), "as": _american(a.get("spreadOdds")),
+           "details": pc.get("details")}
     return out
