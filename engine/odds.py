@@ -24,6 +24,7 @@ NBA_MARKET_MAP = {
     "player_turnovers": "tov", "player_points_rebounds_assists": "pra",
     "player_points_rebounds": "pr", "player_points_assists": "pa",
     "player_rebounds_assists": "ra", "player_blocks_steals": "sb",
+    "player_double_double": "dd", "player_triple_double": "tdd",
 }
 STOP = {"fc", "cf", "ac", "as", "ssc", "afc", "sc", "calcio", "club", "de", "the", "cd", "sd",
         "ud", "rc", "rcd", "fk", "sk", "bk", "if", "us", "1"}

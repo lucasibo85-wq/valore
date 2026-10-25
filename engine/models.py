@@ -432,3 +432,86 @@ def first_half_share(matches, default=0.445):
         return default
     n = den / 2.7
     return default + (num / den - default) * (n / (n + 100))
+
+
+# ------------------------------------------------------------ doppia doppia / tripla doppia (NBA)
+DD_STATS = ["pts", "reb", "ast", "stl", "blk"]
+# nodi e pesi di Gauss-Hermite (probabilisti, 9 punti) per integrare sulla variabilita' dei minuti
+_GH = [(-4.512745863399783, 2.2345844007746e-05), (-3.205429002856470, 0.002789141321231769),
+       (-2.076847978677830, 0.04991640676521788), (-1.023255663789133, 0.24409750289493910),
+       (0.0, 0.4063492063492063), (1.023255663789133, 0.24409750289493910),
+       (2.076847978677830, 0.04991640676521788), (3.205429002856470, 0.002789141321231769),
+       (4.512745863399783, 2.2345844007746e-05)]
+
+
+def dd_td(proj, exp_min, var_min):
+    """Probabilita' di doppia doppia e tripla doppia.
+
+    Le statistiche sono legate tra loro soprattutto dai minuti giocati: condiziono su un fattore
+    minuti comune (lognormale, dalla variabilita' dei minuti), con cui le statistiche diventano
+    indipendenti (binomiale negativa con la dispersione restante); poi conto quante arrivano a 10."""
+    cv2 = max(0.0, var_min) / (exp_min * exp_min) if exp_min > 0 else 0.0
+    sig2 = math.log(1 + cv2)
+    sig = math.sqrt(sig2)
+    stats = [(proj[s][0], proj[s][1]) for s in DD_STATS if s in proj and proj[s][0] > 0]
+    if len(stats) < 2:
+        return 0.0, 0.0
+    pdd = ptd = 0.0
+    for x, w in _GH:
+        z = math.exp(sig * x - sig2 / 2)
+        qs = []
+        for mu, r in stats:
+            inv = (1.0 / r - cv2) if r else 0.0
+            rr = 1.0 / inv if inv > 0.01 else None
+            qs.append(1.0 - nb_cdf(9, mu * z, rr))
+        # distribuzione del numero di statistiche >= 10
+        dist = [1.0]
+        for q in qs:
+            nd = [0.0] * (len(dist) + 1)
+            for k, pk in enumerate(dist):
+                nd[k] += pk * (1 - q)
+                nd[k + 1] += pk * q
+            dist = nd
+        pdd += w * sum(dist[2:])
+        ptd += w * sum(dist[3:])
+    return min(0.97, pdd), min(0.9, ptd)
+
+
+def dd_count(row):
+    return sum(1 for s in DD_STATS if float(row.get(s, 0) or 0) >= 10)
+
+
+# ------------------------------------------------------------ precedenti (H2H)
+def h2h_rows(matches, sport, hid, aid, extra=None, limit=10):
+    """Scontri diretti dal punto di vista della squadra di casa di oggi.
+    Riga: [data, 'h'/'a' (dove giocava la squadra di casa di oggi), gol/punti casa-oggi, gol/punti ospite-oggi,
+           1T casa, 1T ospite, angoli casa, angoli ospite, cartellini casa, cartellini ospite, competizione]."""
+    def val(x):
+        return None if x in (None, "") else int(float(x))
+    seen = set()
+    out = []
+    for m in matches:
+        if m.get("sport") != sport or {m.get("hid"), m.get("aid")} != {hid, aid}:
+            continue
+        if m.get("hs") in (None, "") or m.get("as") in (None, ""):
+            continue
+        flip = m["hid"] != hid
+        pair = lambda a, b: (val(m.get(b)), val(m.get(a))) if flip else (val(m.get(a)), val(m.get(b)))
+        row = [m["date"][:10], "a" if flip else "h", *pair("hs", "as")]
+        if sport == "soccer":
+            row += [*pair("hs1", "as1"), *pair("hc", "ac"), *pair("hk", "ak"), m.get("league", "")]
+        seen.add(m["date"][:10])
+        out.append(row)
+    for e in extra or []:
+        d = str(e.get("date", ""))[:10]
+        if not d or d in seen or {e.get("hid"), e.get("aid")} != {hid, aid}:
+            continue
+        flip = e["hid"] != hid
+        hs, as_ = (e["as"], e["hs"]) if flip else (e["hs"], e["as"])
+        row = [d, "a" if flip else "h", hs, as_]
+        if sport == "soccer":
+            row += [None, None, None, None, None, None, e.get("comp", "")]
+        seen.add(d)
+        out.append(row)
+    out.sort(key=lambda r: r[0], reverse=True)
+    return out[:limit]

@@ -391,3 +391,27 @@ def parse_pickcenter(summ):
            "spread": _num(pc.get("spread"), None), "hs": _american(h.get("spreadOdds")), "as": _american(a.get("spreadOdds")),
            "details": pc.get("details")}
     return out
+
+
+def parse_h2h(summ):
+    """Scontri diretti pubblicati da ESPN nel riepilogo (calcio: 'headToHeadGames').
+    Lettura difensiva: se il formato cambia ritorna una lista vuota."""
+    out = []
+    try:
+        for blk in summ.get("headToHeadGames") or []:
+            for e in blk.get("events") or []:
+                hid, aid = e.get("homeTeamId"), e.get("awayTeamId")
+                hs, as_ = e.get("homeTeamScore"), e.get("awayTeamScore")
+                if (hs is None or as_ is None) and isinstance(e.get("score"), str) and "-" in e["score"]:
+                    hs, as_ = e["score"].split("-")[:2]
+                if hid is None or aid is None or hs is None or as_ is None:
+                    continue
+                try:
+                    hs, as_ = int(float(str(hs).strip())), int(float(str(as_).strip()))
+                except ValueError:
+                    continue
+                out.append({"date": str(e.get("gameDate") or e.get("date") or "")[:10], "hid": str(hid), "aid": str(aid),
+                            "hs": hs, "as": as_, "comp": e.get("leagueName") or e.get("competitionName") or ""})
+    except (AttributeError, TypeError):
+        return []
+    return out

@@ -161,6 +161,19 @@ def markets(p1, n1, n2, bo):
     return out
 
 
+def _meet_row(x, p1):
+    """Precedente: data, vince il giocatore 1 di oggi (1/0), set suoi, set dell'avversario, torneo."""
+    def iv(v):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return None
+    s1, s2 = iv(x.get("sets1")), iv(x.get("sets2"))
+    if x["p1"] != p1:
+        s1, s2 = s2, s1
+    return [x["date"][:10], 1 if x["winner"] == p1 else 0, s1, s2, x.get("tname", "")]
+
+
 def build(app, matches, upcoming):
     """app['tennis']['matches'] con probabilita' Elo (superficie), set, forma e precedenti."""
     by_tour = defaultdict(list)
@@ -169,8 +182,10 @@ def build(app, matches, upcoming):
     ratings = {t: elo_ratings(ms) for t, ms in by_tour.items()}
     recent = defaultdict(list)
     h2h = defaultdict(lambda: [0, 0])
+    meet = defaultdict(list)
     for m in sorted(matches, key=lambda m: m["date"], reverse=True):
         if m.get("winner"):
+            meet[tuple(sorted((m["p1"], m["p2"])))].append(m)
             for pid in (m["p1"], m["p2"]):
                 if len(recent[pid]) < 10:
                     recent[pid].append(1 if m["winner"] == pid else 0)
@@ -197,4 +212,6 @@ def build(app, matches, upcoming):
             "pr1": round(pr1, 4), "h2h": [w1, sum(hh) - w1],
             "f1": recent.get(m["p1"], []), "f2": recent.get(m["p2"], []),
             "mk": markets(pr1, m["n1"], m["n2"], bo),
+            # precedenti: data, vince il giocatore 1 di oggi (1/0), set 1, set 2, torneo
+            "hhl": [_meet_row(x, m["p1"]) for x in meet.get(key, [])[:8]],
         })

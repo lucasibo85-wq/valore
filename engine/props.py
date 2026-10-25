@@ -248,6 +248,9 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
                 "an": ev["away"]["name"], "odds": ev.get("odds")}
         if ev.get("state") == "in":
             game["live"] = 1
+        hh = models.h2h_rows(matches or [], sport, h_id, a_id)
+        if hh:
+            game["hh"] = hh
         from .run import pick_keys
         eo = pick_keys(sport, pv.get("pick"))
         if eo:

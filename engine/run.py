@@ -6,6 +6,7 @@ Uso:  python -m engine.run            (aggiornamento normale)
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import sys
 import time
@@ -318,6 +319,7 @@ def main():
                     "ref": espn.parse_referee(summ) if sport == "soccer" else "",
                     "probables": (props.probables(summ) or ev.get("probables") or {}) if sport == "mlb" else {},
                     "pick": espn.parse_pickcenter(summ),
+                    "h2h": espn.parse_h2h(summ) if sport == "soccer" else [],
                 }
 
     # ---------------- Quote automatiche
@@ -582,6 +584,9 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                 "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"), "tot": total, "sp": hsp}
         if ev.get("state") == "in":
             game["live"] = 1
+        hh = models.h2h_rows(matches or [], "nba", ev["home"]["id"], ev["away"]["id"])
+        if hh:
+            game["hh"] = hh
         eo = pick_keys("nba", pv.get("pick"))
         if eo:
             game["eo"] = eo
@@ -660,6 +665,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     fac[m] = opp_f.get(oid, {}).get(m, 1.0) * (home_f.get(m, 1.0) if side == "home" else (2 - home_f.get(m, 1.0)))
                 var_min = min(36.0, models.wmean([(m_ - c["exp"]) ** 2 for m_ in c["mins"]], c["ws"]))
                 c["proj"] = models.project(c["games"], "nba", markets, priors, c["exp2"], var_min, fac, 12, 60)
+                c["var_min"] = var_min
             # --- coerenza con i totali di squadra
             ta = team_avg.get(tid)
             k_base = {}
@@ -691,6 +697,18 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     k = sum(kk * w for kk, w in ks) / wsum if wsum > 0 else 1.0
                     k *= calib.get(m, 1.0)
                     proj[m] = [round(mu * k, 3), r]
+                # doppia doppia / tripla doppia: modello sulle proiezioni, corretto con la frequenza reale recente
+                pdd, ptd = models.dd_td(proj, c["exp2"], c.get("var_min", 16.0))
+                rec = games[:20]
+                n_ = len(rec)
+                kdd = sum(1 for r in rec if models.dd_count(r) >= 2)
+                ktd = sum(1 for r in rec if models.dd_count(r) >= 3)
+                pdd = (pdd * 15 + kdd) / (15 + n_)
+                ptd = (ptd * 15 + ktd) / (15 + n_)
+                if pdd >= 0.01:
+                    proj["dd"] = [round(-math.log(1 - min(pdd, 0.97)), 4), None]
+                if ptd >= 0.003:
+                    proj["tdd"] = [round(-math.log(1 - min(ptd, 0.9)), 4), None]
                 status = c["status"]
                 if c["after"] and not status:
                     status = "Assente ultime %d" % len(c["after"])
@@ -712,6 +730,8 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base]
                           for r in games[:10]],
                 }
+                p["a30"]["dd"] = round(sum(1 for r in games[:30] if models.dd_count(r) >= 2) / len(games[:30]), 3)
+                p["a30"]["tdd"] = round(sum(1 for r in games[:30] if models.dd_count(r) >= 3) / len(games[:30]), 3)
                 od = props.get(name_key(p["n"]))
                 if od:
                     p["odds"] = od
@@ -858,6 +878,9 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                 "ha": tabbr(h), "aa": tabbr(a)}
         if ev.get("state") == "in":
             mrow["live"] = 1
+        hh = models.h2h_rows(soc_all, "soccer", h, a, pv.get("h2h"))
+        if hh:
+            mrow["hh"] = hh
         LM = joint if is_cup(league) or league not in lg_models else lg_models[league]
         gl = pair(LM["g"], h, a) or pair(joint["g"], h, a)
         exp_goals = {}
@@ -943,7 +966,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                 app["soccer"]["players"].append({
                     "odds": od,
                     "id": pid, "n": games[0]["name"], "t": tname(tid), "o": tname(oid), "g": ev["id"],
-                    "lg": league, "h": 1 if side == "home" else 0, "pos": games[0].get("pos", ""),
+                    "lg": league, "h": 1 if side == "home" else 0, "pos": games[0].get("pos", ""), "oa": tabbr(oid),
                     "ps": round(p_start, 2), "m": round(exp_min), "lu": 1 if lineup else 0,
                     "mk": {m: list(v) for m, v in proj.items()},
                     "of": {m: round(opp_f.get(oid, {}).get(m, 1.0), 3) for m in markets},
