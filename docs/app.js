@@ -10,6 +10,7 @@ const MARKETS = {
     ['fg3m', 'Triple', ['fg3m']], ['blk', 'Stoppate', ['blk']], ['stl', 'Rubate', ['stl']],
     ['pra', 'P+R+A', ['pts', 'reb', 'ast']], ['pr', 'P+R', ['pts', 'reb']], ['pa', 'P+A', ['pts', 'ast']],
     ['ra', 'R+A', ['reb', 'ast']], ['sb', 'Rub+Stop', ['stl', 'blk']], ['tov', 'Palle perse', ['tov']],
+    ['dd', 'Doppia doppia', ['pts', 'reb', 'ast', 'stl', 'blk']], ['tdd', 'Tripla doppia', ['pts', 'reb', 'ast', 'stl', 'blk']],
   ],
   soccer: [
     ['shots', 'Tiri', ['shots']], ['sot', 'Tiri in porta', ['sot']], ['fc', 'Falli commessi', ['fc']],
@@ -34,7 +35,8 @@ const REL = { A: 'alta', B: 'media', C: 'bassa' };
 const SPORT_LABEL = { nba: 'NBA', soccer: 'Calcio', nfl: 'NFL', mlb: 'MLB', tennis: 'Tennis' };
 const PROP_SPORTS = ['nba', 'soccer', 'nfl', 'mlb'];
 const DEFAULT_MK = { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', mlb: 'h' };
-const BERNOULLI = new Set(['card', 'td', 'hr', 'goa']);
+const BERNOULLI = new Set(['card', 'td', 'hr', 'goa', 'dd', 'tdd']);
+const DD_NEED = { dd: 2, tdd: 3 };
 const mkInfo = (sport, m) => MARKETS[sport].find(x => x[0] === m) || MARKETS[sport][0];
 const mkLabel = (sport, m) => mkInfo(sport, m)[1];
 // posizione delle statistiche base negli array "l" (ultime partite) e nei risultati
@@ -63,6 +65,11 @@ function expInfo(sport, p) {
 
 function marketValue(sport, m, arr, off) {
   const comps = mkInfo(sport, m)[2];
+  if (sport === 'nba' && DD_NEED[m]) {
+    // doppia/tripla doppia: almeno 2 (o 3) statistiche tra punti, rimbalzi, assist, rubate, stoppate a quota 10
+    const n = comps.filter(c => Number(arr[off + BASE[sport].indexOf(c)] || 0) >= 10).length;
+    return n >= DD_NEED[m] ? 1 : 0;
+  }
   let v = 0;
   for (const c of comps) v += Number(arr[off + BASE[sport].indexOf(c)] || 0);
   return BERNOULLI.has(m) ? Math.min(v, 1) : v;
@@ -147,6 +154,7 @@ const fmtTime = iso => {
   if (d.toDateString() === tom.toDateString()) return 'Domani ' + hm;
   return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + hm;
 };
+const fmtDateY = s => { const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: '2-digit' }); };
 const fmtDate = s => { const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }); };
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
@@ -369,6 +377,63 @@ function updateBadge() {
   c.hidden = !S.slip.length; c.textContent = S.slip.length;
   const f = $('#favCount');
   if (f) { f.hidden = !S.favs.length; f.textContent = S.favs.length; }
+}
+
+// ------------------------------------------------------------------ PRECEDENTI (H2H)
+/** Il giocatore contro l'avversario di oggi: frequenza sopra la linea e ultime sfide */
+function vsBlock(sport, p, m, line) {
+  const rows = gamesOf(sport, p).filter(g => g[1] === oppKey(p)).slice(0, 10);
+  if (!rows.length) return `<p class="note">Nessuna sfida contro ${esc(p.o)} nello storico disponibile.</p>`;
+  const off = L_OFF[sport];
+  const vals = rows.map(g => marketValue(sport, m, g, off));
+  const over = vals.filter(v => v > line).length;
+  const bern = BERNOULLI.has(m);
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return `<div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px">
+    <div class="row between"><span class="b" style="font-size:13px">Contro ${esc(p.o)} (H2H)</span><span class="row" style="gap:8px">${fracCell([over, rows.length])}<span class="tiny muted">${bern ? 'frequenza ' + pct(avg) : 'media ' + avg.toFixed(1)}</span></span></div>
+    <div class="row wrap" style="gap:6px">${rows.map((g, i) => `<span class="mono tiny" style="padding:3px 7px;border-radius:8px;border:1px solid ${vals[i] > line ? 'var(--model)' : 'var(--line)'};color:${vals[i] > line ? 'var(--model)' : 'var(--text2)'}">${esc(fmtDate(g[0]))} · ${bern ? (vals[i] ? 'Sì' : 'No') : vals[i]}</span>`).join('')}</div></div>`;
+}
+const avgOf = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+/** Scontri diretti tra le due squadre (calcio, NBA, NFL, MLB) */
+function h2hCard(sport, m) {
+  const rows = m.hh || [];
+  const hn = sport === 'soccer' ? m.h : m.hn, an = sport === 'soccer' ? m.a : m.an;
+  if (!rows.length) return `<div class="card" style="gap:6px"><h2>Precedenti</h2><p class="note">Nessuno scontro diretto nello storico disponibile.</p></div>`;
+  const n = rows.length;
+  const w = rows.filter(r => r[2] > r[3]).length, l = rows.filter(r => r[2] < r[3]).length, d = n - w - l;
+  const tot = rows.map(r => r[2] + r[3]);
+  let stats;
+  if (sport === 'soccer') {
+    const c = rows.filter(r => r[6] != null).map(r => r[6] + r[7]);
+    const k = rows.filter(r => r[8] != null).map(r => r[8] + r[9]);
+    const ht = rows.filter(r => r[4] != null);
+    stats = [['Gol medi', avgOf(tot).toFixed(1)], ['Over 2.5', `${tot.filter(x => x > 2.5).length}/${n}`], ['Goal', `${rows.filter(r => r[2] > 0 && r[3] > 0).length}/${n}`],
+      ['Gol 1° tempo', ht.length ? `${ht.filter(r => r[4] + r[5] > 0).length}/${ht.length}` : '—'], ['Angoli medi', c.length ? avgOf(c).toFixed(1) : '—'], ['Cartellini medi', k.length ? avgOf(k).toFixed(1) : '—']];
+  } else {
+    const mg = rows.map(r => r[2] - r[3]);
+    stats = [[sport === 'mlb' ? 'Run medi' : 'Punti medi', avgOf(tot).toFixed(1)], ['Margine medio ' + (sport === 'soccer' ? m.ha : m.h), (avgOf(mg) >= 0 ? '+' : '') + avgOf(mg).toFixed(1)],
+      ['Totale max/min', Math.max(...tot) + ' / ' + Math.min(...tot)]];
+  }
+  const lgs = S.data.leagues || {};
+  const list = rows.map(r => {
+    const [home, away, hs, as] = r[1] === 'h' ? [hn, an, r[2], r[3]] : [an, hn, r[3], r[2]];
+    const win = r[2] > r[3] ? 'var(--model)' : r[2] < r[3] ? 'var(--book)' : 'var(--text2)';
+    const extra = sport === 'soccer' ? [r[4] != null ? `1T ${r[1] === 'h' ? r[4] + '–' + r[5] : r[5] + '–' + r[4]}` : '', r[6] != null ? `angoli ${r[6] + r[7]}` : '', r[8] != null ? `cart. ${r[8] + r[9]}` : '', lgs[r[10]] || r[10] || ''].filter(Boolean).join(' · ') : '';
+    return `<div style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)">
+      <div class="row between" style="gap:8px"><span class="small" style="min-width:0">${esc(home)} <b class="mono" style="color:${win}">${hs}–${as}</b> ${esc(away)}</span><span class="tiny muted" style="white-space:nowrap">${esc(fmtDateY(r[0]))}</span></div>
+      ${extra ? `<span class="tiny muted">${esc(extra)}</span>` : ''}</div>`;
+  }).join('');
+  return `<div class="card" style="gap:10px"><div class="row between"><h2>Precedenti (H2H)</h2><span class="tiny muted">ultime ${n}</span></div>
+    <div class="grid3">${[[hn, w], [sport === 'soccer' ? 'Pareggi' : '', d], [an, l]].filter(x => x[0] !== '' || x[1]).map(([k, v]) => `<div class="kv"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k || 'Pareggi')}</span><span>${v}</span></div>`).join('')}</div>
+    <div class="grid3">${stats.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}</div>
+    <details class="how"><summary>Tutte le partite</summary><div>${list}</div></details></div>`;
+}
+/** Precedenti nel tennis */
+function h2hTennis(m) {
+  const rows = m.hhl || [];
+  if (!rows.length) return '';
+  return `<div class="card" style="gap:0"><div class="row between" style="padding-bottom:8px"><h2>Precedenti (H2H)</h2><span class="mono b">${m.h2h ? m.h2h[0] + '–' + m.h2h[1] : ''}</span></div>${rows.map(r =>
+    `<div class="row between" style="padding:8px 0;border-top:1px solid var(--line);gap:8px"><span class="small"><b style="color:${r[1] ? 'var(--model)' : 'var(--book)'}">${esc(r[1] ? m.p1 : m.p2)}</b>${r[2] != null && r[2] + r[3] > 0 ? ` <span class="mono">${r[1] ? r[2] + '–' + r[3] : r[3] + '–' + r[2]}</span>` : ''}</span><span class="tiny muted" style="text-align:right">${esc(fmtDateY(r[0]))}${r[4] ? ' · ' + esc(r[4]) : ''}</span></div>`).join('')}</div>`;
 }
 
 // ------------------------------------------------------------------ PREFERITI (giocate che ispirano, da rivedere con calma)
@@ -851,6 +916,7 @@ function viewMatch(id) {
   if (!m.mk) {
     return header(`${m.h} – ${m.a}`, `${lg} · ${fmtTime(m.t)}`, '#/') + `</header><main>${liveCard('soccer', m)}
       <div class="card"><p class="note">Storico insufficiente per stimare il risultato (squadre con poche partite nell'archivio): restano disponibili le statistiche dei giocatori.</p></div>
+      ${h2hCard('soccer', m)}
       <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Statistiche giocatori (${ps.length})</a></main>`;
   }
   const odds = tmOdds(m);
@@ -881,6 +947,7 @@ function viewMatch(id) {
     ${liveCard('soccer', m)}<div class="card" style="gap:10px">${info}
       <p class="note">Scrivi la quota del tuo bookmaker accanto al mercato: l'app calcola il valore (EV). Il + aggiunge la giocata alla schedina.${m.odds && m.odds[3] ? ' Quote 1X2 automatiche: ' + esc(m.odds[3]) + '.' : ''}</p></div>
     <div class="card" style="gap:0">${list}</div>
+    ${h2hCard('soccer', m)}
     <div class="card"><p class="note">Gol: modello di Poisson con correzione Dixon-Coles su attacco e difesa delle squadre${/^uefa\./.test(m.lg) ? ' (per le coppe europee un modello unico su tutti i campionati)' : ''}, più peso alle partite recenti. Primo tempo: ${pct(m.f1 || 0.445)} dei gol della lega. Angoli e cartellini: stesso metodo sulle statistiche di squadra${m.ref ? ', con l\'arbitro ' + esc(m.ref) : ''}.</p></div>
     <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Statistiche giocatori (${ps.length})</a>
     ${updatedLine()}</main>`;
@@ -932,6 +999,7 @@ function viewTennis(id) {
       ${pl(m.p1, m.e1, m.n1, m.f1)}${pl(m.p2, m.e2, m.n2, m.f2)}
       ${few ? '<div class="warnbox"><span>Uno dei due giocatori ha poche partite nello storico: la stima è meno affidabile.</span></div>' : ''}</div>
     ${rows.length ? `<div class="card" style="gap:0">${marketRows('tennis', m, rows, odds)}</div>` : ''}
+    ${h2hTennis(m)}
     <div class="card"><p class="note">Elo sui risultati ATP/WTA degli ultimi 12 mesi, combinato con l'Elo sulla superficie del torneo (riconosciuta dal nome). I mercati sui set derivano dalla probabilità di vincere un set coerente con quella della partita. In caso di ritiro le scommesse sui set vengono annullate. I pallini sono le ultime 10 partite (azzurro = vinta).</p></div>
     ${updatedLine()}</main>`;
 }
@@ -1052,6 +1120,7 @@ function viewGara(sport, id) {
   return header(`${m.an} @ ${m.hn}`, `${SPORT_LABEL[sport]} · ${fmtTime(m.t)}`, '#/') + (groups.length ? `<div style="padding:0 16px">${groupChips(groups, grp)}</div>` : '') + `</header><main>
     ${liveCard(sport, m)}${info}
     ${rows.length ? `<div class="card" style="gap:0">${marketRows(sport, m, rows, odds)}</div>` : ''}
+    ${h2hCard(sport, m)}
     <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Prop giocatori (${ps.length})</a>
     ${updatedLine()}</main>`;
 }
@@ -1352,7 +1421,8 @@ function viewPlayer(sport, id, g, mq) {
       </div>
       <div class="card" style="gap:8px"><h2>Sopra ${e.line}: frequenza</h2>
         <div class="grid4">${[['Ultime 5', ht.l5], ['Ultime 10', ht.l10], ['Ultime 20', ht.l20], ['Stagione', ht.sea]].map(([k, x]) =>
-          `<div class="kv"><span>${k}</span>${fracCell(x)}</div>`).join('')}</div></div>
+          `<div class="kv"><span>${k}</span>${fracCell(x)}</div>`).join('')}</div>
+        ${vsBlock(sport, p, m, e.line)}</div>
       <div class="card"><div class="row between"><h2>Ultime ${vals.length} partite</h2><span class="mono small">linea ${e.line}</span></div>
         <div class="chart"><div class="line" style="bottom:${(e.line / max * H).toFixed(0)}px"></div>
           ${vals.slice().reverse().map(v => `<div class="col"><b>${v}</b><div class="${v > e.line ? 'y' : ''}" style="height:${Math.max(2, v / max * H).toFixed(0)}px"></div></div>`).join('')}</div>
@@ -1381,6 +1451,8 @@ const seasonStart = sport => {
   if (sport === 'mlb') return `${mo >= 3 ? y : y - 1}-03-01`;
   return `${mo >= 7 ? y : y - 1}-07-01`;
 };
+/** Sigla dell'avversario come compare nello storico delle partite */
+const oppKey = p => p.oa || p.o;
 function gamesOf(sport, p) { return (S.hist && S.hist[sport] && S.hist[sport][p.id]) || p.l; }
 /** Frazioni sopra la linea su ultime 5/10/20 e stagione */
 function hitTable(sport, p, m, line, side) {
@@ -1389,7 +1461,8 @@ function hitTable(sport, p, m, line, side) {
   const ss = seasonStart(sport);
   const seas = rows.filter(g => g[0] >= ss);
   const f = list => list.length ? [list.filter(ok).length, list.length] : null;
-  return { l5: f(rows.slice(0, 5)), l10: f(rows.slice(0, 10)), l20: rows.length >= 11 ? f(rows.slice(0, 20)) : null, sea: f(seas) };
+  return { l5: f(rows.slice(0, 5)), l10: f(rows.slice(0, 10)), l20: rows.length >= 11 ? f(rows.slice(0, 20)) : null, sea: f(seas),
+    vs: f(rows.filter(g => g[1] === oppKey(p)).slice(0, 10)) };
 }
 function fracCell(x) {
   if (!x) return '<span class="muted mono small">—</span>';
@@ -1461,9 +1534,9 @@ function viewCard(sport, id, g) {
       <span style="font-size:13px;font-weight:600">${label}${val ? ` <span class="badge val" style="font-size:10px;padding:1px 6px">${sgn(e.ev, 0)}</span>` : ''}</span>
       <span class="mono small b" style="white-space:nowrap;font-size:12px">${sideLbl} ${e.line}${e.odds ? `<span class="tiny muted" style="display:block">@${e.odds.toFixed(2)}</span>` : ''}</span>
       <span class="mono small b model">${pct(e.p)}<span class="tiny muted" style="display:block">${bern ? '' : 'proj ' + e.mu.toFixed(1)}</span></span>
-      ${fracCell(ht.l5)}${fracCell(ht.l10)}${fracCell(ht.l20)}${fracCell(ht.sea)}</a>`;
+      ${fracCell(ht.l5)}${fracCell(ht.l10)}${fracCell(ht.sea)}${fracCell(ht.vs)}</a>`;
   }).join('');
-  const vs = gamesOf(sport, p).filter(x => x[1] === p.o).slice(0, 6);
+  const vs = gamesOf(sport, p).filter(x => x[1] === oppKey(p)).slice(0, 8);
   const COLS = {
     nba: [['PTS', 'pts'], ['REB', 'reb'], ['AST', 'ast'], ['3PT', 'fg3m'], ['STL', 'stl'], ['BLK', 'blk']],
     soccer: [['Tiri', 'shots'], ['In porta', 'sot'], ['Falli', 'fc'], ['Subiti', 'fs'], ['Gialli', 'card'], ['Gol', 'g']],
@@ -1488,9 +1561,9 @@ function viewCard(sport, id, g) {
     ${(p.adj && p.adj.length) || p.rel ? `<div class="card" style="gap:4px">${p.rel ? `<div class="list-row" style="border-top:0"><span>Affidabilità</span><span class="mono b">${REL[p.rel]}</span></div>` : ''}${(p.adj || []).map(a => `<div class="list-row"><span style="color:var(--text2)">${esc(a)}</span></div>`).join('')}</div>` : ''}
     <div class="card" style="gap:0">
       <div style="display:grid;grid-template-columns:30px minmax(0,1.3fr) 0.9fr 0.8fr repeat(4,0.62fr);gap:4px;padding-bottom:8px" class="tiny muted">
-        <span></span><span>Mercato</span><span>Linea</span><span>Prob.</span><span>U5</span><span>U10</span><span>U20</span><span>Stag.</span></div>
+        <span></span><span>Mercato</span><span>Linea</span><span>Prob.</span><span>U5</span><span>U10</span><span>Stag.</span><span>H2H</span></div>
       ${rows}
-      <p class="note" style="margin-top:10px">U5/U10/U20 = volte sopra la linea nelle ultime 5, 10, 20 partite; Stag. = stagione in corso.${S.hist ? '' : ' Carico lo storico completo…'} Tocca un mercato per inserire le quote.</p>
+      <p class="note" style="margin-top:10px">U5/U10 = volte sopra la linea nelle ultime 5 e 10 partite; Stag. = stagione in corso; H2H = contro ${esc(p.o)} (ultime 10 sfide).${S.hist ? '' : ' Carico lo storico completo…'} Tocca un mercato per inserire le quote.</p>
     </div>
     <div class="card"><h2>Contro ${esc(p.o)}</h2>${vsHtml}</div>
     ${updatedLine()}</main>`;
@@ -1498,7 +1571,7 @@ function viewCard(sport, id, g) {
 
 // ------------------------------------------------------------------ vista: incolla quote
 const MK_WORDS = {
-  nba: [['p+r+a', 'pra'], ['pra', 'pra'], ['punti+rimbalzi+assist', 'pra'], ['punti rimbalzi assist', 'pra'], ['p+r', 'pr'], ['punti+rimbalzi', 'pr'], ['p+a', 'pa'], ['punti+assist', 'pa'],
+  nba: [['tripla doppia', 'tdd'], ['triple double', 'tdd'], ['triple-double', 'tdd'], ['doppia doppia', 'dd'], ['double double', 'dd'], ['double-double', 'dd'], ['p+r+a', 'pra'], ['pra', 'pra'], ['punti+rimbalzi+assist', 'pra'], ['punti rimbalzi assist', 'pra'], ['p+r', 'pr'], ['punti+rimbalzi', 'pr'], ['p+a', 'pa'], ['punti+assist', 'pa'],
     ['r+a', 'ra'], ['rimbalzi+assist', 'ra'], ['rub+stop', 'sb'], ['stocks', 'sb'], ['palle perse', 'tov'], ['turnovers', 'tov'], ['tov', 'tov'],
     ['tiri da tre', 'fg3m'], ['triple', 'fg3m'], ['tripla', 'fg3m'], ['threes', 'fg3m'], ['3pt', 'fg3m'], ['3pm', 'fg3m'],
     ['stoppate', 'blk'], ['stoppata', 'blk'], ['blocks', 'blk'], ['blk', 'blk'], ['rubate', 'stl'], ['rubata', 'stl'], ['steals', 'stl'], ['stl', 'stl'],
