@@ -148,7 +148,7 @@ const S = {
   data: null, results: null, error: null,
   sport: LS.get('sport', 'nba'),
   market: LS.get('market', { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', mlb: 'h' }),
-  slipMode: LS.get('slipMode', 'single'), multiStake: null, chTab: 'valore',
+  slipMode: LS.get('slipMode', 'single'), multiStake: null, chTab: 'giorno',
   onlyValue: false, search: '', game: '', sort: 'valore',
   bankroll: LS.get('bankroll', 1000),
   kellyFrac: LS.get('kellyFrac', 0.25),
@@ -1353,12 +1353,228 @@ function buildChicche() {
   const by = (a, b) => b.score - a.score;
   return { valore: val.sort(by).slice(0, 40), errori: err.sort(by).slice(0, 40), controllo: chk.sort(by).slice(0, 30) };
 }
+// ------------------------------------------------------------------ GIOCATE DEL GIORNO
+/* Le giocate piu' solide delle partite di oggi (fino alle 8 di domattina), anche senza quote.
+   Giocatori: linea probabile del bookmaker = media recente (o la tua linea / quella automatica); la giocata
+   deve avere probabilita' del modello alta E trovare conferma nelle ultime 10 partite (e negli H2H, se ci sono).
+   Squadre: mercati principali in cui la partita si scosta molto dalle altre partite della stessa lega/sport;
+   se c'e' la quota, conta solo se ha valore. Per ogni giocata: la quota minima da cui conviene (stile di gioco). */
+const DG_TEAM_KEYS = ['1X', 'X2', 'dnb1', 'dnb2', 'gg', 'ng', 'o15', 'o25', 'u25', 'u35', '1to05', '1tu15', 'ho05', 'ao05', 'ho15', 'ao15', 'bto05', 'co095', 'cu095', 'ko45', 'ku45'];
+const DG_US_KEYS = /^(ml1|ml2|hsp:|asp:|o:|u:)/;
+/** Quota minima da cui la giocata ha EV positivo con lo stile scelto */
+function qMin(p) {
+  const st = ST();
+  if (!p || p < st.minP) return null;
+  const q = (1 - (1 - st.w) / OVERROUND) / (st.w * p);
+  return q > st.maxO ? null : Math.max(1.01, q);
+}
+function dgWindow() {
+  const now = new Date();
+  const end = new Date(now); end.setDate(end.getDate() + 1); end.setHours(8, 0, 0, 0);
+  return [now.getTime(), end.getTime()];
+}
+function buildDaily() {
+  const [t0, t1] = dgWindow();
+  const inWin = t => { const x = new Date(t).getTime(); return x > t0 && x <= t1; };
+  const out = [];
+  ensureHist();
+  // ---------------- giocatori
+  for (const sp of PROP_SPORTS) {
+    const games = {};
+    for (const g of gamesList(sp)) if (inWin(g.t)) games[g.id] = g;
+    for (const p of players(sp)) {
+      const g = games[p.g];
+      if (!g || (p.st && /out|assente|dubbio|questionable|doubtful/i.test(p.st))) continue;
+      if (sp === 'soccer' && (p.ps || 0) < 0.8) continue;
+      if (sp === 'nba' && p.rel === 'C') continue;
+      let best = null;
+      for (const [m, label] of mkList(sp, p)) {
+        if (BERNOULLI.has(m)) continue;
+        const rows = gamesOf(sp, p);
+        if (rows.length < 8) continue;
+        const off = L_OFF[sp];
+        const v10 = rows.slice(0, 10).map(r => marketValue(sp, m, r, off));
+        const a10 = v10.reduce((a, b) => a + b, 0) / v10.length;
+        const a30 = Number((p.a30 || {})[m]) || a10;
+        const avg = 0.6 * a10 + 0.4 * a30;
+        if (avg < 1) continue;
+        const L0 = lineFor(sp, p, m);
+        // linea: la tua o quella automatica; altrimenti la linea "a meta'" dello storico (come la fissano i bookmaker)
+        const v20 = rows.slice(0, 20).map(r => marketValue(sp, m, r, off));
+        let line = L0.src ? Number(L0.line) : null;
+        if (line === null) {
+          let bestD = 9;
+          for (let k = 0; k <= Math.ceil(Math.max(...v20)); k++) {
+            const fr = v20.filter(v => v > k + 0.5).length / v20.length;
+            if (Math.abs(fr - 0.5) < bestD) { bestD = Math.abs(fr - 0.5); line = k + 0.5; }
+          }
+        }
+        const [mu, r] = p.mk[m];
+        const pr = probs(line, mu, r);
+        for (const side of ['over', 'under']) {
+          const ps = side === 'over' ? pr.over : pr.under;
+          if (ps < 0.55) continue;
+          const ht = hitTable(sp, p, m, line, side);
+          const h10 = ht.l10 ? ht.l10[0] / ht.l10[1] : 0;
+          const hs = ht.sea && ht.sea[1] >= 5 ? ht.sea[0] / ht.sea[1] : null;
+          const hv = ht.vs && ht.vs[1] >= 2 ? ht.vs[0] / ht.vs[1] : null;
+          // frequenza storica (ultime 20) = quanto la giocata "vale" per il bookmaker: serve un vantaggio vero
+          const k20 = v20.filter(v => side === 'over' ? v > line : v < line).length;
+          const base = (k20 + 1) / (v20.length + 2);
+          const d = ps - base;
+          if (d < 0.07 || h10 < base - 0.05 || (hs !== null && hs < 0.45) || (hv !== null && hv < 0.4)) continue;
+          const q = side === 'over' ? L0.over : L0.under;
+          const has = L0.src && q;
+          if (has && L0.src !== 'manuale' && !isValue(ps, q)) continue; // quota automatica senza valore: scartata
+          const qm = qMin(ps);
+          if (!qm && !has) continue;
+          const score = Math.min(d, 0.3) - (d > 0.3 ? 0.08 : 0) + 0.15 * (h10 - base) + (hv !== null ? 0.08 * (hv - 0.5) : 0) + (sp === 'nba' && p.rel === 'A' ? 0.03 : 0) + (has && L0.src !== 'manuale' ? 0.5 * ev(ps, q) : 0);
+          const why = [`Modello ${pct(ps)}`, `Ultime 20: ${k20}/${v20.length}`, `Ultime 10: ${ht.l10[0]}/${ht.l10[1]}`];
+          if (ht.sea) why.push(`Stagione ${ht.sea[0]}/${ht.sea[1]}`);
+          if (ht.vs) why.push(`vs ${oppKey(p)}: ${ht.vs[0]}/${ht.vs[1]}`);
+          why.push(`Proiezione ${mu.toFixed(1)} · media ${avg.toFixed(1)}`);
+          if (sp === 'nba' && p.rel) why.push('Affidabilità ' + REL[p.rel]);
+          if (!L0.src) why.push('Linea stimata: controlla quella del tuo bookmaker');
+          if (d > 0.3) why.push('Molto diversa dallo storico: verifica minuti e infortuni');
+          const cand = { kind: 'p', sport: sp, score, p: ps, g: p.g, t: g.t, pl: p, m, side, line, q: has ? q : null, qm, why,
+            title: p.n, pick: `${sideTxt(m, side, line)} ${label.toLowerCase()}`, ctx: `${sportCtx(sp, p)} · ${p.t} vs ${p.o} · ${fmtTime(g.t)}`,
+            href: `#/g/${sp}/${p.id}/${p.g}?m=${m}` };
+          if (!best || cand.score > best.score) best = cand;
+        }
+      }
+      if (best) out.push(best);
+    }
+  }
+  // ---------------- squadre
+  const teamSports = [['soccer', (S.data.soccer || {}).matches || []], ['nba', gamesList('nba')], ['nfl', gamesList('nfl')], ['mlb', gamesList('mlb')]];
+  for (const [sp, all] of teamSports) {
+    // mediana di ogni mercato nella stessa lega (calcio) o sport: per capire quando una partita e' "diversa"
+    const med = {};
+    for (const m of all) {
+      if (!m.mk) continue;
+      const grp = sp === 'soccer' ? m.lg : sp;
+      for (const [k, , , p] of m.mk) ((med[grp] = med[grp] || {})[k] = med[grp][k] || []).push(p);
+    }
+    const median = a => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+    for (const m of all) {
+      if (!m.mk || !inWin(m.t)) continue;
+      const od = sp === 'soccer' ? tmOdds(m) : tmOddsG(sp, m);
+      const grp = sp === 'soccer' ? m.lg : sp;
+      let best = null;
+      for (const [k, gname, label, p] of m.mk) {
+        if (sp === 'soccer' ? !DG_TEAM_KEYS.includes(k) : !DG_US_KEYS.test(k)) continue;
+        const q = od[k];
+        const arr = (med[grp] || {})[k] || [];
+        const base = arr.length >= 4 ? median(arr) : null;
+        let score;
+        const manualQ = !!((S.manual[sp + '|mk|' + m.id] || {})[k]);
+        if (q && !manualQ) {
+          if (!isValue(p, q)) continue;
+          score = 0.08 + ev(p, q);
+        } else if (q) {
+          // quota scritta da te su una giocata gia' proposta: resta in elenco con il suo EV
+          if (sp !== 'soccer' || base === null || p < 0.6 || p > 0.88 || p - base < 0.08) continue;
+          score = (p - base) * 0.9;
+        } else {
+          if (sp !== 'soccer' || base === null || p < 0.6 || p > 0.88) continue;
+          const d = p - base;
+          if (d < 0.08) continue;
+          if (!qMin(p)) continue;
+          score = d * 0.9;
+        }
+        const why = [`Modello ${pct(p)}`];
+        if (base !== null) why.push(`Media ${sp === 'soccer' ? ((S.data.leagues || {})[m.lg] || 'lega') : SPORT_LABEL[sp]}: ${pct(base)}`);
+        if (sp === 'soccer' && m.lh) why.push(`Gol attesi ${m.lh.toFixed(2)}–${m.la.toFixed(2)}`);
+        const hh = m.hh || [];
+        if (sp === 'soccer' && hh.length >= 3 && ['gg', 'ng', 'o15', 'o25', 'u25', 'u35'].includes(k)) {
+          const n = hh.filter(r => evalSoccerKey(k, [r[2], r[3]]) === true).length;
+          why.push(`H2H: ${n}/${hh.length}`);
+          if (n / hh.length < 0.35) continue;
+          score += 0.05 * (n / hh.length - 0.5);
+        }
+        if (q) why.push(`Quota ${q.toFixed(2)} · EV ${sgn(ev(p, q))}`);
+        const title = sp === 'soccer' ? `${m.h} – ${m.a}` : `${m.an} @ ${m.hn}`;
+        const cand = { kind: 't', sport: sp, score, p, g: m.id, t: m.t, k, q: q || null, qm: qMin(p), why, title,
+          pick: sp === 'soccer' ? label : `${label} (${gname})`, ctx: `${sp === 'soccer' ? ((S.data.leagues || {})[m.lg] || 'Calcio') : SPORT_LABEL[sp]} · ${fmtTime(m.t)}`,
+          href: sp === 'soccer' ? `#/partita/${m.id}` : `#/gara/${sp}/${m.id}`, mm: m };
+        if (!best || cand.score > best.score) best = cand;
+      }
+      if (best) out.push(best);
+    }
+  }
+  // al massimo 2 giocate per partita, le 15 migliori
+  out.sort((a, b) => b.score - a.score);
+  const perGame = {};
+  const picks = [];
+  const perSport = {}, perKind = {};
+  for (const c of out) {
+    // giocatori: max 6 per sport e 10 in tutto; squadre: max 6
+    if ((perGame[c.g] || 0) >= 2 || (perKind[c.kind] || 0) >= (c.kind === 'p' ? 10 : 6) || (c.kind === 'p' && (perSport[c.sport] || 0) >= 6)) continue;
+    perGame[c.g] = (perGame[c.g] || 0) + 1;
+    perKind[c.kind] = (perKind[c.kind] || 0) + 1;
+    if (c.kind === 'p') perSport[c.sport] = (perSport[c.sport] || 0) + 1;
+    picks.push(c);
+  }
+  picks.sort((a, b) => a.t.localeCompare(b.t) || b.score - a.score);
+  // multipla del giorno: le 3 giocate piu' probabili di partite diverse
+  const multi = [];
+  const used = new Set();
+  for (const c of picks.slice().sort((a, b) => b.p - a.p)) {
+    if (used.has(c.g) || c.p < 0.62) continue;
+    used.add(c.g); multi.push(c);
+    if (multi.length === 3) break;
+  }
+  return { picks, multi: multi.length >= 2 ? multi : [] };
+}
+function dgSel(c, q) {
+  if (c.kind === 'p') {
+    const p = c.pl;
+    return { sport: c.sport, g: p.g, pid: p.id, m: c.m, side: c.side, line: c.line, odds: q, p: c.p, push: 0,
+      label: `${p.n} ${c.pick}`, ctx: `${SPORT_LABEL[c.sport]} · ${p.t} vs ${p.o}` };
+  }
+  const m = c.mm;
+  return { sport: c.sport, g: m.id, pid: null, m: 'tm', side: c.k, line: null, odds: q, p: c.p, push: 0,
+    label: c.sport === 'soccer' ? c.pick : `${c.pick} (${m.a} @ ${m.h})`, ctx: c.title };
+}
+function dgCard(c, i) {
+  const e = c.q ? ev(c.p, c.q) : null;
+  const fs = dgSel(c, null);
+  return `<div class="card" style="gap:8px">
+    <div class="row between" style="align-items:flex-start;gap:8px"><a href="${c.href}" style="display:flex;flex-direction:column;gap:2px;min-width:0">
+      <span class="tiny muted">${esc(c.ctx)}</span><span class="b" style="font-size:15px">${esc(c.title)}</span>
+      <span style="font-size:15px;color:var(--accent);font-weight:700">${esc(c.pick)}</span></a>
+      <span class="badge ${e !== null && e > 0 ? 'val' : 'no'}" style="flex-shrink:0">${pct(c.p)}</span></div>
+    <div class="row wrap" style="gap:6px">${c.why.map(w => `<span class="tiny" style="padding:3px 8px;border-radius:8px;border:1px solid var(--line);color:var(--text2)">${esc(w)}</span>`).join('')}</div>
+    <div class="row" style="gap:8px;align-items:center">
+      <span class="small" style="flex:1;color:var(--text2)">${c.qm ? `Conviene da quota <b class="mono" style="color:var(--text)">${c.qm.toFixed(2)}</b>` : 'Fuori dai limiti dello stile'}${e !== null ? ` · EV <b style="color:${e > 0 ? 'var(--accent)' : 'var(--book)'}">${sgn(e)}</b>` : ''}</span>
+      <input inputmode="decimal" placeholder="quota" aria-label="Quota del tuo bookmaker per ${esc(c.title)} ${esc(c.pick)}" data-act="dgOdds" data-i="${i}" value="${c.q || ''}"
+        style="height:40px;width:76px;border-radius:9px;border:1px solid var(--line);background:var(--bg);padding:0 8px;font:700 14px var(--mono);color:var(--text)">
+      ${favBtn(fs, 'width:40px;height:40px')}
+      <button class="iconbtn" style="width:44px;height:40px;${e !== null && e > 0 ? 'background:var(--accent);color:var(--accent-ink);border-color:var(--accent)' : ''}" aria-label="Aggiungi alla schedina" data-act="dgAdd" data-i="${i}" ${c.q ? '' : 'disabled'}>+</button></div></div>`;
+}
+function viewDaily(D) {
+  S.daily = D.picks;
+  if (!D.picks.length) return `<div class="empty">Nessuna giocata convincente per oggi con lo stile «${ST().label}». Riprova più tardi: formazioni e infortuni cambiano le stime.</div>`;
+  let html = '';
+  if (D.multi.length) {
+    const pTot = D.multi.reduce((a, c) => a * c.p, 1);
+    html += `<div class="card" style="gap:8px;border-color:var(--accent)"><div class="row between"><h2>Multipla del giorno</h2><span class="badge val">${pct(pTot)}</span></div>
+      ${D.multi.map(c => `<a href="${c.href}" class="row between" style="padding:6px 0;border-top:1px solid var(--line);gap:8px"><span class="small" style="min-width:0"><b>${esc(c.title)}</b> · ${esc(c.pick)}</span><span class="mono small model b">${pct(c.p)}</span></a>`).join('')}
+      <span class="small" style="color:var(--text2)">Quota giusta totale ${(1 / pTot).toFixed(2)}: conviene se il bookmaker paga almeno <b class="mono">${(1.1 / pTot).toFixed(2)}</b>.</span>
+      <button class="btn small ghost" data-act="dgMulti">Metti le ${D.multi.length} giocate in schedina (scrivi prima le quote)</button></div>`;
+  }
+  html += D.picks.map(dgCard).join('');
+  return html;
+}
+
 function viewChicche() {
   const C = buildChicche();
   const tab = S.chTab;
+  const D = tab === 'giorno' ? buildDaily() : null;
   const list = C[tab] || [];
   S.chicche = list.map(x => x);
   const intro = {
+    giorno: `Le giocate più solide delle partite di oggi, anche senza quote: probabilità alta del modello confermata dalle ultime partite e dai precedenti. Per i giocatori la linea è quella probabile del bookmaker (la media recente), se non hai scritto la tua. Scrivi la quota che trovi: se è sopra «conviene da quota» la giocata ha valore (stile «${ST().label}»).`,
     valore: `Le occasioni in cui la stima (modello + quota del bookmaker) supera la probabilità della quota. Stile «${ST().label}»: solo quote fino a ${ST().maxO.toFixed(2)} e probabilità da ${pct(ST().minP)} in su (lo cambi nella Schedina). Le voci «Da verificare» hanno un valore così alto che quasi sempre manca un dato: controlla prima di giocare.`,
     errori: 'Quote di un bookmaker più alte della quota «giusta» del mercato (Pinnacle senza margine, o la media dei bookmaker). Non dipende dal modello: è il segnale più affidabile. Richiede le quote automatiche (chiave ODDS_API_KEY).',
     controllo: 'Nessuna quota necessaria: giocatori la cui proiezione per stasera è molto diversa dalla media recente, per l\'avversario, i minuti o il contesto. Le linee dei bookmaker spesso seguono la media: confrontale con queste proiezioni.',
@@ -1372,9 +1588,9 @@ function viewChicche() {
     errori: 'Nessun errore di quota trovato. Servono le quote automatiche: aggiungi la chiave ODDS_API_KEY su GitHub (vedi README).',
     controllo: 'Nessuna differenza rilevante nelle prossime partite.',
   }[tab];
-  return header('Chicche', 'Le occasioni del giorno') + `<div style="padding:0 16px"><div class="seg">${[['valore', 'Valore'], ['errori', 'Errori quota'], ['controllo', 'Controlla']].map(([k, l]) =>
-    `<button class="${tab === k ? 'on' : ''}" data-act="chTab" data-v="${k}">${l} (${C[k].length})</button>`).join('')}</div></div></header>
-    <main><p class="note">${intro}</p>${rows || `<div class="empty">${empty}</div>`}${updatedLine()}</main>`;
+  return header('Chicche', 'Le occasioni del giorno') + `<div style="padding:0 16px"><div class="seg">${[['giorno', 'Oggi'], ['valore', 'Valore'], ['errori', 'Errori'], ['controllo', 'Controlla']].map(([k, l]) =>
+    `<button class="${tab === k ? 'on' : ''}" data-act="chTab" data-v="${k}">${l}${k === 'giorno' ? '' : ' (' + C[k].length + ')'}</button>`).join('')}</div></div></header>
+    <main><p class="note">${intro}</p>${D ? viewDaily(D) : rows || `<div class="empty">${empty}</div>`}${updatedLine()}</main>`;
 }
 
 // ------------------------------------------------------------------ vista: giocatori
@@ -2123,6 +2339,28 @@ function handle(act, el) {
       const { key, t, ts, ...sel } = f;
       addToSlip({ ...sel, odds: n.odds, p: n.p, push: n.push || 0 });
       break;
+    }
+    case 'dgOdds': {
+      const c = (S.daily || [])[+el.dataset.i]; if (!c) return;
+      const x = num(el.value);
+      const q = x && x > 1 ? x : null;
+      if (c.kind === 'p') {
+        const k = oddsKey(c.sport, c.pl, c.m);
+        const cur = S.manual[k] && Number(S.manual[k].line) === Number(c.line) ? S.manual[k] : { line: c.line, over: null, under: null };
+        cur[c.side] = q; S.manual[k] = cur;
+      } else {
+        const k = c.sport + '|mk|' + c.g;
+        const cur = S.manual[k] || {}; cur[c.k] = q || 0; S.manual[k] = cur;
+      }
+      break;
+    }
+    case 'dgAdd': { const c = (S.daily || [])[+el.dataset.i]; if (c && c.q) addToSlip(dgSel(c, c.q)); break; }
+    case 'dgMulti': {
+      const D = buildDaily();
+      const miss = D.multi.filter(c => !c.q);
+      if (miss.length) { toast('Scrivi prima la quota di ' + miss.map(c => c.title).join(', ')); return; }
+      for (const c of D.multi) addToSlip(dgSel(c, c.q));
+      S.slipMode = 'multi'; break;
     }
     case 'addChicca': {
       const c = (S.chicche || [])[+el.dataset.i]; if (!c) return;
