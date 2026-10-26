@@ -415,3 +415,28 @@ def parse_h2h(summ):
     except (AttributeError, TypeError):
         return []
     return out
+
+
+def team_schedule(path, team_id, season):
+    """Partite concluse di una squadra in una stagione (calendario ESPN della squadra in quella competizione).
+    Serve per i precedenti degli anni passati. Riga: [data, id casa, id ospite, gol casa, gol ospite]."""
+    data, _ = get_json(BASE + path + "/teams/%s/schedule" % team_id, params={"season": season})
+    if not data:
+        return None
+    out = []
+    for e in data.get("events") or []:
+        try:
+            c = (e.get("competitions") or [{}])[0]
+            if ((c.get("status") or e.get("status") or {}).get("type") or {}).get("state") != "post":
+                continue
+            cs = c.get("competitors") or []
+            h = next(x for x in cs if x.get("homeAway") == "home")
+            a = next(x for x in cs if x.get("homeAway") == "away")
+            sc = lambda x: x.get("score", {}).get("value") if isinstance(x.get("score"), dict) else x.get("score")
+            hs, as_ = sc(h), sc(a)
+            if hs is None or as_ is None:
+                continue
+            out.append([str(e.get("date") or c.get("date") or "")[:10], str(h.get("id")), str(a.get("id")), int(float(hs)), int(float(as_))])
+        except (StopIteration, TypeError, ValueError, AttributeError):
+            continue
+    return out

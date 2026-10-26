@@ -322,6 +322,34 @@ def main():
                     "h2h": espn.parse_h2h(summ) if sport == "soccer" else [],
                 }
 
+    # ---------------- Precedenti degli anni passati (calcio): calendari ESPN delle squadre, salvati una volta sola
+    if cfg["soccer"].get("enabled"):
+        hc = store.read_json("h2h_cache.json", {})
+        budget = int(cfg["soccer"].get("h2h_requests_per_run", 150))
+        n_seasons = int(cfg["soccer"].get("h2h_seasons", 5))
+        cur = today.year if today.month >= 7 else today.year - 1
+        soc_up = sorted([u for u in upcoming if u[0] == "soccer"], key=lambda u: u[3]["date"])
+        for sport, path, league, ev in soc_up:
+            hid, aid = ev["home"]["id"], ev["away"]["id"]
+            rows = []
+            for tid in (hid, aid):
+                for y in range(cur, cur - n_seasons - 1, -1):
+                    key = "%s|%s|%d" % (path, tid, y)
+                    # stagioni passate: per sempre; stagione in corso: la copre gia' l'archivio
+                    if key not in hc and y < cur and budget > 0:
+                        sched = espn.team_schedule(path, tid, y)
+                        budget -= 1
+                        if sched is not None:
+                            hc[key] = sched
+                    rows += hc.get(key, [])
+            ex = [{"date": r[0], "hid": r[1], "aid": r[2], "hs": r[3], "as": r[4], "comp": league}
+                  for r in rows if {r[1], r[2]} == {hid, aid}]
+            if ex:
+                pv = previews.setdefault(ev["id"], {})
+                pv["h2h"] = (pv.get("h2h") or []) + ex
+        store.write_json("h2h_cache.json", hc, compact=True)
+        log("Precedenti: %d calendari di squadra in archivio" % len(hc))
+
     # ---------------- Quote automatiche
     odds_cache = state.get("odds_cache", {})
     if not args.no_odds and cfg.get("odds", {}).get("enabled") and odds.key():

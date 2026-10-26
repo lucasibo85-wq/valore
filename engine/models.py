@@ -505,7 +505,7 @@ def dd_count(row):
 
 
 # ------------------------------------------------------------ precedenti (H2H)
-def h2h_rows(matches, sport, hid, aid, extra=None, limit=10):
+def h2h_rows(matches, sport, hid, aid, extra=None, limit=12):
     """Scontri diretti dal punto di vista della squadra di casa di oggi.
     Riga: [data, 'h'/'a' (dove giocava la squadra di casa di oggi), gol/punti casa-oggi, gol/punti ospite-oggi,
            1T casa, 1T ospite, angoli casa, angoli ospite, cartellini casa, cartellini ospite, competizione]."""
