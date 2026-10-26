@@ -37,6 +37,8 @@ const PROP_SPORTS = ['nba', 'soccer', 'nfl', 'mlb'];
 const DEFAULT_MK = { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', mlb: 'h' };
 const BERNOULLI = new Set(['card', 'td', 'hr', 'goa', 'dd', 'tdd']);
 const DD_NEED = { dd: 2, tdd: 3 };
+/** In Italia sui giocatori si gioca solo l'over (o il Si'): l'under c'e' solo per la NFL */
+const noUnder = sport => sport !== 'nfl';
 const mkInfo = (sport, m) => MARKETS[sport].find(x => x[0] === m) || MARKETS[sport][0];
 const mkLabel = (sport, m) => mkInfo(sport, m)[1];
 // posizione delle statistiche base negli array "l" (ultime partite) e nei risultati
@@ -275,7 +277,7 @@ function evaluate(sport, p, m) {
   const res = { mu, r, ...L, pOver: pr.over, pUnder: pr.under, push: pr.push, side: null, ev: null, odds: null, p: null };
   const cands = [];
   if (L.over) cands.push(['over', pr.over, L.over]);
-  if (L.under) cands.push(['under', pr.under, L.under]);
+  if (L.under && !noUnder(sport)) cands.push(['under', pr.under, L.under]);
   for (const [side, pp, o] of cands) {
     const e = ev(pp, o, pr.push);
     const ok = playable(pp, o);
@@ -1289,7 +1291,7 @@ function buildChicche() {
         if (auto && auto[4] != null && !out) {
           const fair = auto[4];
           for (const [side, q, fp] of [['over', auto[1], fair], ['under', auto[2], 1 - fair]]) {
-            if (!q) continue;
+            if (!q || (side === 'under' && noUnder(sp))) continue;
             const edge = q * fp - 1;
             if (edge >= 0.03 && q <= ST().maxO) err.push({ score: edge, title: p.n, sub: `${label} · ${sideTxt(m, side, auto[0])} @${q.toFixed(2)} (${esc(auto[3] || '')}) · giusta ${(1 / fp).toFixed(2)}`, ctx, href,
               badge: `<span class="badge val">${sgn(edge)} sul mercato</span>`, sel: mkSel(side, q, side === 'over' ? e.pOver : e.pUnder) });
@@ -1298,7 +1300,7 @@ function buildChicche() {
         const a = Number((p.a30 || {})[m]);
         if (!out && !BERNOULLI.has(m) && a >= 2 && e.mu > 0) {
           const d = e.mu / a - 1;
-          if (Math.abs(d) >= 0.15) {
+          if (Math.abs(d) >= 0.15 && !(d < 0 && noUnder(sp))) {
             const of = (p.of || {})[m] || 1;
             chk.push({ score: Math.abs(d), title: p.n, sub: `${label} · proiezione ${e.mu.toFixed(1)} vs media ${a.toFixed(1)} (${d > 0 ? '+' : '−'}${Math.abs(d * 100).toFixed(0)}%) · avversario ${of >= 1 ? '+' : '−'}${Math.abs((of - 1) * 100).toFixed(0)}%`,
               ctx, href, badge: `<span class="badge ${d > 0 ? 'val' : 'warn'}">${d > 0 ? 'Più alta' : 'Più bassa'}</span>`, sel: null, fsel: mkSel(d > 0 ? 'over' : 'under', null, null) });
@@ -1411,7 +1413,7 @@ function buildDaily() {
         }
         const [mu, r] = p.mk[m];
         const pr = probs(line, mu, r);
-        for (const side of ['over', 'under']) {
+        for (const side of noUnder(sp) ? ['over'] : ['over', 'under']) {
           const ps = side === 'over' ? pr.over : pr.under;
           if (ps < 0.55) continue;
           const ht = hitTable(sp, p, m, line, side);
@@ -1738,9 +1740,9 @@ function viewPlayer(sport, id, g, mq) {
         <div class="grid3">
           <div class="field"><label for="in-line">Linea</label><input id="in-line" inputmode="decimal" data-act="odds" data-k="line" value="${e.line}"></div>
           <div class="field"><label for="in-over">Quota ${bern ? 'Sì' : 'Over'}</label><input id="in-over" inputmode="decimal" data-act="odds" data-k="over" value="${e.over || ''}" placeholder="—"></div>
-          <div class="field"><label for="in-under">Quota ${bern ? 'No' : 'Under'}</label><input id="in-under" inputmode="decimal" data-act="odds" data-k="under" value="${e.under || ''}" placeholder="—"></div>
+          ${noUnder(sport) ? '<div></div>' : `<div class="field"><label for="in-under">Quota ${bern ? 'No' : 'Under'}</label><input id="in-under" inputmode="decimal" data-act="odds" data-k="under" value="${e.under || ''}" placeholder="—"></div>`}
         </div>
-        <div class="grid2">${sideBox('over', bern ? 'Sì' : 'Over ' + e.line, e.pOver, e.over, evO, kO)}${sideBox('under', bern ? 'No' : 'Under ' + e.line, e.pUnder, e.under, evU, kU)}</div>
+        <div class="grid2">${sideBox('over', bern ? 'Sì' : 'Over ' + e.line, e.pOver, e.over, evO, kO)}${noUnder(sport) ? '' : sideBox('under', bern ? 'No' : 'Under ' + e.line, e.pUnder, e.under, evU, kU)}</div>
         ${S.manual[key] ? '<button class="chip" data-act="clearOdds" style="align-self:flex-start">Ripristina quote automatiche</button>' : ''}
       </div>
       <div class="card" style="gap:8px"><h2>Sopra ${e.line}: frequenza</h2>
