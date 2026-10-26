@@ -340,13 +340,20 @@ function evalSoccerKey(k, s) {
   if (k.startsWith('mg')) { const [lo, hi] = k.slice(2).split('-').map(Number); return h + a >= lo && h + a <= hi; }
   if (/^[ha][ou]\d+$/.test(k)) { const v = k[0] === 'h' ? h : a; return (v > line(k.slice(2))) === (k[1] === 'o'); }
   if (k.startsWith('cs')) { const [x, y] = k.slice(2).split('-').map(Number); return h === x && a === y; }
-  if (/^(1t|2t|tpg)/.test(k)) {
+  if (/^(1t|2t|tpg|bt)/.test(k)) {
     if (!hasHT) return null;
     const h2 = h - h1, a2 = a - a1;
+    if (k.startsWith('bt')) {
+      const t1 = h1 + a1, t2 = h2 + a2;
+      return { btgg: h1 > 0 && a1 > 0 && h2 > 0 && a2 > 0, btgo: (h1 > 0 && a1 > 0) || (h2 > 0 && a2 > 0), bto05: t1 > 0 && t2 > 0,
+        bto15: t1 > 1 && t2 > 1, btu15: t1 < 2 && t2 < 2, 'bt1o05+2o15': t1 > 0 && t2 > 1, bth: h1 > 0 && h2 > 0, bta: a1 > 0 && a2 > 0 }[k] ?? null;
+    }
     if (k.startsWith('tpg')) { const g1 = h1 + a1, g2 = h2 + a2; return { tpg1: g1 > g2, tpg2: g2 > g1, tpgx: g1 === g2 }[k]; }
     const [x, y] = k.startsWith('1t') ? [h1, a1] : [h2, a2];
     const r = k.slice(2);
     if (r === '1') return x > y; if (r === 'x') return x === y; if (r === '2') return x < y; if (r === 'gg') return x > 0 && y > 0;
+    if (r === 'ng') return !(x > 0 && y > 0); if (r === '1x') return x >= y; if (r === 'x2') return x <= y; if (r === '12') return x !== y;
+    if (/^[ha][ou]\d+$/.test(r)) { const v = r[0] === 'h' ? x : y; return (v > line(r.slice(2))) === (r[1] === 'o'); }
     if (/^[ou]\d+$/.test(r)) return (x + y > line(r.slice(1))) === (r[0] === 'o');
     return null;
   }
@@ -1003,7 +1010,7 @@ function tmOdds(m) {
   for (const [k, v] of Object.entries(man)) if (v) out[k] = v; else delete out[k];
   return out;
 }
-const TM_GROUPS = ['Principali', 'Multigol', 'Squadre', 'Combo', '1° tempo', '2° tempo', "Calci d'angolo", 'Cartellini', 'Risultato esatto'];
+const TM_GROUPS = ['Principali', 'Multigol', 'Squadre', 'Combo', '1° tempo', '2° tempo', 'Entrambi i tempi', "Calci d'angolo", 'Cartellini', 'Risultato esatto'];
 const tmGroupOf = g => (['Esito finale', 'Gol / No gol', 'Under / Over'].includes(g) ? 'Principali' : g.startsWith('Gol ') ? 'Squadre' : g);
 function viewMatch(id) {
   const m = (S.data.soccer.matches || []).find(x => x.id === id);
