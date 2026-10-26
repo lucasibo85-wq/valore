@@ -375,7 +375,13 @@ def soccer_markets(lh, la, f1=0.445, corners=None, cards=None, rho=-0.05):
         k = "%02d" % int(n * 10)
         po = _sum(M1, lambda i, j: i + j > n)
         add("1to" + k, g, "1° tempo over %.1f" % n, po); add("1tu" + k, g, "1° tempo under %.1f" % n, 1 - po)
-    add("1tgg", g, "1° tempo: Goal", _sum(M1, lambda i, j: i > 0 and j > 0))
+    add("1t1x", g, "1° tempo: 1X", a1 + ax); add("1tx2", g, "1° tempo: X2", ax + a2); add("1t12", g, "1° tempo: 12", a1 + a2)
+    gg1 = _sum(M1, lambda i, j: i > 0 and j > 0)
+    add("1tgg", g, "1° tempo: Goal", gg1); add("1tng", g, "1° tempo: No goal", 1 - gg1)
+    h1 = _sum(M1, lambda i, j: i > 0)
+    a1s = _sum(M1, lambda i, j: j > 0)
+    add("1tho05", g, "1° tempo: segna la casa", h1); add("1thu05", g, "1° tempo: casa non segna", 1 - h1)
+    add("1tao05", g, "1° tempo: segna l'ospite", a1s); add("1tau05", g, "1° tempo: ospite non segna", 1 - a1s)
     g = "2° tempo"
     b1, bx, b2 = _sum(M2, lambda i, j: i > j), _sum(M2, lambda i, j: i == j), _sum(M2, lambda i, j: i < j)
     add("2t1", g, "2° tempo: 1", b1); add("2tx", g, "2° tempo: X", bx); add("2t2", g, "2° tempo: 2", b2)
@@ -383,6 +389,11 @@ def soccer_markets(lh, la, f1=0.445, corners=None, cards=None, rho=-0.05):
         k = "%02d" % int(n * 10)
         po = _sum(M2, lambda i, j: i + j > n)
         add("2to" + k, g, "2° tempo over %.1f" % n, po); add("2tu" + k, g, "2° tempo under %.1f" % n, 1 - po)
+    gg2 = _sum(M2, lambda i, j: i > 0 and j > 0)
+    add("2tgg", g, "2° tempo: Goal", gg2); add("2tng", g, "2° tempo: No goal", 1 - gg2)
+    h2 = _sum(M2, lambda i, j: i > 0)
+    a2s = _sum(M2, lambda i, j: j > 0)
+    add("2tho05", g, "2° tempo: segna la casa", h2); add("2tao05", g, "2° tempo: segna l'ospite", a2s)
     # tempo con piu' gol (1T, 2T o uguale), con i due tempi indipendenti
     t1 = [sum(M1[i][j] for i in range(len(M1)) for j in range(len(M1)) if i + j == n) for n in range(21)]
     t2 = [sum(M2[i][j] for i in range(len(M2)) for j in range(len(M2)) if i + j == n) for n in range(21)]
@@ -390,6 +401,18 @@ def soccer_markets(lh, la, f1=0.445, corners=None, cards=None, rho=-0.05):
     more2 = sum(t1[a] * t2[b] for a in range(21) for b in range(21) if a < b)
     add("tpg1", g, "Tempo con più gol: 1°", more1); add("tpg2", g, "Tempo con più gol: 2°", more2)
     add("tpgx", g, "Tempo con più gol: uguale", 1 - more1 - more2)
+    # entrambi i tempi (i due tempi trattati come indipendenti)
+    g = "Entrambi i tempi"
+    o1 = [_sum(M1, lambda i, j: i + j > n) for n in (0.5, 1.5)]
+    o2 = [_sum(M2, lambda i, j: i + j > n) for n in (0.5, 1.5)]
+    add("btgg", g, "Goal 1° tempo + Goal 2° tempo", gg1 * gg2)
+    add("btgo", g, "Goal in almeno un tempo", 1 - (1 - gg1) * (1 - gg2))
+    add("bto05", g, "Over 0.5 in entrambi i tempi", o1[0] * o2[0])
+    add("bto15", g, "Over 1.5 in entrambi i tempi", o1[1] * o2[1])
+    add("btu15", g, "Under 1.5 in entrambi i tempi", (1 - o1[1]) * (1 - o2[1]))
+    add("bt1o05+2o15", g, "Over 0.5 1° tempo + Over 1.5 2° tempo", o1[0] * o2[1])
+    add("bth", g, "Casa segna in entrambi i tempi", h1 * h2)
+    add("bta", g, "Ospite segna in entrambi i tempi", a1s * a2s)
     if corners:
         mu, r = corners
         g = "Calci d'angolo"

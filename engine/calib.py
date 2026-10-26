@@ -80,6 +80,13 @@ def eval_soccer_key(k, s):
             return x < y
         if r == "gg":
             return x > 0 and y > 0
+        if r == "ng":
+            return not (x > 0 and y > 0)
+        if r in ("1x", "x2", "12"):
+            return {"1x": x >= y, "x2": x <= y, "12": x != y}[r]
+        if r[:2] in ("ho", "hu", "ao", "au"):
+            v = x if r[0] == "h" else y
+            return (v > line(r[2:])) == (r[1] == "o")
         if r[:1] in ("o", "u"):
             return (x + y > line(r[1:])) == (r[0] == "o")
         return None
