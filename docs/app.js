@@ -160,10 +160,12 @@ const S = {
   manual: LS.get('manual', {}),
   favs: LS.get('favs', []),
   roiPeriod: 'all',
+  plView: LS.get('plView', 'schede'), rankDay: 'oggi', rankSort: LS.get('rankSort', 'proj'), rankT: LS.get('rankT', {}),
 };
 const save = () => {
   LS.set('sport', S.sport); LS.set('market', S.market); LS.set('bankroll', S.bankroll);
-  LS.set('kellyFrac', S.kellyFrac); LS.set('style', S.style); LS.set('slipMode', S.slipMode); LS.set('slip', S.slip); LS.set('bets', S.bets); LS.set('manual', S.manual);
+  LS.set('kellyFrac', S.kellyFrac); LS.set('style', S.style);
+  LS.set('plView', S.plView); LS.set('rankSort', S.rankSort); LS.set('rankT', S.rankT); LS.set('slipMode', S.slipMode); LS.set('slip', S.slip); LS.set('bets', S.bets); LS.set('manual', S.manual);
   LS.set('favs', S.favs);
 };
 
@@ -1596,6 +1598,83 @@ function viewChicche() {
 }
 
 // ------------------------------------------------------------------ vista: giocatori
+// ------------------------------------------------------------------ CLASSIFICA per categoria
+/* "Chi fa piu' rimbalzi stasera?": giocatori ordinati per proiezione, per probabilita' di arrivare a una soglia
+   (es. 10+ rimbalzi), per frequenza nelle ultime 10 o per media stagionale. */
+const RANK_T = {
+  nba: { pts: [10, 15, 20, 25, 30, 35], reb: [4, 6, 8, 10, 12, 15], ast: [3, 5, 7, 9, 11], fg3m: [1, 2, 3, 4, 5], blk: [1, 2, 3], stl: [1, 2, 3],
+    tov: [1, 2, 3, 4], pra: [20, 25, 30, 35, 40, 45], pr: [15, 20, 25, 30, 35], pa: [15, 20, 25, 30, 35], ra: [6, 8, 10, 12, 15], sb: [1, 2, 3, 4] },
+  soccer: { shots: [1, 2, 3, 4], sot: [1, 2, 3], fc: [1, 2, 3], fs: [1, 2, 3], ga: [1, 2] },
+};
+function rankThresholds(sport, m, rows) {
+  if (BERNOULLI.has(m)) return [];
+  const pre = (RANK_T[sport] || {})[m];
+  if (pre) return pre;
+  // altri mercati: soglie dai valori proiettati (mediana, 75° e 90° percentile)
+  const mus = rows.map(r => r.p.mk[m][0]).sort((a, b) => a - b);
+  if (!mus.length) return [1];
+  const q = f => Math.max(1, Math.ceil(mus[Math.min(mus.length - 1, Math.floor(f * mus.length))]));
+  return [...new Set([q(0.5), q(0.75), q(0.9)])].sort((a, b) => a - b);
+}
+const RANK_SORTS = [['proj', 'Proiezione'], ['prob', 'Probabilità soglia'], ['l10', 'Ultime 10'], ['avg', 'Media stagione']];
+function rankView(sport, m, plist) {
+  ensureHist();
+  const [t0, t1] = dgWindow();
+  const gT = {};
+  for (const g of gamesList(sport)) gT[g.id] = g.t;
+  let rows = plist.filter(p => p.mk[m] && !(p.st && /^(out|assente)/i.test(p.st)))
+    .filter(p => S.rankDay !== 'oggi' || (() => { const x = new Date(gT[p.g]).getTime(); return x > t0 - 3 * 3600000 && x <= t1; })())
+    .map(p => ({ p }));
+  const bern = BERNOULLI.has(m);
+  const ths = rankThresholds(sport, m, rows);
+  const key = sport + '|' + m;
+  let T = (S.rankT || {})[key];
+  if (!ths.includes(T)) T = ths[Math.floor((ths.length - 1) / 2)];
+  const off = L_OFF[sport];
+  const ss = seasonStart(sport);
+  for (const r of rows) {
+    const [mu, rr] = r.p.mk[m];
+    r.mu = mu;
+    r.prob = bern ? 1 - Math.exp(-mu) : probs(T - 0.5, mu, rr).over;
+    const hist = gamesOf(sport, r.p);
+    const v10 = hist.slice(0, 10).map(g => marketValue(sport, m, g, off));
+    r.l10 = v10.length ? [v10.filter(v => bern ? v > 0 : v >= T).length, v10.length] : null;
+    const seas = hist.filter(g => g[0] >= ss).map(g => marketValue(sport, m, g, off));
+    const base = seas.length >= 3 ? seas : hist.slice(0, 20).map(g => marketValue(sport, m, g, off));
+    r.avg = base.length ? base.reduce((a, b) => a + b, 0) / base.length : null;
+    r.t = gT[r.p.g];
+  }
+  const sk = S.rankSort || 'proj';
+  const val = r => sk === 'prob' ? r.prob : sk === 'l10' ? (r.l10 ? r.l10[0] / r.l10[1] + r.prob / 100 : -1) : sk === 'avg' ? (r.avg ?? -1) : (bern ? r.prob : r.mu);
+  rows.sort((a, b) => val(b) - val(a));
+  const shown = rows.slice(0, 60);
+  const lab = mkLabel(sport, m).toLowerCase();
+  const thHead = bern ? 'Prob.' : `${T}+`;
+  const list = shown.map((r, i) => {
+    const p = r.p;
+    const fs = { sport, g: p.g, pid: p.id, m, side: 'over', line: bern ? 0.5 : T - 0.5, label: `${p.n} ${bern ? 'Sì' : 'Over ' + (T - 0.5)} ${lab}`, ctx: `${SPORT_LABEL[sport]} · ${p.t} vs ${p.o}` };
+    const col = x => x >= 0.6 ? 'var(--model)' : x <= 0.35 ? 'var(--muted)' : 'var(--text2)';
+    return `<a href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${m}" style="display:grid;grid-template-columns:22px minmax(0,1fr) 46px 46px 40px 30px;gap:6px;align-items:center;padding:9px 0;border-top:1px solid var(--line)">
+      <span class="mono tiny muted">${i + 1}</span>
+      <span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span class="b" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.n)}${p.st ? ` <span class="tiny" style="color:var(--book)">${esc(p.st)}</span>` : ''}</span>
+        <span class="tiny muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.t)} vs ${esc(p.o)} · ${esc((fmtTime(r.t).match(/\d\d:\d\d$/) || [''])[0])}${sport === 'nba' ? ' · ' + p.m.toFixed(0) + ' min' : sport === 'soccer' ? ' · tit. ' + pct(p.ps) : ''}</span></span>
+      <span class="mono small b model" style="text-align:right">${bern ? pct(r.prob) : r.mu.toFixed(1)}</span>
+      <span class="mono small b" style="text-align:right;color:${col(r.prob)}">${pct(r.prob)}</span>
+      <span class="mono tiny" style="text-align:right;color:${r.l10 ? col(r.l10[0] / r.l10[1]) : 'var(--muted)'}">${r.l10 ? r.l10[0] + '/' + r.l10[1] : '—'}</span>
+      ${favBtn(fs, 'width:30px;height:30px')}</a>`;
+  }).join('');
+  const controls = `<div class="chips">${[['oggi', 'Oggi'], ['tutte', 'Prossimi giorni']].map(([k, l]) => `<button class="chip ${(S.rankDay || 'oggi') === k ? 'on' : ''}" data-act="rankDay" data-v="${k}">${l}</button>`).join('')}</div>
+    ${ths.length ? `<div class="chips"><span class="small muted" style="align-self:center;flex-shrink:0">Soglia</span>${ths.map(t => `<button class="chip ${t === T ? 'on' : ''}" data-act="rankT" data-k="${esc(key)}" data-v="${t}">${t}+</button>`).join('')}</div>` : ''}
+    <div class="chips"><span class="small muted" style="align-self:center;flex-shrink:0">Ordina</span>${RANK_SORTS.filter(x => !(bern && x[0] === 'prob')).map(([k, l]) => `<button class="chip ${sk === k ? 'on' : ''}" data-act="rankSort" data-v="${k}">${l}</button>`).join('')}</div>`;
+  const body = rows.length ? `<div class="card" style="gap:0">
+      <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 46px 46px 40px 30px;gap:6px;padding-bottom:6px" class="tiny muted">
+        <span>#</span><span>Giocatore</span><span style="text-align:right">${bern ? 'Prob.' : 'Proiez.'}</span><span style="text-align:right">${esc(thHead)}</span><span style="text-align:right">U10</span><span></span></div>
+      ${list}</div>
+      <p class="note">${bern ? 'Probabilità del modello.' : `${esc(thHead)} = probabilità del modello di arrivare ad almeno ${T} ${esc(lab)} (cioè Over ${T - 0.5}). U10 = volte che ci è arrivato nelle ultime 10 partite.`} Il cuore salva la giocata nei Preferiti; tocca un giocatore per la scheda completa.${rows.length > 60 ? ` Mostrati i primi 60 di ${rows.length}.` : ''}</p>`
+    : `<div class="empty">Nessun giocatore ${S.rankDay === 'tutte' ? 'nei prossimi giorni' : 'nelle partite di oggi'} per ${esc(lab)}.${S.rankDay === 'tutte' ? '' : ' Prova «Prossimi giorni».'}</div>`;
+  return { controls, body };
+}
+
 function viewPlayers(q) {
   const segHtml = sportSeg(false);
   const sport = S.sport;
@@ -1613,6 +1692,16 @@ function viewPlayers(q) {
   if (S.game && !games.some(g => g[0] === S.game)) S.game = '';
   let rows = all.filter(p => (!S.game || p.g === S.game) && (!toks.length || toks.every(t => normTxt(p.n + ' ' + p.t + ' ' + p.o).includes(t))))
     .map(p => { const mm = p.mk[m] ? m : mkList(sport, p)[0][0]; return { p, mm, e: evaluate(sport, p, mm) }; });
+  const viewSeg = `<div class="seg">${[['schede', 'Schede'], ['classifica', 'Classifica']].map(([k, l]) => `<button class="${(S.plView || 'schede') === k ? 'on' : ''}" data-act="plView" data-v="${k}">${l}</button>`).join('')}</div>`;
+  if (S.plView === 'classifica' && !toks.length) {
+    const R = rankView(sport, m, all.filter(p => !S.game || p.g === S.game));
+    return header('Prop giocatori', 'Classifica per categoria', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+    ${segHtml}${viewSeg}
+    <div class="chips">${MARKETS[sport].map(([k, l]) => `<button class="chip ${k === m ? 'on' : ''}" data-act="market" data-v="${k}">${l}</button>`).join('')}</div>
+    ${R.controls}
+    <select class="sel" aria-label="Partita" data-act="game"><option value="">Tutte le partite</option>${games.map(([id, l, t]) => `<option value="${esc(id)}" ${id === S.game ? 'selected' : ''}>${esc(l)} · ${esc(fmtTime(t))}</option>`).join('')}</select></div></header>
+    <main>${R.body}${updatedLine()}</main>`;
+  }
   if (S.onlyValue) rows = rows.filter(r => r.e.ev !== null && r.e.ev > 0 && r.e.ok);
   rows.sort((a, b) => {
     if (S.sort === 'valore') {
@@ -1625,7 +1714,7 @@ function viewPlayers(q) {
   const list = shown.map(({ p, e, mm }) => playerRow(sport, p, mm, e, mm !== m)).join('') ||
     '<div class="empty">Nessun giocatore per questi filtri.</div>';
   return header('Prop giocatori', 'Statistiche giocatori', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
-    ${segHtml}
+    ${segHtml}${viewSeg}
     <div class="chips">${MARKETS[sport].map(([k, l]) => `<button class="chip ${k === m ? 'on' : ''}" data-act="market" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="row">
       <input class="search" type="search" placeholder="Cerca giocatore o squadra" aria-label="Cerca giocatore o squadra" data-act="search" value="${esc(S.search)}">
@@ -2188,6 +2277,10 @@ function handle(act, el) {
     case 'multiStake': { const x = num(el.value); S.multiStake = x !== null && x >= 0 ? x : null; break; }
     case 'chTab': S.chTab = v; break;
     case 'onlyValue': S.onlyValue = v === '1'; break;
+    case 'plView': S.plView = v; break;
+    case 'rankDay': S.rankDay = v; break;
+    case 'rankSort': S.rankSort = v; break;
+    case 'rankT': S.rankT = S.rankT || {}; S.rankT[el.dataset.k] = +v; break;
     case 'sort': S.sort = S.sort === 'valore' ? 'proiezione' : 'valore'; break;
     case 'game': S.game = el.value; if (location.hash.includes('g=')) { history.replaceState(null, '', '#/giocatori'); } break;
     case 'search': S.search = el.value; break;
