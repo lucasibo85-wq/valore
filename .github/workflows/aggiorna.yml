@@ -2,13 +2,14 @@ name: Aggiorna dati
 
 on:
   schedule:
-    - cron: "17 */3 * * *"   # ogni 3 ore (orario UTC)
+    - cron: "17 * * * *"     # ogni ora (orario UTC)
   workflow_dispatch: {}       # avvio manuale dalla scheda Actions
 
 permissions:
   contents: write
   pages: write
   id-token: write
+  actions: write
 
 concurrency:
   group: aggiorna-dati
@@ -60,6 +61,17 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+          retention-days: 1
 
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      # Dopo la pubblicazione il pacchetto del sito non serve piu': lo cancello (e con lui quelli
+      # dei giri precedenti), cosi' lo spazio "Actions storage" di GitHub resta quasi a zero.
+      - name: Libera lo spazio (elimina i pacchetti gia' pubblicati)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --paginate -q '.artifacts[].id' \
+            | xargs -r -I{} gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/{}" || true
