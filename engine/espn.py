@@ -75,6 +75,8 @@ def scoreboard(path, dates):
 
 
 def _american(v):
+    if isinstance(v, str) and v.strip().upper() in ("EVEN", "EV", "PK"):
+        v = 100
     x = _num(v, None)
     if x is None or x == 0:
         return None
@@ -87,9 +89,15 @@ def _espn_odds(comp):
         o = (comp.get("odds") or [None])[0]
         if not o:
             return None
-        h = _american((o.get("homeTeamOdds") or {}).get("moneyLine"))
-        a = _american((o.get("awayTeamOdds") or {}).get("moneyLine"))
-        d = _american((o.get("drawOdds") or {}).get("moneyLine"))
+        # da novembre 2026 ESPN mette le quote anche (o solo) in "moneyline": {"home": {"close": {"odds": "-110"}}}
+        ml = o.get("moneyline") or {}
+
+        def nested(side):
+            x = ml.get(side) or {}
+            return ((x.get("close") or {}).get("odds")) or ((x.get("open") or {}).get("odds"))
+        h = _american((o.get("homeTeamOdds") or {}).get("moneyLine")) or _american(nested("home"))
+        a = _american((o.get("awayTeamOdds") or {}).get("moneyLine")) or _american(nested("away"))
+        d = _american((o.get("drawOdds") or {}).get("moneyLine")) or _american(nested("draw"))
         if not h or not a:
             ou = _num(o.get("overUnder"), None)
             if ou is None:
