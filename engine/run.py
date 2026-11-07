@@ -868,7 +868,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                          "f1": models.first_half_share(ms, joint["f1"]),
                          "rc": models.league_dispersion(ms, "hc", "ac") or joint["rc"],
                          "rk": models.league_dispersion(ms, "hk", "ak") or joint["rk"]}
-    is_cup = lambda lg: lg.startswith("uefa.") or "cup" in lg or "coppa" in lg or lg.endswith("_qual")
+    is_cup = lambda lg: lg.startswith(("uefa.", "afc.", "conmebol.", "caf.", "concacaf.")) or "cup" in lg or "coppa" in lg or lg.endswith("_qual")
     # gol medi segnati da ogni squadra nelle ultime 10 partite (tutte le competizioni)
     goals_hist = defaultdict(list)
     for m in sorted(soc_all, key=lambda m: m["date"]):
