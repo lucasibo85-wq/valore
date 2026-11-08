@@ -55,7 +55,27 @@ function availSports(withTennis) {
 }
 const mkOf = sport => (S.market && S.market[sport]) || DEFAULT_MK[sport];
 const mkList = (sport, p) => MARKETS[sport].filter(x => !p || (p.mk && p.mk[x[0]]));
-const gamesList = sport => sport === 'soccer' ? ((S.data.soccer || {}).matches || []) : ((S.data[sport] || {}).games || []);
+const rawGames = sport => sport === 'soccer' ? ((S.data.soccer || {}).matches || []) : sport === 'tennis' ? ((S.data.tennis || {}).matches || []) : ((S.data[sport] || {}).games || []);
+/* Partite finite: tolte da elenchi, menu e proposte (restano raggiungibili da scommesse e preferiti).
+   Finita = ESPN la da' conclusa (live), oppure c'e' gia' il risultato, oppure e' passato troppo tempo dall'inizio. */
+const OVER_AFTER = { soccer: 2.6, nba: 3.2, nfl: 4.2, mlb: 4.5, tennis: 8 };
+function isOver(sport, g) {
+  const L = S.live && S.live[g.id];
+  if (L && L.st === 'post') return true;
+  if (L && L.st === 'in') return false;
+  if (S.results && S.results[sport] && S.results[sport][g.id]) return true;
+  const t = new Date(g.t).getTime();
+  return isFinite(t) && Date.now() - t > (OVER_AFTER[sport] || 4) * 3600000;
+}
+/** Memoria per i calcoli pesanti: si azzera quando cambiano dati, quote, stile o stato live, e ogni minuto */
+const MEMO = { key: '', m: new Map() };
+function memo(k, f) {
+  const key = [S.data && S.data.generated, S.ver || 0, S.liveVer || 0, S.hist ? 1 : 0, Math.floor(Date.now() / 60000)].join('|');
+  if (MEMO.key !== key) { MEMO.key = key; MEMO.m.clear(); }
+  if (!MEMO.m.has(k)) MEMO.m.set(k, f());
+  return MEMO.m.get(k);
+}
+const gamesList = sport => memo('games|' + sport, () => rawGames(sport).filter(g => !isOver(sport, g)));
 const sportCtx = (sport, p) => sport === 'soccer' ? ((S.data.leagues || {})[p.lg] || 'Calcio') : SPORT_LABEL[sport];
 /** Esposizione attesa: minuti (NBA, calcio), turni in battuta / eliminazioni (MLB) */
 function expInfo(sport, p) {
@@ -160,12 +180,16 @@ const S = {
   manual: LS.get('manual', {}),
   favs: LS.get('favs', []),
   roiPeriod: 'all',
+  gView: LS.get('gView', 'partite'), mrKey: LS.get('mrKey', {}), mrSort: LS.get('mrSort', 'prob'),
   plView: LS.get('plView', 'schede'), rankDay: 'oggi', rankSort: LS.get('rankSort', 'proj'), rankT: LS.get('rankT', {}),
 };
 const save = () => {
+  // quote o stile cambiati: i calcoli memorizzati vanno rifatti
+  const sig = S.style + '|' + JSON.stringify(S.manual);
+  if (sig !== S._sig) { S._sig = sig; S.ver = (S.ver || 0) + 1; }
   LS.set('sport', S.sport); LS.set('market', S.market); LS.set('bankroll', S.bankroll);
   LS.set('kellyFrac', S.kellyFrac); LS.set('style', S.style);
-  LS.set('plView', S.plView); LS.set('rankSort', S.rankSort); LS.set('rankT', S.rankT); LS.set('slipMode', S.slipMode); LS.set('slip', S.slip); LS.set('bets', S.bets); LS.set('manual', S.manual);
+  LS.set('plView', S.plView); LS.set('gView', S.gView); LS.set('mrKey', S.mrKey); LS.set('mrSort', S.mrSort); LS.set('rankSort', S.rankSort); LS.set('rankT', S.rankT); LS.set('slipMode', S.slipMode); LS.set('slip', S.slip); LS.set('bets', S.bets); LS.set('manual', S.manual);
   LS.set('favs', S.favs);
 };
 
@@ -177,6 +201,21 @@ const sgn = (x, d = 1) => (x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(d) 
 const eur = v => '€ ' + Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
 const initials = n => n.split(' ').map(w => w[0]).slice(0, 2).join('');
+/** Stemma: iniziali della squadra su un colore fisso ricavato dal nome */
+function teamBadge(name) {
+  const n = String(name || '?');
+  let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  const ini = n.replace(/^(FC|AC|AS|SS|US|SC|CF|CD|RC|SL|SV|VfB|VfL|1\.)\s+/i, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3).toUpperCase();
+  return `<span class="tb" style="--c:hsl(${h},48%,38%)">${esc(ini || '?')}</span>`;
+}
+/** Riquadro orario: ora grande, giorno piccolo (o il punteggio se e' in corso) */
+function kickBox(iso, id) {
+  const L = id && S.live && S.live[id];
+  if (L && L.st === 'in') return `<div class="kick" style="border-color:rgba(255,90,90,.5)"><b style="color:var(--live)">${esc(L.ten ? 'LIVE' : (L.clock || 'LIVE'))}</b><span>${L.ten ? esc(L.sc || '') : esc(L.hs) + '–' + esc(L.as)}</span></div>`;
+  const f = fmtTime(iso);
+  const hm = (f.match(/\d\d:\d\d$/) || [''])[0];
+  return `<div class="kick"><b>${esc(hm)}</b><span>${esc(f.replace(/ ?\d\d:\d\d$/, '').replace(/ [a-z]{3,}\.?$/i, ''))}</span></div>`;
+}
 const fmtTime = iso => {
   const d = new Date(iso);
   if (isNaN(d)) return '';
@@ -257,8 +296,10 @@ function viewLock() {
       <p class="note">I dati sono cifrati: senza il codice non si possono leggere.</p></div></main>`;
 }
 
-const players = sport => (S.data && S.data[sport] && S.data[sport].players) || [];
-const findPlayer = (sport, id, g) => players(sport).find(p => p.id === id && (!g || p.g === g));
+const rawPlayers = sport => (S.data && S.data[sport] && S.data[sport].players) || [];
+/** Giocatori delle partite non ancora finite */
+const players = sport => memo('players|' + sport, () => { const ok = new Set(gamesList(sport).map(g => g.id)); return rawPlayers(sport).filter(p => ok.has(p.g)); });
+const findPlayer = (sport, id, g) => rawPlayers(sport).find(p => p.id === id && (!g || p.g === g));
 const oddsKey = (sport, p, m) => sport + '|' + p.id + '|' + p.g + '|' + m;
 
 /** Linea e quote per giocatore/mercato: manuali, poi automatiche, poi linea di default */
@@ -272,7 +313,8 @@ function lineFor(sport, p, m) {
 }
 
 /** Valutazione: probabilita' modello, EV del lato migliore */
-function evaluate(sport, p, m) {
+const evaluate = (sport, p, m) => memo('ev|' + sport + '|' + p.id + '|' + p.g + '|' + m, () => evaluateRaw(sport, p, m));
+function evaluateRaw(sport, p, m) {
   const [mu, r] = p.mk[m] || [0, null];
   const L = lineFor(sport, p, m);
   const pr = probs(L.line, mu, r);
@@ -610,6 +652,7 @@ async function pollScores() {
         const v = { st: (st.type || {}).state, clock: st.displayClock, period: st.period, detail: (st.type || {}).shortDetail, hs: h.score, as: a.score };
         const old = S.live[ev.id];
         if (!old || old.hs !== v.hs || old.as !== v.as || old.clock !== v.clock || old.st !== v.st) changed = true;
+        if (changed) S.liveVer = (S.liveVer || 0) + 1;
         S.live[ev.id] = v;
       }
     } catch (e) { /* rete assente: riprova al prossimo giro */ }
@@ -641,6 +684,7 @@ function pollTennis(j) {
           w: st.completed ? (c1.winner ? String(m.id1) : c2.winner ? String(m.id2) : '') : '' };
         const old = S.live[m.id];
         if (!old || old.sc !== v.sc || old.st !== v.st) changed = true;
+        if (changed) S.liveVer = (S.liveVer || 0) + 1;
         S.live[m.id] = v;
         if (v.st === 'post' && v.w) {
           // partita finita: chiude subito le scommesse
@@ -747,7 +791,16 @@ async function liveTick() {
   }
   const busy = document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
   if (changed) pruneFavs();
-  if (changed && !busy) render({ keepHeader: true });
+  if (changed && !busy) liveRender();
+}
+/* Aggiornamento live senza scatti: se stai scorrendo la pagina aspetta che ti fermi */
+let lastScroll = 0;
+window.addEventListener('scroll', () => { lastScroll = Date.now(); }, { passive: true });
+function liveRender() {
+  if (Date.now() - lastScroll < 1500) { clearTimeout(liveRender._t); liveRender._t = setTimeout(liveRender, 1600); return; }
+  const y = window.scrollY;
+  render({ keepHeader: true });
+  if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
 }
 function startLive() {
   if (S.liveTimer) return;
@@ -848,7 +901,7 @@ function render(opts) {
     const i = document.querySelector('[data-act=gsearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
 }
-window.addEventListener('hashchange', () => { S.searchFocused = false; render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { S.searchFocused = false; S.limit = 0; render(); window.scrollTo(0, 0); });
 
 const ICON_SEARCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 const ICON_PASTE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"></rect><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"></path><path d="M9 13h6M9 17h4"></path></svg>';
@@ -876,10 +929,119 @@ function matchHit(sport, g) {
   const hay = normTxt(sport === 'soccer' ? `${g.h} ${g.a} ${(S.data.leagues || {})[g.lg] || ''}` : sport === 'tennis' ? `${g.p1} ${g.p2} ${g.tn} ${g.tour}` : `${g.hn} ${g.an} ${g.h} ${g.a}`);
   return term.split(/\s+/).every(t => hay.includes(t));
 }
+// ------------------------------------------------------------------ CLASSIFICA MERCATI (partite)
+/* Un mercato (es. Over 2.5) su tutte le partite, in ordine di probabilita', con i consigli su cosa giocare. */
+const MR_SOCCER = [['o25', 'Over 2.5'], ['o15', 'Over 1.5'], ['o35', 'Over 3.5'], ['u25', 'Under 2.5'], ['u35', 'Under 3.5'],
+  ['gg', 'Goal'], ['ng', 'No goal'], ['gg+o25', 'Goal + Over 2.5'], ['1', '1'], ['X', 'X'], ['2', '2'], ['1X', '1X'], ['X2', 'X2'], ['12', '12'],
+  ['1+o15', '1 + Over 1.5'], ['2+o15', '2 + Over 1.5'], ['1to05', '1° tempo Over 0.5'], ['1to15', '1° tempo Over 1.5'], ['1tgg', '1° tempo Goal'],
+  ['2to05', '2° tempo Over 0.5'], ['2to15', '2° tempo Over 1.5'], ['bto05', 'Gol in entrambi i tempi'], ['btgg', 'Goal 1° + Goal 2° tempo'],
+  ['ho05', 'Segna la casa'], ['ao05', "Segna l'ospite"], ['ho15', 'Casa Over 1.5'], ['ao15', 'Ospite Over 1.5'],
+  ['co085', 'Angoli Over 8.5'], ['co095', 'Angoli Over 9.5'], ['co105', 'Angoli Over 10.5'], ['ko35', 'Cartellini Over 3.5'], ['ko45', 'Cartellini Over 4.5']];
+const MR_US = [['fav', 'Vince la favorita'], ['ml1', 'Vince la casa'], ['ml2', "Vince l'ospite"], ['ov', 'Over totale'], ['un', 'Under totale']];
+/** Chiave reale del mercato in una partita (NBA/NFL/MLB: la linea cambia da partita a partita) */
+function mrRow(sport, m, key) {
+  const mk = m.mk || [];
+  if (sport === 'soccer') return mk.find(x => x[0] === key) || null;
+  if (key === 'fav') { const a = mk.find(x => x[0] === 'ml1'), b = mk.find(x => x[0] === 'ml2'); return a && b ? (a[3] >= b[3] ? a : b) : null; }
+  if (key === 'ml1' || key === 'ml2') return mk.find(x => x[0] === key) || null;
+  const pre = key === 'ov' ? 'o:' : 'u:';
+  const cand = mk.filter(x => x[0].startsWith(pre));
+  if (!cand.length) return null;
+  const ou = m.odds && m.odds.ou;
+  return cand.find(x => Number(x[0].slice(2)) === Number(ou)) || cand.slice().sort((a, b) => Math.abs(a[3] - 0.5) - Math.abs(b[3] - 0.5))[0];
+}
+function mrH2H(m, k) {
+  const hh = m.hh || [];
+  let n = 0, tot = 0;
+  for (const r of hh) {
+    const y = evalSoccerKey(k, [r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]]);
+    if (y === null || y === undefined || y === 'void') continue;
+    tot++; if (y) n++;
+  }
+  return tot >= 3 ? [n, tot] : null;
+}
+function viewMarketRank(sport) {
+  const list = sport === 'soccer' ? MR_SOCCER : MR_US;
+  S.mrKey = S.mrKey || {};
+  const key = list.some(x => x[0] === S.mrKey[sport]) ? S.mrKey[sport] : list[0][0];
+  const label = list.find(x => x[0] === key)[1];
+  const day = S.mrDay || 'oggi';
+  const [t0, t1] = dgWindow();
+  const d2 = t1 + 24 * 3600000;
+  let games = gamesList(sport).filter(m => m.mk && matchHit(sport, m));
+  games = games.filter(m => { const x = new Date(m.t).getTime(); return day === 'tutte' || (day === 'oggi' ? x <= t1 : x > t1 && x <= d2); });
+  const lgs = S.data.leagues || {};
+  // media del mercato nella stessa lega (calcio) o sport: per vedere le partite "fuori dal normale"
+  const med = {};
+  for (const m of gamesList(sport)) {
+    const r = mrRow(sport, m, key); if (!r) continue;
+    (med[sport === 'soccer' ? m.lg : sport] = med[sport === 'soccer' ? m.lg : sport] || []).push(r[3]);
+  }
+  const median = a => { const b = a.slice().sort((x, y) => x - y); return b.length >= 4 ? b[Math.floor(b.length / 2)] : null; };
+  const lgCount = {};
+  for (const m of games) lgCount[m.lg] = (lgCount[m.lg] || 0) + 1;
+  if (S.mrLg && !lgCount[S.mrLg]) S.mrLg = '';
+  if (sport === 'soccer' && S.mrLg) games = games.filter(m => m.lg === S.mrLg);
+  let rows = [];
+  for (const m of games) {
+    const r = mrRow(sport, m, key); if (!r) continue;
+    const odds = tmOddsG(sport, m);
+    const q = odds[r[0]] || null;
+    const base = median(med[sport === 'soccer' ? m.lg : sport] || []);
+    const h2h = sport === 'soccer' ? mrH2H(m, r[0]) : null;
+    const e = q ? ev(r[3], q) : null;
+    const diff = base !== null ? r[3] - base : 0;
+    const okH = !h2h || h2h[0] / h2h[1] >= 0.4;
+    const good = r[3] >= 0.55 && okH && (q ? isValue(r[3], q) : diff >= 0.06 && qMin(r[3]) !== null);
+    rows.push({ m, r, q, e, base, h2h, diff, good, score: diff + (e !== null ? e : 0) + (h2h ? 0.05 * (h2h[0] / h2h[1] - 0.5) : 0) });
+  }
+  const sk = S.mrSort || 'prob';
+  rows.sort((a, b) => sk === 'diff' ? b.diff - a.diff : sk === 'ev' ? ((b.e ?? -9) - (a.e ?? -9)) || b.r[3] - a.r[3] : b.r[3] - a.r[3]);
+  const tips = rows.filter(x => x.good).sort((a, b) => b.score - a.score).slice(0, 3);
+  const title = m => sport === 'soccer' ? `${m.h} – ${m.a}` : `${m.an} @ ${m.hn}`;
+  const ctx = m => `${sport === 'soccer' ? (lgs[m.lg] || m.lg) : SPORT_LABEL[sport]} · ${fmtTime(m.t)}`;
+  const href = m => sport === 'soccer' ? `#/partita/${m.id}` : `#/gara/${sport}/${m.id}`;
+  const pickLbl = x => sport === 'soccer' ? label : x.r[2] + (x.r[1] ? '' : '');
+  const why = x => [x.base !== null ? `media ${sport === 'soccer' ? 'lega' : SPORT_LABEL[sport]} ${pct(x.base)}` : '', x.h2h ? `H2H ${x.h2h[0]}/${x.h2h[1]}` : '',
+    x.q ? `quota ${x.q.toFixed(2)} · EV ${sgn(x.e)}` : (qMin(x.r[3]) ? `conviene da ${qMin(x.r[3]).toFixed(2)}` : '')].filter(Boolean).join(' · ');
+  const tipsHtml = tips.length ? `<div class="card tips" style="gap:8px"><div class="row between"><h2>Consigli · ${esc(label)}</h2><span class="badge val">${tips.length}</span></div>
+    ${tips.map(x => `<a href="${href(x.m)}" style="display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)">
+      <span class="row between"><span class="b" style="font-size:14px">${esc(title(x.m))}</span><span class="mono b acc">${pct(x.r[3])}</span></span>
+      <span class="tiny muted">${esc(pickLbl(x))} · ${esc(why(x))}</span></a>`).join('')}
+    <p class="note">Più probabili della media${sport === 'soccer' ? ' del loro campionato' : ''}, senza precedenti contrari${tips.some(x => x.q) ? ' e con quota di valore' : ''}. Scrivi la quota del tuo bookmaker nella riga: se è sopra «conviene da», ha valore.</p></div>` : '';
+  const rowsHtml = rows.slice(0, 80).map((x, i) => {
+    const p = x.r[3];
+    const fs = { sport, g: x.m.id, pid: null, m: 'tm', side: x.r[0], line: null, label: sport === 'soccer' ? x.r[2] : `${x.r[2]} (${x.m.a} @ ${x.m.h})`, ctx: title(x.m) };
+    return `<div class="mr-row ${x.good ? 'good' : ''}">
+      <a href="${href(x.m)}" class="mr-main"><span class="mr-rank">${i + 1}</span>
+        <span class="mr-txt"><span class="b mr-title">${esc(title(x.m))}</span><span class="tiny muted mr-sub">${esc(ctx(x.m))}${sport === 'soccer' ? '' : ' · ' + esc(x.r[2])}</span>
+          <span class="tiny" style="color:var(--text2)">${esc(why(x))}</span></span>
+        <span class="mr-prob"><b class="mono">${pct(p)}</b><span class="bar"><span style="width:${(p * 100).toFixed(0)}%"></span></span><span class="tiny muted">giusta ${(1 / p).toFixed(2)}</span></span></a>
+      <div class="mr-act">${x.good ? '<span class="badge val">Consigliata</span>' : '<span></span>'}
+        <input inputmode="decimal" placeholder="quota" aria-label="Quota ${esc(label)} ${esc(title(x.m))}" data-act="tmOdds" data-sp="${sport}" data-id="${esc(x.m.id)}" data-k="${esc(x.r[0])}" value="${x.q || ''}">
+        ${favBtn(fs, 'width:38px;height:38px')}
+        <button class="iconbtn" style="width:42px;height:38px" aria-label="Aggiungi alla schedina" data-act="addTm" data-sp="${sport}" data-id="${esc(x.m.id)}" data-k="${esc(x.r[0])}" ${x.q ? '' : 'disabled'}>+</button></div></div>`;
+  }).join('');
+  const controls = `<div class="chips">${list.map(([k, l]) => `<button class="chip ${k === key ? 'on' : ''}" data-act="mrKey" data-v="${k}">${esc(l)}</button>`).join('')}</div>
+    <div class="chips">${[['oggi', 'Oggi'], ['domani', 'Domani'], ['tutte', 'Tutte']].map(([k, l]) => `<button class="chip ${day === k ? 'on' : ''}" data-act="mrDay" data-v="${k}">${l}</button>`).join('')}
+      <span class="chip-sep"></span>${[['prob', 'Probabilità'], ['diff', 'Sopra la media'], ['ev', 'Valore']].map(([k, l]) => `<button class="chip ${sk === k ? 'on' : ''}" data-act="mrSort" data-v="${k}">${l}</button>`).join('')}</div>
+    ${sport === 'soccer' && Object.keys(lgCount).length > 1 ? `<div class="chips"><button class="chip ${!S.mrLg ? 'on' : ''}" data-act="mrLg" data-v="">Tutti i campionati</button>${Object.keys(lgCount).map(k => `<button class="chip ${S.mrLg === k ? 'on' : ''}" data-act="mrLg" data-v="${esc(k)}">${esc(lgs[k] || k)} (${lgCount[k]})</button>`).join('')}</div>` : ''}`;
+  const body = rows.length ? `${tipsHtml}<div class="card" style="gap:0;padding:6px 14px">${rowsHtml}</div>${rows.length > 80 ? `<p class="note">Mostrate le prime 80 di ${rows.length}.</p>` : ''}`
+    : `<div class="empty">Nessuna partita ${day === 'oggi' ? 'oggi' : day === 'domani' ? 'domani' : ''} per questo mercato.${day !== 'tutte' ? ' Prova «Tutte».' : ''}</div>`;
+  return { controls, body };
+}
+
 function viewGames() {
   let body = '';
   let lgChips = '';
   const segHtml = sportSeg(true);
+  const gvSeg = S.sport === 'tennis' ? '' : `<div class="seg">${[['partite', 'Partite'], ['mercati', 'Classifica mercati']].map(([k, l]) => `<button class="${(S.gView || 'partite') === k ? 'on' : ''}" data-act="gView" data-v="${k}">${l}</button>`).join('')}</div>`;
+  if (S.sport !== 'tennis' && S.gView === 'mercati') {
+    const R = viewMarketRank(S.sport);
+    return header('Partite', 'Classifica mercati', null, `<div class="row">${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}${gvSeg}
+      <input class="search" type="search" placeholder="Cerca una partita o una squadra" aria-label="Cerca una partita o una squadra" data-act="msearch" value="${esc(S.msearch || '')}">
+      ${R.controls}</div></header><main>${R.body}${updatedLine()}</main>`;
+  }
   if (S.sport === 'tennis') {
     // niente partite gia' finite: tolte quando ESPN le da' concluse, o 8 ore dopo l'orario se non risultano in corso
     const nowT = Date.now();
@@ -917,13 +1079,15 @@ function viewGames() {
       const d = g.mk ? Object.fromEntries(g.mk.map(x => [x[0], x[3]])) : null;
       const tv = tmValue(sp, g);
       body += `<a class="card" href="#/gara/${sp}/${esc(g.id)}">
-        <div class="row between small muted"><span>${SPORT_LABEL[sp]} · ${esc(fmtTime(g.t))}${!liveTag(g.id) && g.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${liveTag(g.id)}${tv.best !== null && tv.best > 0 ? `<span class="badge val">VALORE ${sgn(tv.best)}</span>` : vals.length ? `<span class="badge val">${vals.length} prop con valore</span>` : ''}</div>
-        <div class="row between"><span style="font-size:16px;font-weight:600">${esc(g.an)} @ ${esc(g.hn)}</span>${g.mh ? `<span class="mono small muted" style="white-space:nowrap">${g.ma.toFixed(sp === 'mlb' ? 1 : 0)}–${g.mh.toFixed(sp === 'mlb' ? 1 : 0)}</span>` : ''}</div>
+        <div class="row between small muted"><span>${SPORT_LABEL[sp]}${!liveTag(g.id) && g.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${liveTag(g.id)}${tv.best !== null && tv.best > 0 ? `<span class="badge val">VALORE ${sgn(tv.best)}</span>` : vals.length ? `<span class="badge val">${vals.length} prop con valore</span>` : ''}</div>
+        <div class="row" style="gap:12px">${kickBox(g.t, g.id)}<div class="teams" style="flex:1;min-width:0">
+          <div class="team">${teamBadge(g.an)}<span class="nm">${esc(g.an)}</span></div><div class="team">${teamBadge(g.hn)}<span class="nm">${esc(g.hn)}</span></div></div>
+          ${g.mh ? `<div class="mono small muted" style="text-align:right;line-height:1.9">${g.ma.toFixed(sp === 'mlb' ? 1 : 0)}<br>${g.mh.toFixed(sp === 'mlb' ? 1 : 0)}</div>` : ''}</div>
         ${d ? `<div class="grid2">${[[g.an, d.ml2, 'ml2'], [g.hn, d.ml1, 'ml1']].map(([n, p, k]) => `<div class="cell"><div class="row between tiny muted"><span>${esc(n)}</span><span>${tmOddsG(sp, g)[k] ? tmOddsG(sp, g)[k].toFixed(2) : ''}</span></div><div class="bar"><div style="width:${(p * 100).toFixed(0)}%;background:var(--model)"></div></div><span class="tiny model b">Modello ${pct(p)}</span></div>`).join('')}</div>` : ''}
         ${ml}<div class="small muted">${ps.length} giocatori analizzati · tocca per mercati e prop</div></a>`;
     }
   } else {
-    const all = (S.data.soccer.matches || []).slice().sort((a, b) => a.t.localeCompare(b.t));
+    const all = gamesList('soccer').slice().sort((a, b) => a.t.localeCompare(b.t));
     const leagues = S.data.leagues || {};
     const counts = {};
     for (const m of all) counts[m.lg] = (counts[m.lg] || 0) + 1;
@@ -936,7 +1100,8 @@ function viewGames() {
     else if (!ms.length) body = '<div class="empty">Nessuna partita per questo filtro.</div>';
     // in ordine di orario, divise per giorno; su ogni partita il nome del campionato
     let lastDay = '';
-    for (const m of ms) {
+    const lim = S.limit || 40;
+    for (const m of ms.slice(0, lim)) {
       const d = new Date(m.t);
       const day = isNaN(d) ? '' : d.toDateString();
       if (day !== lastDay) {
@@ -946,8 +1111,9 @@ function viewGames() {
       }
       body += matchCard(m, leagues[m.lg] || m.lg);
     }
+    if (ms.length > lim) body += `<button class="btn ghost" data-act="more">Mostra altre partite (${ms.length - lim})</button>`;
   }
-  return header('Partite', 'Prossimi giorni', null, `<div class="row"><a class="iconbtn" href="#/stato" aria-label="Stato dati e affidabilità"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg></a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}
+  return header('Partite', 'Prossimi giorni', null, `<div class="row"><a class="iconbtn" href="#/stato" aria-label="Stato dati e affidabilità"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg></a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}${gvSeg}
     <input class="search" type="search" placeholder="Cerca una partita o una squadra" aria-label="Cerca una partita o una squadra" data-act="msearch" value="${esc(S.msearch || '')}">
     ${S.sport === 'soccer' ? lgChips : ''}
     ${S.sport === 'tennis' ? `<div class="chips"><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="${S.onlyValue ? 0 : 1}">Solo valore</button></div>${lgChips}` : ''}</div></header>
@@ -996,8 +1162,10 @@ function matchCard(m, lgName) {
         <span class="tiny model b">Modello ${pct(p)}</span></div>`;
     }).join('')}</div>`;
   return `<a class="card" href="#/partita/${esc(m.id)}">
-    <div class="row between small muted"><span>${lgName ? esc(lgName) + ' · ' : ''}${esc(fmtTime(m.t).replace(/^(Oggi|Domani) /, ''))}${!liveTag(m.id) && m.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${liveTag(m.id)}${v.best !== null ? (v.best > 0 ? `<span class="badge val">VALORE ${sgn(v.best)}</span>` : '<span class="badge no">Nessun valore</span>') : ''}</div>
-    <div class="row between"><span style="font-size:16px;font-weight:600">${esc(m.h)} – ${esc(m.a)}</span>${m.lh ? `<span class="mono small muted" style="white-space:nowrap">xG ${m.lh.toFixed(2)}–${m.la.toFixed(2)}</span>` : ''}</div>
+    <div class="row between small muted"><span>${lgName ? esc(lgName) : ''}${!liveTag(m.id) && m.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${liveTag(m.id)}${v.best !== null ? (v.best > 0 ? `<span class="badge val">VALORE ${sgn(v.best)}</span>` : '<span class="badge no">Nessun valore</span>') : ''}</div>
+    <div class="row" style="gap:12px">${kickBox(m.t, m.id)}<div class="teams" style="flex:1;min-width:0">
+      <div class="team">${teamBadge(m.h)}<span class="nm">${esc(m.h)}</span></div><div class="team">${teamBadge(m.a)}<span class="nm">${esc(m.a)}</span></div></div>
+      ${m.lh ? `<div class="mono small muted" style="text-align:right;line-height:1.9" title="Gol attesi">${m.lh.toFixed(2)}<br>${m.la.toFixed(2)}</div>` : ''}</div>
     ${cells}
     ${m.mk ? (() => { const d = Object.fromEntries(m.mk.map(x => [x[0], x[3]])); return `<div class="small muted">Over 2.5 <b class="model">${pct(d.o25)}</b> · Goal <b class="model">${pct(d.gg)}</b> · 1T over 0.5 <b class="model">${pct(d['1to05'])}</b>${m.mk_c ? ` · angoli ${m.mk_c.toFixed(1)}` : ''}</div>`; })() : ''}
     ${v.best !== null && v.side ? `<div class="small" style="color:var(--text2)">Miglior valore: ${esc(v.side)}</div>` : ''}</a>`;
@@ -1189,7 +1357,7 @@ function tmValue(sport, m) {
 function findGame(sport, id) {
   if (sport === 'soccer') return (S.data.soccer.matches || []).find(x => x.id === id);
   if (sport === 'tennis') return ((S.data.tennis || {}).matches || []).find(x => x.id === id);
-  return gamesList(sport).find(x => x.id === id);
+  return rawGames(sport).find(x => x.id === id);
 }
 function marketRows(sport, m, rows, odds) {
   return rows.map(([k, g, label, p]) => {
@@ -1273,7 +1441,8 @@ function evalTennisKey(b, R) {
 
 // ------------------------------------------------------------------ chicche
 const sideTxt = (m, side, line) => (BERNOULLI.has(m) ? (side === 'over' ? 'Sì' : 'No') : (side === 'over' ? 'Over ' : 'Under ') + line);
-function buildChicche() {
+const buildChicche = () => memo('chicche', buildChiccheRaw);
+function buildChiccheRaw() {
   const val = [], err = [], chk = [];
   for (const sp of PROP_SPORTS) {
     for (const p of players(sp)) {
@@ -1311,7 +1480,7 @@ function buildChicche() {
       }
     }
   }
-  for (const m of (S.data.soccer || {}).matches || []) {
+  for (const m of gamesList('soccer')) {
     const ctx = `${(S.data.leagues || {})[m.lg] || 'Calcio'} · ${fmtTime(m.t)}`;
     const title = `${m.h} – ${m.a}`;
     const od = tmOdds(m);
@@ -1336,7 +1505,7 @@ function buildChicche() {
     }
   }
   for (const sp of ['nba', 'nfl', 'mlb', 'tennis']) {
-    const lst = sp === 'tennis' ? ((S.data.tennis || {}).matches || []) : gamesList(sp);
+    const lst = gamesList(sp);
     for (const m of lst) {
       if (!m.mk) continue;
       const od = tmOddsG(sp, m);
@@ -1377,7 +1546,8 @@ function dgWindow() {
   const end = new Date(now); end.setDate(end.getDate() + 1); end.setHours(8, 0, 0, 0);
   return [now.getTime(), end.getTime()];
 }
-function buildDaily() {
+const buildDaily = () => memo('daily', buildDailyRaw);
+function buildDailyRaw() {
   const [t0, t1] = dgWindow();
   const inWin = t => { const x = new Date(t).getTime(); return x > t0 && x <= t1; };
   const out = [];
@@ -1450,7 +1620,7 @@ function buildDaily() {
     }
   }
   // ---------------- squadre
-  const teamSports = [['soccer', (S.data.soccer || {}).matches || []], ['nba', gamesList('nba')], ['nfl', gamesList('nfl')], ['mlb', gamesList('mlb')]];
+  const teamSports = [['soccer', gamesList('soccer')], ['nba', gamesList('nba')], ['nfl', gamesList('nfl')], ['mlb', gamesList('mlb')]];
   for (const [sp, all] of teamSports) {
     // mediana di ogni mercato nella stessa lega (calcio) o sport: per capire quando una partita e' "diversa"
     const med = {};
@@ -1710,7 +1880,8 @@ function viewPlayers(q) {
     }
     return b.e.mu - a.e.mu;
   });
-  const shown = rows.slice(0, 120);
+  const lim = S.limit || 40;
+  const shown = rows.slice(0, lim);
   const list = shown.map(({ p, e, mm }) => playerRow(sport, p, mm, e, mm !== m)).join('') ||
     '<div class="empty">Nessun giocatore per questi filtri.</div>';
   return header('Prop giocatori', 'Statistiche giocatori', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
@@ -1724,7 +1895,7 @@ function viewPlayers(q) {
       <button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="${S.onlyValue ? 0 : 1}">Solo valore</button>
       <button class="chip" data-act="sort">${S.sort === 'valore' ? 'Ordina: valore' : 'Ordina: proiezione'}</button>
     </div></div></header>
-    <main>${list}${rows.length > 120 ? `<p class="note">Mostrati 120 di ${rows.length}: usa i filtri.</p>` : ''}
+    <main>${list}${rows.length > lim ? `<button class="btn ghost" data-act="more">Mostra altri giocatori (${rows.length - lim})</button>` : ''}
     <p class="note">Senza quote la linea mostrata è quella più vicina alla proiezione. Inserisci linea e quota del tuo bookmaker nella scheda del giocatore per vedere il valore.</p>${updatedLine()}</main>`;
 }
 function playerRow(sport, p, m, e, showMk) {
@@ -1870,7 +2041,8 @@ const seasonStart = sport => {
 const oppKey = p => p.oa || p.o;
 function gamesOf(sport, p) { return (S.hist && S.hist[sport] && S.hist[sport][p.id]) || p.l; }
 /** Frazioni sopra la linea su ultime 5/10/20 e stagione */
-function hitTable(sport, p, m, line, side) {
+const hitTable = (sport, p, m, line, side) => memo('ht|' + sport + '|' + p.id + '|' + p.g + '|' + m + '|' + line + '|' + side, () => hitTableRaw(sport, p, m, line, side));
+function hitTableRaw(sport, p, m, line, side) {
   const rows = gamesOf(sport, p), off = L_OFF[sport];
   const ok = g => { const v = marketValue(sport, m, g, off); return side === 'under' ? v < line : v > line; };
   const ss = seasonStart(sport);
@@ -1906,7 +2078,7 @@ function viewSearch() {
   if (term.length >= 2) {
     const saved = S.msearch; S.msearch = term;
     for (const sp of ['soccer', 'nba', 'nfl', 'mlb', 'tennis']) {
-      const lst = sp === 'tennis' ? ((S.data.tennis || {}).matches || []) : gamesList(sp);
+      const lst = gamesList(sp);
       for (const g of lst) if (matchHit(sp, g)) games.push({ sp, g });
     }
     S.msearch = saved;
@@ -2271,13 +2443,19 @@ function currentPlayer() {
 function handle(act, el) {
   const v = el.dataset.v;
   switch (act) {
-    case 'sport': S.sport = v; S.game = ''; if (location.hash.includes('g=')) location.hash = '#/giocatori'; break;
-    case 'market': S.market[S.sport] = v; break;
+    case 'sport': S.sport = v; S.game = ''; S.limit = 0; if (location.hash.includes('g=')) location.hash = '#/giocatori'; break;
+    case 'market': S.market[S.sport] = v; S.limit = 0; break;
     case 'slipMode': S.slipMode = v; break;
     case 'multiStake': { const x = num(el.value); S.multiStake = x !== null && x >= 0 ? x : null; break; }
     case 'chTab': S.chTab = v; break;
     case 'onlyValue': S.onlyValue = v === '1'; break;
     case 'plView': S.plView = v; break;
+    case 'gView': S.gView = v; break;
+    case 'more': { S.limit = (S.limit || 40) + 40; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
+    case 'mrKey': S.mrKey = S.mrKey || {}; S.mrKey[S.sport] = v; break;
+    case 'mrDay': S.mrDay = v; break;
+    case 'mrSort': S.mrSort = v; break;
+    case 'mrLg': S.mrLg = v; break;
     case 'rankDay': S.rankDay = v; break;
     case 'rankSort': S.rankSort = v; break;
     case 'rankT': S.rankT = S.rankT || {}; S.rankT[el.dataset.k] = +v; break;
@@ -2328,7 +2506,7 @@ function handle(act, el) {
       break;
     }
     case 'mGroup': S.mGroup = v; break;
-    case 'lgFilter': S.lgFilter = v; break;
+    case 'lgFilter': S.lgFilter = v; S.limit = 0; break;
     case 'tnFilter': S.tnFilter = v; break;
     case 'msearch': S.msearch = el.value; break;
     case 'codeIn': return;
