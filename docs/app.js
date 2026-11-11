@@ -179,7 +179,7 @@ const S = {
   bets: LS.get('bets', []),
   manual: LS.get('manual', {}),
   favs: LS.get('favs', []),
-  roiPeriod: 'all',
+  roiPeriod: 'all', plan: LS.get('plan', null), bkTab: 'piano',
   gView: LS.get('gView', 'partite'), mrKey: LS.get('mrKey', {}), mrSort: LS.get('mrSort', 'prob'),
   plView: LS.get('plView', 'schede'), rankDay: 'oggi', rankSort: LS.get('rankSort', 'proj'), rankT: LS.get('rankT', {}),
 };
@@ -190,7 +190,7 @@ const save = () => {
   LS.set('sport', S.sport); LS.set('market', S.market); LS.set('bankroll', S.bankroll);
   LS.set('kellyFrac', S.kellyFrac); LS.set('style', S.style);
   LS.set('plView', S.plView); LS.set('gView', S.gView); LS.set('mrKey', S.mrKey); LS.set('mrSort', S.mrSort); LS.set('rankSort', S.rankSort); LS.set('rankT', S.rankT); LS.set('slipMode', S.slipMode); LS.set('slip', S.slip); LS.set('bets', S.bets); LS.set('manual', S.manual);
-  LS.set('favs', S.favs);
+  LS.set('favs', S.favs); LS.set('plan', S.plan);
 };
 
 // ------------------------------------------------------------------ utilita'
@@ -353,6 +353,7 @@ function addToSlip(sel) {
   save(); updateBadge(); toast('Aggiunta alla schedina');
 }
 function suggestedStake(sel) {
+  if (planOn()) return spotStake(sel.spot || 'normale');
   const f = kelly(sel.p, sel.odds, sel.push || 0) * S.kellyFrac;
   // EV sopra il 15%: quasi sempre un dato mancante (infortunio, minuti, linea sbagliata) -> massimo 1%
   const cap = !playable(sel.p, sel.odds) ? 0.005 : ev(sel.p, sel.odds, sel.push || 0) > 0.15 ? 0.01 : 0.05;
@@ -436,7 +437,7 @@ function settleBets() {
   if (!S.results) return;
   let changed = false;
   for (const b of S.bets) {
-    if (b.status !== 'pending') continue;
+    if (b.status !== 'pending' || b.type === 'manual') continue;
     if (b.type === 'multi') {
       for (const l of b.legs) if (!l.status || l.status === 'pending') l.status = legOutcome(l) || 'pending';
       if (b.legs.some(l => l.status === 'lost')) { setOutcome(b, 'lost'); changed = true; }
@@ -452,10 +453,11 @@ function settleBets() {
   }
   if (changed) save();
 }
-function setOutcome(b, outcome) {
+function setOutcome(b, outcome, cash) {
   b.status = outcome;
   const o = b.oddsEff || b.odds;
-  b.profit = outcome === 'won' ? b.stake * (o - 1) : outcome === 'lost' ? -b.stake : 0;
+  if (outcome === 'cashout') b.cash = Math.round(cash * 100) / 100;
+  b.profit = outcome === 'won' ? b.stake * (o - 1) : outcome === 'lost' ? -b.stake : outcome === 'cashout' ? b.cash - b.stake : 0;
   b.settled = new Date().toISOString();
 }
 function updateBadge() {
@@ -2272,7 +2274,9 @@ function viewSlip() {
       <div class="grid3"><div class="kv"><span>Modello</span><span class="model">${pct(s.p, 1)}</span></div>
         <div class="kv"><span>EV</span><span class="${e > 0 ? 'acc' : 'book'}">${sgn(e)}</span></div>
         <div class="field"><label for="st-${i}">Puntata €</label><input id="st-${i}" inputmode="decimal" data-act="stake" data-i="${i}" value="${stake.toFixed(2)}"></div></div>
-      <span class="tiny muted">${sug > 0 ? 'Suggerita (Kelly): ' + eur(sug) : 'Valore atteso negativo: il modello suggerisce di non giocarla.'}</span></div>`;
+      ${planOn() ? `<div class="seg tall">${Object.entries(SPOTS).map(([k, sp]) => `<button class="${(s.spot || 'normale') === k ? 'on' : ''}" data-act="slipSpot" data-i="${i}" data-v="${k}">${sp.label}<small>${eur(spotStake(k))}</small></button>`).join('')}</div>`
+        : `<span class="tiny muted">${sug > 0 ? 'Suggerita (Kelly): ' + eur(sug) : 'Valore atteso negativo: il modello suggerisce di non giocarla.'}</span>`}
+      ${e <= 0 ? '<span class="tiny" style="color:var(--book)">Valore atteso negativo secondo il modello.</span>' : ''}</div>`;
   }).join('');
   return header('Schedina', items.length + (items.length === 1 ? ' selezione' : ' selezioni')) + slipModeSeg() + `</header><main>
     ${bankrollCard()}
@@ -2282,6 +2286,7 @@ function viewSlip() {
       <div class="row between"><span class="muted">Esposizione sul bankroll</span><span class="mono b">${S.bankroll ? pct(total / S.bankroll, 1) : '—'}</span></div>
       <div class="row between"><span class="muted">Guadagno atteso (EV)</span><span class="mono b ${evTot >= 0 ? 'acc' : 'book'}">${evTot >= 0 ? '+' : '−'}${eur(Math.abs(evTot))}</span></div>
       <p class="note">Puntate singole: ogni selezione è una scommessa separata.</p></div>
+      ${warnBox((() => { const w = []; let st = 0; items.forEach((s, i) => { st = s.stake != null ? s.stake : suggestedStake(s); ruleWarnings(st, todayStr(), i + 1).forEach(x => { if (!w.includes(x)) w.push(x); }); }); return w; })())}
       <button class="btn" data-act="register">Registra le scommesse</button>
       <button class="btn ghost" data-act="clearSlip">Svuota schedina</button>` : ''}
     ${slipWarn()}
@@ -2300,6 +2305,9 @@ function styleSeg() {
     <p class="note">${st.label}: quote fino a ${st.maxO.toFixed(2)}, probabilità almeno ${pct(st.minP)}; modello ${pct(st.w)} e quota del bookmaker ${pct(1 - st.w)} nel calcolo di EV e puntata. Le giocate fuori da questi limiti restano visibili ma segnate «rischiosa» e non entrano nelle Chicche.</p></div>`;
 }
 function bankrollCard() {
+  if (planOn()) return `<div class="card"><div class="row between"><span class="muted small">Bankroll (dal piano)</span><span class="mono b">${eur(bankrollNow())}</span></div>
+    <div class="row between"><span class="muted small">Unità</span><span class="mono b acc">${eur(unitNow())}</span></div>
+    <p class="note">La puntata segue il tipo di spot del tuo piano. Lo cambi nella pagina Bankroll.</p>${styleSeg()}</div>`;
   return `<div class="card"><div class="row between"><label class="muted small" for="bankroll">Bankroll €</label>
       <input id="bankroll" class="search mono" style="max-width:150px;text-align:right;font-weight:700" inputmode="decimal" data-act="bankroll" value="${S.bankroll}"></div>
       <div style="display:flex;flex-direction:column;gap:8px"><span class="small muted">Frazione di Kelly</span>
@@ -2334,75 +2342,265 @@ function viewSlipMulti() {
   </main>`;
 }
 // ------------------------------------------------------------------ vista: ROI
-function viewRoi() {
-  const now = Date.now();
-  const days = { d30: 30, d90: 90, all: 1e5 }[S.roiPeriod];
-  const inPeriod = b => (now - new Date(b.ts).getTime()) / 864e5 <= days;
-  const bets = S.bets.filter(inPeriod);
-  const settled = bets.filter(b => b.status !== 'pending').sort((a, b) => (a.settled || a.ts).localeCompare(b.settled || b.ts));
-  const graded = settled.filter(b => b.status !== 'void');
-  const staked = graded.reduce((a, b) => a + b.stake, 0);
-  const profit = settled.reduce((a, b) => a + (b.profit || 0), 0);
-  const won = graded.filter(b => b.status === 'won').length;
-  const evSum = graded.reduce((a, b) => a + b.stake * ev(b.p, b.odds), 0);
-  const avgOdds = graded.length ? graded.reduce((a, b) => a + b.odds, 0) / graded.length : 0;
-  // curva
-  let cum = 0; const pts = [0];
-  for (const b of settled) { cum += b.profit || 0; pts.push(cum); }
-  const lo = Math.min(...pts), hi = Math.max(...pts), span = (hi - lo) || 1;
-  const W = 326, H = 120;
-  const poly = pts.map((v, i) => `${(i / Math.max(1, pts.length - 1) * W).toFixed(1)},${(H - 6 - (v - lo) / span * (H - 12)).toFixed(1)}`).join(' ');
-  const zeroY = (H - 6 - (0 - lo) / span * (H - 12)).toFixed(1);
-  // per mercato
-  const byM = {};
-  for (const b of graded) {
-    const k = b.type === 'multi' ? 'Multiple' : (SPORT_LABEL[b.sport] || b.sport) + ' · ' + (b.pid ? mkLabel(b.sport, b.m) : (b.sport === 'tennis' ? 'Vincente' : '1X2'));
-    const d = byM[k] = byM[k] || { n: 0, st: 0, pr: 0 };
-    d.n++; d.st += b.stake; d.pr += b.profit || 0;
-  }
-  const mrows = Object.entries(byM).sort((a, b) => b[1].n - a[1].n).map(([k, d]) => {
-    const r = d.st ? d.pr / d.st : 0;
-    const w = Math.min(50, Math.abs(r) / 0.2 * 50);
-    return `<div style="display:grid;grid-template-columns:130px 1fr 56px;align-items:center;gap:8px">
-      <div style="display:flex;flex-direction:column"><span style="font-size:13px">${esc(k)}</span><span class="tiny muted">${d.n} scommesse</span></div>
-      <div style="position:relative;height:10px;background:var(--line);border-radius:5px"><div style="position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--muted)"></div>
-      <div style="position:absolute;top:0;bottom:0;border-radius:5px;width:${w}%;${r >= 0 ? 'left:50%;background:var(--model)' : 'right:50%;background:var(--book)'}"></div></div>
-      <span class="mono small b" style="text-align:right;color:${r >= 0 ? 'var(--model)' : 'var(--book)'}">${sgn(r)}</span></div>`;
-  }).join('');
-  const pending = S.bets.filter(b => b.status === 'pending');
-  const lbl = { won: 'Vinta', lost: 'Persa', void: 'Annullata', pending: 'In attesa' };
-  const list = S.bets.slice().sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 40).map(b => {
-    const i = S.bets.indexOf(b);
-    const res = b.status === 'pending' ? `<span class="small muted">In attesa</span>`
-      : `<span class="mono b" style="color:${b.status === 'won' ? 'var(--accent)' : b.status === 'lost' ? 'var(--book)' : 'var(--muted)'}">${b.status === 'void' ? 'Annullata' : (b.profit >= 0 ? '+' : '−') + eur(Math.abs(b.profit))}</span>`;
-    return `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)">
-      <div class="row between"><span class="b" style="font-size:13px">${esc(b.label)}</span>${res}</div>
-      <div class="row between"><span class="tiny muted">${b.type === 'multi' ? '' : esc(b.ctx) + ' · '}@${b.odds.toFixed(2)} · ${eur(b.stake)}${b.actual != null ? ' · risultato ' + b.actual : ''}</span></div>
-      ${b.status === 'pending' && b.type !== 'multi' ? liveProgress(b) : ''}
-      ${b.type === 'multi' ? `<div style="display:flex;flex-direction:column;gap:2px">${b.legs.map(l => `<span class="tiny" style="color:${l.status === 'won' ? 'var(--accent)' : l.status === 'lost' ? 'var(--book)' : 'var(--muted)'}">${l.status === 'won' ? '✓' : l.status === 'lost' ? '✗' : l.status === 'void' ? '–' : '·'} ${esc(l.label)} @${l.odds.toFixed(2)}${l.actual != null ? ' (' + l.actual + ')' : ''}</span>${b.status === 'pending' && (!l.status || l.status === 'pending') ? liveProgress(l) : ''}`).join('')}</div>` : ''}
-      ${b.status === 'pending' ? `<div class="row wrap">${['won', 'lost', 'void'].map(o => `<button class="chip" data-act="settle" data-i="${i}" data-v="${o}">${lbl[o]}</button>`).join('')}<button class="chip" data-act="delBet" data-i="${i}">Elimina</button></div>` : ''}</div>`;
-  }).join('');
-  return header('ROI', 'Registro scommesse') + `<div style="padding:0 16px"><div class="seg">${[['d30', '30 giorni'], ['d90', '90 giorni'], ['all', 'Tutto']].map(([k, l]) =>
-    `<button class="${S.roiPeriod === k ? 'on' : ''}" data-act="period" data-v="${k}">${l}</button>`).join('')}</div></div></header><main>
-    <div class="card"><div class="row between" style="align-items:flex-end">
-      <div class="kv"><span>ROI (profitto / puntato)</span><span class="acc" style="font-size:34px">${staked ? sgn(profit / staked) : '—'}</span></div>
-      <div class="kv" style="align-items:flex-end"><span>Profitto</span><span style="font-size:18px">${profit >= 0 ? '+' : '−'}${eur(Math.abs(profit))}</span></div></div>
-      <svg class="curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Andamento del profitto">
-        <line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="#3A4552" stroke-dasharray="4 4"></line>
-        <polyline points="${poly}" fill="none" stroke="#C8F25A" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline></svg>
-    </div>
-    <div class="grid3">${[['Scommesse', String(graded.length)], ['Puntato', eur(staked)], ['Vinte', graded.length ? pct(won / graded.length, 1) : '—'],
-      ['Quota media', avgOdds ? avgOdds.toFixed(2) : '—'], ['EV atteso', (evSum >= 0 ? '+' : '−') + eur(Math.abs(evSum))], ['In attesa', String(pending.length)]]
-      .map(([k, v]) => `<div class="card" style="padding:12px;gap:2px"><span class="tiny muted">${k}</span><span class="mono b">${v}</span></div>`).join('')}</div>
-    ${mrows ? `<div class="card"><h2>ROI per mercato</h2>${mrows}</div>` : ''}
-    <div class="card"><h2>Scommesse</h2>${list || '<p class="note">Ancora nessuna scommessa registrata.</p>'}
-      <p class="note">Le scommesse sui giocatori si chiudono da sole quando arriva il tabellino. Se il giocatore non scende in campo la scommessa risulta annullata.</p></div>
-    <a class="btn ghost" href="#/stato">Stato dati e affidabilità del modello</a>
-    ${S.locked ? '<button class="btn ghost" data-act="logout">Esci (dimentica il codice)</button>' : ''}
-    <div class="card"><h2>Backup</h2><p class="note">Il registro è salvato su questo dispositivo. Esporta un file di backup per spostarlo su un altro telefono o PC.</p>
-      <div class="row"><button class="btn ghost small" data-act="export">Esporta</button><label class="btn ghost small" style="cursor:pointer">Importa<input type="file" accept="application/json" data-act="import" hidden></label></div></div>
-  </main>`;
+// ------------------------------------------------------------------ BANKROLL: piano, registro, statistiche
+/* Piano: budget iniziale, unita' = 2% del bankroll (ricalcolata ogni 14 giorni), puntata per tipo di spot.
+   Regole: max perdita giornaliera 6% del bankroll, max 3 giocate al giorno, max 1,5 unita' a giocata.
+   Tutto e' salvato sul dispositivo (localStorage) e nel backup Esporta/Importa. */
+const SPOTS = { debole: { label: 'Debole', u: 0.5 }, normale: { label: 'Normale', u: 1 }, forte: { label: 'Forte', u: 1.5 } };
+const PLAN_DEF = { unitPct: 0.02, lossPct: 0.06, maxBets: 3, maxUnits: 1.5, recalcDays: 14 };
+const BK_SPORTS = ['NBA', 'NFL', 'NCAA', 'NHL', 'MLB', 'Calcio', 'Tennis', 'Altro'];
+const BK_MARKETS = ['Punti', 'Rimbalzi', 'Assist', 'P+R+A', 'Triple', 'Yard ricevute', 'Yard corse', 'Yard passate', 'Ricezioni', 'Touchdown',
+  'Tiri', 'Tiri in porta', 'Gol', 'Cartellino', 'Tiri in porta (NHL)', 'Punti (NHL)', 'Valide', 'Strikeout', 'Over/Under partita', 'Vincente', 'Handicap', 'Goal/No goal'];
+const r2 = x => Math.round(x * 100) / 100;
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const dayOf = b => b.day || (() => { const d = new Date(b.ts); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+const fmtDay = d => { const x = new Date(d + 'T12:00'); return isNaN(x) ? d : x.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }); };
+const planOn = () => !!(S.plan && S.plan.start > 0);
+const P = k => (S.plan && S.plan[k] != null ? S.plan[k] : PLAN_DEF[k]);
+/** Scommesse che contano per il piano (dalla data di inizio) */
+const planBets = () => S.bets.filter(b => !planOn() || dayOf(b) >= S.plan.startDate);
+function bankrollNow() {
+  if (!planOn()) return S.bankroll;
+  return r2(S.plan.start + planBets().filter(b => b.status !== 'pending').reduce((a, b) => a + (b.profit || 0), 0));
 }
+const unitNow = () => planOn() ? S.plan.unit : r2(S.bankroll * PLAN_DEF.unitPct);
+const spotStake = spot => r2(unitNow() * (SPOTS[spot] || SPOTS.normale).u);
+/** Ricalcolo dell'unita' ogni 14 giorni (o a mano): 2% del bankroll di quel momento */
+function recalcUnit(force) {
+  if (!planOn()) return false;
+  const days = (new Date(todayStr()) - new Date(S.plan.unitDate)) / 864e5;
+  if (!force && days < P('recalcDays')) return false;
+  const br = bankrollNow();
+  S.plan.unit = r2(br * P('unitPct'));
+  S.plan.unitDate = todayStr();
+  (S.plan.hist = S.plan.hist || []).push({ d: todayStr(), br, u: S.plan.unit });
+  S.bankroll = br;
+  return true;
+}
+/** Situazione di un giorno: giocate, profitto chiuso, puntate ancora aperte */
+function dayStatus(day) {
+  const list = planBets().filter(b => dayOf(b) === day);
+  const closed = list.filter(b => b.status !== 'pending');
+  const pl = closed.reduce((a, b) => a + (b.profit || 0), 0);
+  const open = list.filter(b => b.status === 'pending').reduce((a, b) => a + b.stake, 0);
+  const brStart = bankrollNow() - (day === todayStr() ? pl : 0);
+  return { n: list.length, pl: r2(pl), open: r2(open), limit: r2(brStart * P('lossPct')) };
+}
+/** Avvisi delle regole per una nuova giocata (stake) nel giorno indicato */
+function ruleWarnings(stake, day, extra) {
+  if (!planOn()) return [];
+  const w = [];
+  const ds = dayStatus(day || todayStr());
+  const n = ds.n + (extra || 1);
+  if (n > P('maxBets')) w.push(`Superi il massimo di ${P('maxBets')} giocate al giorno (questa sarebbe la ${n}ª).`);
+  const maxSt = r2(unitNow() * P('maxUnits'));
+  if (stake > maxSt + 0.004) w.push(`Puntata sopra ${String(P('maxUnits')).replace('.', ',')} unità (massimo ${eur(maxSt)}).`);
+  if (-ds.pl >= ds.limit) w.push(`Limite di perdita giornaliero raggiunto (${eur(-ds.pl)} su ${eur(ds.limit)}): stop per oggi.`);
+  else if (-ds.pl + ds.open + stake > ds.limit) w.push(`Se perdi questa e le giocate aperte superi il limite di perdita giornaliero (${eur(ds.limit)}).`);
+  return w;
+}
+const warnBox = ws => ws.length ? `<div class="warnbox" style="border-color:var(--book);color:var(--book);flex-direction:column;gap:4px">${ws.map(x => `<span>⚠ ${esc(x)}</span>`).join('')}</div>` : '';
+
+/* ---------- campi del registro e raggruppamenti */
+const sportName = b => b.type === 'multi' ? 'Multiple' : (SPORT_LABEL[b.sport] || b.sport || '—');
+function marketName(b) {
+  if (b.market) return b.market;
+  if (b.type === 'multi') return 'Multipla';
+  if (b.pid) return mkLabel(b.sport, b.m);
+  if (b.sport === 'tennis') return 'Vincente';
+  if (b.m === 'tm') return 'Mercati partita';
+  return '1X2';
+}
+const spotName = b => (SPOTS[b.spot] || {}).label || 'Non indicato';
+const ST_LBL = { won: 'Vinta', lost: 'Persa', void: 'Rimborsata', cashout: 'Cash out', pending: 'In attesa' };
+const ST_COL = { won: 'var(--accent)', lost: 'var(--book)', void: 'var(--muted)', cashout: 'var(--model)', pending: 'var(--muted)' };
+
+/* ---------- vista */
+function viewBankroll() {
+  if (S.plan && recalcUnit(false)) { save(); toast('Unità ricalcolata: ' + eur(S.plan.unit)); }
+  const tab = S.bkTab || 'piano';
+  const seg = `<div style="padding:0 16px"><div class="seg">${[['piano', 'Piano'], ['registro', 'Registro'], ['stats', 'Statistiche']].map(([k, l]) =>
+    `<button class="${tab === k ? 'on' : ''}" data-act="bkTab" data-v="${k}">${l}</button>`).join('')}</div></div>`;
+  const body = tab === 'registro' ? bkRegister() : tab === 'stats' ? bkStats() : bkPlan();
+  return header('Bankroll', 'Piano, registro e statistiche') + seg + `</header><main>${body}</main>`;
+}
+function bkPlan() {
+  if (!planOn() || S.planEdit) {
+    const p = S.plan || {};
+    return `<div class="card"><h2>${planOn() ? 'Modifica il piano' : 'Imposta il tuo piano'}</h2>
+      <div class="grid2"><div class="field"><label for="pl-start">Budget iniziale €</label><input id="pl-start" inputmode="decimal" value="${p.start || ''}" placeholder="es. 500"></div>
+        <div class="field"><label for="pl-date">Data di inizio</label><input id="pl-date" type="date" value="${p.startDate || todayStr()}"></div></div>
+      <div class="grid2"><div class="field"><label for="pl-unit">Unità (% del bankroll)</label><input id="pl-unit" inputmode="decimal" value="${(P('unitPct') * 100)}"></div>
+        <div class="field"><label for="pl-loss">Perdita max giornaliera %</label><input id="pl-loss" inputmode="decimal" value="${(P('lossPct') * 100)}"></div></div>
+      <div class="grid2"><div class="field"><label for="pl-max">Giocate max al giorno</label><input id="pl-max" inputmode="numeric" value="${P('maxBets')}"></div>
+        <div class="field"><label for="pl-mu">Puntata max (unità)</label><input id="pl-mu" inputmode="decimal" value="${P('maxUnits')}"></div></div>
+      <p class="note">Le giocate registrate dalla data di inizio in poi aggiornano il bankroll. L'unità viene ricalcolata ogni ${PLAN_DEF.recalcDays} giorni sul bankroll di quel momento.</p>
+      <button class="btn" data-act="planSave">Salva il piano</button>
+      ${planOn() ? '<button class="btn ghost" data-act="planCancel">Annulla</button>' : ''}</div>`;
+  }
+  const br = bankrollNow(), u = unitNow(), start = S.plan.start;
+  const next = new Date(new Date(S.plan.unitDate).getTime() + P('recalcDays') * 864e5);
+  const ds = dayStatus(todayStr());
+  const lossUsed = Math.max(0, -ds.pl);
+  const lossPctUsed = ds.limit ? Math.min(1, lossUsed / ds.limit) : 0;
+  const warn = [];
+  if (ds.n >= P('maxBets')) warn.push(`Hai già fatto ${ds.n} giocate oggi: il piano ne prevede al massimo ${P('maxBets')}.`);
+  if (lossUsed >= ds.limit) warn.push(`Limite di perdita giornaliero raggiunto: stop per oggi.`);
+  const over = planBets().filter(b => dayOf(b) === todayStr() && b.stake > u * P('maxUnits') + 0.004);
+  if (over.length) warn.push(`${over.length === 1 ? 'Una giocata' : over.length + ' giocate'} di oggi sopra ${String(P('maxUnits')).replace('.', ',')} unità.`);
+  const delta = br - start;
+  return `<div class="card" style="gap:14px"><div class="row between" style="align-items:flex-end">
+      <div class="kv"><span>Bankroll attuale</span><span style="font-size:30px">${eur(br)}</span></div>
+      <div class="kv" style="align-items:flex-end"><span>Da inizio piano</span><span style="color:${delta >= 0 ? 'var(--accent)' : 'var(--book)'}">${delta >= 0 ? '+' : '−'}${eur(Math.abs(delta))} (${sgn(start ? delta / start : 0)})</span></div></div>
+      <div class="grid3"><div class="kv"><span>Budget iniziale</span><span>${eur(start)}</span></div>
+        <div class="kv"><span>Unità (${pct(P('unitPct'))})</span><span class="acc">${eur(u)}</span></div>
+        <div class="kv"><span>Prossimo ricalcolo</span><span style="font-size:13px">${next.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span></div></div></div>
+    <div class="card"><h2>Quanto puntare</h2>
+      <div class="grid3">${Object.entries(SPOTS).map(([k, s]) => `<div class="cell" style="align-items:center;text-align:center"><span class="small muted">${s.label}</span>
+        <span class="mono b" style="font-size:20px;color:${k === 'forte' ? 'var(--accent)' : 'var(--text)'}">${eur(spotStake(k))}</span><span class="tiny muted">${String(s.u).replace('.', ',')} unità</span></div>`).join('')}</div></div>
+    <div class="card"><div class="row between"><h2>Oggi</h2><span class="tiny muted">${fmtDay(todayStr())}</span></div>
+      <div class="grid2"><div class="kv"><span>Giocate</span><span style="color:${ds.n >= P('maxBets') ? 'var(--book)' : 'var(--text)'}">${ds.n} / ${P('maxBets')}</span></div>
+        <div class="kv"><span>Risultato di oggi</span><span style="color:${ds.pl >= 0 ? 'var(--accent)' : 'var(--book)'}">${ds.pl >= 0 ? '+' : '−'}${eur(Math.abs(ds.pl))}</span></div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div class="row between tiny muted"><span>Perdita del giorno</span><span>${eur(lossUsed)} di ${eur(ds.limit)} (${pct(P('lossPct'))})</span></div>
+        <div class="bar" style="height:8px"><div style="width:${(lossPctUsed * 100).toFixed(0)}%;background:${lossPctUsed >= 1 ? 'var(--live)' : lossPctUsed >= 0.66 ? 'var(--book)' : 'var(--model)'}"></div></div>
+        ${ds.open ? `<span class="tiny muted">In gioco adesso: ${eur(ds.open)}</span>` : ''}</div>
+      ${warnBox(warn)}
+      <button class="btn" data-act="bkNew">+ Registra una giocata</button></div>
+    <div class="card"><h2>Regole del piano</h2>
+      <div class="list-row" style="border-top:0"><span>Unità</span><span class="mono b">${pct(P('unitPct'))} del bankroll, ricalcolata ogni ${P('recalcDays')} giorni</span></div>
+      <div class="list-row"><span>Perdita max al giorno</span><span class="mono b">${pct(P('lossPct'))} (${eur(ds.limit)})</span></div>
+      <div class="list-row"><span>Giocate max al giorno</span><span class="mono b">${P('maxBets')}</span></div>
+      <div class="list-row"><span>Puntata max</span><span class="mono b">${String(P('maxUnits')).replace('.', ',')} unità (${eur(u * P('maxUnits'))})</span></div>
+      <div class="row wrap"><button class="chip" data-act="planEdit">Modifica il piano</button><button class="chip" data-act="unitNow">Ricalcola l'unità adesso</button></div></div>
+    ${(S.plan.hist || []).length ? `<div class="card" style="gap:0"><h2 style="padding-bottom:8px">Storico unità</h2>${S.plan.hist.slice().reverse().slice(0, 12).map(h => `<div class="list-row"><span>${fmtDay(h.d)}</span><span class="mono small">bankroll ${eur(h.br)} → unità <b>${eur(h.u)}</b></span></div>`).join('')}</div>` : ''}
+    ${bkBackup()}`;
+}
+function bkBackup() {
+  return `<div class="card"><h2>Backup</h2><p class="note">Piano e registro sono salvati su questo dispositivo e restano tra una sessione e l'altra. Esporta un file di backup ogni tanto, o per spostarli su un altro telefono o PC.</p>
+      <div class="row"><button class="btn ghost small" data-act="export">Esporta</button><label class="btn ghost small" style="cursor:pointer">Importa<input type="file" accept="application/json" data-act="import" hidden></label></div></div>
+    ${S.locked ? '<button class="btn ghost" data-act="logout">Esci (dimentica il codice)</button>' : ''}`;
+}
+/** Modulo per una giocata (nuova o da modificare) */
+function bkForm() {
+  const e = S.bkEdit != null ? S.bets[S.bkEdit] : null;
+  const f = S.bkDraft || (e ? { day: dayOf(e), sport: sportName(e), league: e.league || '', game: e.game || e.ctx || '', player: e.player || '', market: marketName(e),
+    line: e.line ?? '', side: e.side || '', odds: e.odds, stake: e.stake, book: e.book || '', reason: e.reason || '', spot: e.spot || 'normale' }
+    : { day: todayStr(), sport: 'NBA', league: '', game: '', player: '', market: '', line: '', side: 'over', odds: '', stake: spotStake('normale'), book: S.lastBook || '', reason: '', spot: 'normale' });
+  S.bkDraft = f;
+  const books = [...new Set(S.bets.map(b => b.book).filter(Boolean))];
+  const leagues = [...new Set(S.bets.map(b => b.league).filter(Boolean).concat(['NBA', 'NFL', 'NCAA Football', 'NCAA Basketball', 'NHL', 'MLB', 'Serie A', 'Premier League', 'LaLiga', 'Champions League']))];
+  const inp = (k, lab, type, extra) => `<div class="field"><label for="bf-${k}">${lab}</label><input id="bf-${k}" ${type ? `type="${type}"` : ''} ${extra || ''} data-act="bkField" data-k="${k}" value="${esc(f[k] ?? '')}"></div>`;
+  const ws = ruleWarnings(Number(f.stake) || 0, f.day, e ? 0 : 1);
+  return `<div class="card" style="gap:10px"><div class="row between"><h2>${e ? 'Modifica giocata' : 'Nuova giocata'}</h2><button class="chip" data-act="bkClose">Chiudi</button></div>
+    <div class="grid2">${inp('day', 'Data', 'date')}<div class="field"><label for="bf-sport">Sport</label><select id="bf-sport" data-act="bkField" data-k="sport">${BK_SPORTS.map(x => `<option ${x === f.sport ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
+    <div class="grid2">${inp('league', 'Campionato', '', 'list="bk-leagues" placeholder="es. NBA"')}${inp('game', 'Partita', '', 'placeholder="es. Chiefs – Bills"')}</div>
+    <div class="grid2">${inp('player', 'Giocatore', '', 'placeholder="facoltativo"')}${inp('market', 'Mercato', '', 'list="bk-markets" placeholder="es. Yard ricevute"')}</div>
+    <div class="grid3">${inp('line', 'Linea', '', 'inputmode="decimal" placeholder="es. 54.5"')}<div class="field"><label for="bf-side">Lato</label><select id="bf-side" data-act="bkField" data-k="side">${[['over', 'Over'], ['under', 'Under'], ['si', 'Sì'], ['no', 'No'], ['', '—']].map(([k, l]) => `<option value="${k}" ${k === f.side ? 'selected' : ''}>${l}</option>`).join('')}</select></div>${inp('odds', 'Quota', '', 'inputmode="decimal" placeholder="1.90"')}</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span class="small muted">Tipo di spot</span>
+      <div class="seg tall">${Object.entries(SPOTS).map(([k, s]) => `<button class="${f.spot === k ? 'on' : ''}" data-act="bkSpot" data-v="${k}">${s.label}<small>${eur(spotStake(k))}</small></button>`).join('')}</div></div>
+    <div class="grid2">${inp('stake', 'Puntata €', '', 'inputmode="decimal"')}${inp('book', 'Bookmaker', '', 'list="bk-books" placeholder="es. Snai"')}</div>
+    ${inp('reason', 'Motivo dello spot', '', 'placeholder="es. Swift: X out"')}
+    <datalist id="bk-books">${books.map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+    <datalist id="bk-leagues">${leagues.map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+    <datalist id="bk-markets">${BK_MARKETS.map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+    ${warnBox(ws)}
+    <button class="btn" data-act="bkSave">${e ? 'Salva le modifiche' : ws.length ? 'Registra comunque' : 'Registra la giocata'}</button></div>`;
+}
+function betRow(b) {
+  const i = S.bets.indexOf(b);
+  const res = b.status === 'pending' ? `<span class="small muted">In attesa</span>`
+    : `<span class="mono b" style="color:${ST_COL[b.status]}">${b.status === 'void' ? 'Rimborsata' : (b.profit >= 0 ? '+' : '−') + eur(Math.abs(b.profit))}</span>`;
+  const title = b.type === 'manual' ? [b.player, b.player ? '' : b.game].filter(Boolean).join('') + ' ' + [b.side === 'over' ? 'Over' : b.side === 'under' ? 'Under' : b.side === 'si' ? 'Sì' : b.side === 'no' ? 'No' : '', b.line, b.market].filter(x => x !== '' && x != null).join(' ') : b.label;
+  const sub = [fmtDay(dayOf(b)), sportName(b), b.league && b.league !== sportName(b) ? b.league : '', b.type === 'manual' ? (b.player ? b.game : '') : (b.type === 'multi' ? '' : b.ctx), b.book].filter(Boolean).join(' · ');
+  const settleUI = S.bkCash === i ? `<div class="row" style="gap:6px"><input inputmode="decimal" placeholder="importo incassato €" data-act="bkCashAmt" style="flex:1;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);padding:0 10px;font:700 14px var(--mono);color:var(--text)">
+      <button class="chip" data-act="bkCashOk" data-i="${i}">Conferma</button><button class="chip" data-act="bkCashNo">Annulla</button></div>`
+    : `<div class="row wrap">${b.status === 'pending' || S.bkOpen === i ? ['won', 'lost', 'void'].map(o => `<button class="chip ${b.status === o ? 'on' : ''}" data-act="settle" data-i="${i}" data-v="${o}">${ST_LBL[o]}</button>`).join('') + `<button class="chip ${b.status === 'cashout' ? 'on' : ''}" data-act="bkCash" data-i="${i}">Cash out</button>` : `<button class="chip" data-act="bkOpen" data-i="${i}">Cambia esito</button>`}
+      ${b.type !== 'multi' ? `<button class="chip" data-act="bkEdit" data-i="${i}">Modifica</button>` : ''}<button class="chip" data-act="delBet" data-i="${i}">Elimina</button></div>`;
+  return `<div style="display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)">
+    <div class="row between" style="align-items:flex-start;gap:8px"><span class="b" style="font-size:14px;min-width:0">${esc(title.trim() || b.label || 'Giocata')}</span>${res}</div>
+    <span class="tiny muted">${esc(sub)}</span>
+    <div class="row wrap" style="gap:6px"><span class="badge no">@${Number(b.odds).toFixed(2)}</span><span class="badge no">${eur(b.stake)}${planOn() && unitNow() ? ' · ' + (b.stake / unitNow()).toFixed(1).replace('.', ',') + 'u' : ''}</span>${b.spot ? `<span class="badge no">${spotName(b)}</span>` : ''}${b.status === 'cashout' ? `<span class="badge no">incassati ${eur(b.cash)}</span>` : ''}</div>
+    ${b.reason ? `<span class="small" style="color:var(--text2)">«${esc(b.reason)}»</span>` : ''}
+    ${b.status === 'pending' && b.type !== 'multi' && b.g ? liveProgress(b) : ''}
+    ${b.type === 'multi' ? `<div style="display:flex;flex-direction:column;gap:2px">${b.legs.map(l => `<span class="tiny" style="color:${ST_COL[l.status] || 'var(--muted)'}">${l.status === 'won' ? '✓' : l.status === 'lost' ? '✗' : l.status === 'void' ? '–' : '·'} ${esc(l.label)} @${l.odds.toFixed(2)}</span>`).join('')}</div>` : ''}
+    ${settleUI}</div>`;
+}
+function bkRegister() {
+  const fl = S.bkFilter || 'tutte';
+  let list = S.bets.slice().sort((a, b) => (dayOf(b) + b.ts).localeCompare(dayOf(a) + a.ts));
+  if (fl === 'aperte') list = list.filter(b => b.status === 'pending');
+  if (fl === 'chiuse') list = list.filter(b => b.status !== 'pending');
+  const lim = S.limit || 40;
+  return `${S.bkForm ? bkForm() : `<button class="btn" data-act="bkNew">+ Registra una giocata</button>`}
+    <div class="chips">${[['tutte', 'Tutte'], ['aperte', 'In attesa'], ['chiuse', 'Chiuse']].map(([k, l]) => `<button class="chip ${fl === k ? 'on' : ''}" data-act="bkFilter" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="card" style="gap:0;padding-top:4px">${list.slice(0, lim).map(betRow).join('') || '<p class="note" style="padding-top:10px">Ancora nessuna giocata.</p>'}</div>
+    ${list.length > lim ? `<button class="btn ghost" data-act="more">Mostra altre (${list.length - lim})</button>` : ''}
+    <p class="note">Le giocate fatte dall'app (Schedina) si chiudono da sole quando arriva il risultato. Quelle inserite a mano le chiudi tu: Vinta, Persa, Rimborsata o Cash out con l'importo incassato.</p>`;
+}
+function groupTable(title, rows) {
+  if (!rows.length) return '';
+  return `<div class="card" style="gap:0"><h2 style="padding-bottom:8px">${title}</h2>
+    <div style="display:grid;grid-template-columns:minmax(0,1.5fr) 34px 52px 76px 58px;gap:6px;padding-bottom:6px" class="tiny muted"><span></span><span style="text-align:right">N</span><span style="text-align:right">Vinte</span><span style="text-align:right">Profitto</span><span style="text-align:right">ROI</span></div>
+    ${rows.map(([k, d]) => `<div style="display:grid;grid-template-columns:minmax(0,1.5fr) 34px 52px 76px 58px;gap:6px;padding:8px 0;border-top:1px solid var(--line);align-items:center">
+      <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="mono small" style="text-align:right">${d.n}</span>
+      <span class="mono small" style="text-align:right">${d.g ? pct(d.w / d.g) : '—'}</span>
+      <span class="mono small b" style="text-align:right;color:${d.pr >= 0 ? 'var(--accent)' : 'var(--book)'}">${d.pr >= 0 ? '+' : '−'}${eur(Math.abs(d.pr)).replace('€ ', '€')}</span>
+      <span class="mono small b" style="text-align:right;color:${d.pr >= 0 ? 'var(--accent)' : 'var(--book)'}">${d.st ? sgn(d.pr / d.st) : '—'}</span></div>`).join('')}</div>`;
+}
+function bkStats() {
+  const days = { d7: 7, d30: 30, d90: 90, all: 1e6 }[S.roiPeriod] || 1e6;
+  const cut = new Date(Date.now() - days * 864e5);
+  const cutS = `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}-${String(cut.getDate()).padStart(2, '0')}`;
+  const all = (planOn() ? planBets() : S.bets).filter(b => days > 1e5 || dayOf(b) >= cutS);
+  const closed = all.filter(b => b.status !== 'pending');
+  const graded = closed.filter(b => b.status !== 'void');
+  const staked = graded.reduce((a, b) => a + b.stake, 0);
+  const profit = closed.reduce((a, b) => a + (b.profit || 0), 0);
+  const won = graded.filter(b => b.status === 'won' || (b.status === 'cashout' && (b.profit || 0) > 0)).length;
+  const avgOdds = graded.length ? graded.reduce((a, b) => a + Number(b.odds), 0) / graded.length : 0;
+  // andamento del bankroll, giorno per giorno
+  const base = planOn() ? S.plan.start + planBets().filter(b => b.status !== 'pending' && dayOf(b) < (days > 1e5 ? '0' : cutS)).reduce((a, b) => a + (b.profit || 0), 0) : 0;
+  const byDay = {};
+  for (const b of closed) byDay[dayOf(b)] = (byDay[dayOf(b)] || 0) + (b.profit || 0);
+  const ds = Object.keys(byDay).sort();
+  const pts = [base];
+  let cum = base;
+  for (const d of ds) { cum += byDay[d]; pts.push(cum); }
+  const lo = Math.min(...pts), hi = Math.max(...pts), span = (hi - lo) || 1;
+  const W = 326, H = 140;
+  const xy = (v, i) => [(i / Math.max(1, pts.length - 1) * W), (H - 8 - (v - lo) / span * (H - 16))];
+  const poly = pts.map((v, i) => xy(v, i).map(n => n.toFixed(1)).join(',')).join(' ');
+  const area = `0,${H} ${poly} ${W},${H}`;
+  const baseY = xy(base, 0)[1].toFixed(1);
+  const grp = f => {
+    const o = {};
+    for (const b of closed) {
+      const k = f(b); const d = o[k] = o[k] || { n: 0, g: 0, w: 0, st: 0, pr: 0 };
+      d.n++; if (b.status !== 'void') { d.g++; d.st += b.stake; if (b.status === 'won' || (b.status === 'cashout' && b.profit > 0)) d.w++; }
+      d.pr += b.profit || 0;
+    }
+    return Object.entries(o).sort((a, b) => b[1].n - a[1].n);
+  };
+  const kpi = [['Profitto', `${profit >= 0 ? '+' : '−'}${eur(Math.abs(profit))}`, profit >= 0 ? 'var(--accent)' : 'var(--book)'], ['ROI', staked ? sgn(profit / staked) : '—', profit >= 0 ? 'var(--accent)' : 'var(--book)'],
+    ['Vinte', graded.length ? `${pct(won / graded.length)} (${won}/${graded.length})` : '—'], ['Quota media', avgOdds ? avgOdds.toFixed(2) : '—'], ['Puntato', eur(staked)], ['In attesa', String(all.filter(b => b.status === 'pending').length)]];
+  return `<div class="chips">${[['d7', '7 giorni'], ['d30', '30 giorni'], ['d90', '90 giorni'], ['all', 'Tutto']].map(([k, l]) => `<button class="chip ${(S.roiPeriod || 'all') === k ? 'on' : ''}" data-act="period" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="card"><div class="row between" style="align-items:flex-end"><div class="kv"><span>${planOn() ? 'Bankroll' : 'Profitto cumulato'}</span><span style="font-size:28px">${planOn() ? eur(cum) : (profit >= 0 ? '+' : '−') + eur(Math.abs(profit))}</span></div>
+      <span class="tiny muted">${ds.length ? fmtDay(ds[0]) + ' → ' + fmtDay(ds[ds.length - 1]) : 'nessuna giocata chiusa'}</span></div>
+      <svg class="curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Andamento del bankroll" style="height:150px">
+        <defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C8F25A" stop-opacity=".28"/><stop offset="1" stop-color="#C8F25A" stop-opacity="0"/></linearGradient></defs>
+        <polygon points="${area}" fill="url(#bkg)"></polygon>
+        <line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="#33404D" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
+        <polyline points="${poly}" fill="none" stroke="#C8F25A" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline></svg>
+      <span class="tiny muted">Linea tratteggiata: ${planOn() ? 'bankroll a inizio periodo' : 'pareggio'} (${eur(base)}).</span></div>
+    <div class="grid3">${kpi.map(([k, v, c]) => `<div class="card" style="padding:12px;gap:2px"><span class="tiny muted">${k}</span><span class="mono b" style="${c ? 'color:' + c : ''}">${v}</span></div>`).join('')}</div>
+    ${groupTable('Per sport', grp(sportName))}
+    ${groupTable('Per mercato', grp(marketName))}
+    ${groupTable('Per tipo di spot', grp(spotName))}
+    ${groupTable('Per bookmaker', grp(b => b.book || 'Non indicato'))}
+    ${closed.length ? '' : '<div class="empty">Le statistiche compaiono quando chiudi le prime giocate.</div>'}`;
+}
+
+function viewRoi() { return viewBankroll(); }
 
 // ------------------------------------------------------------------ eventi
 /** Le spiegazioni lunghe restano chiuse sotto "Come funziona": la pagina resta pulita */
@@ -2568,11 +2766,11 @@ function handle(act, el) {
       for (const s of S.slip) {
         const stake = s.stake != null ? s.stake : Math.round(suggestedStake(s) * 100) / 100;
         if (stake <= 0) { keep.push(s); continue; }
-        S.bets.push({ ...s, stake, ts, status: 'pending' }); n++;
+        S.bets.push({ ...s, stake, ts, day: todayStr(), spot: s.spot || (planOn() ? 'normale' : undefined), status: 'pending' }); n++;
       }
       S.slip = keep; save(); settleBets();
       if (keep.length) { toast(n + ' registrate. ' + keep.length + ' con puntata 0: inserisci tu l\'importo.'); render(); return; }
-      toast('Scommesse registrate'); location.hash = '#/roi'; return;
+      toast('Scommesse registrate'); S.bkTab = 'registro'; location.hash = '#/roi'; return;
     }
     case 'registerMulti': {
       const mi = multiInfo(S.slip);
@@ -2581,9 +2779,9 @@ function handle(act, el) {
       if (!(stake > 0)) { toast('Inserisci la puntata della multipla'); return; }
       const ts = new Date().toISOString();
       S.bets.push({ type: 'multi', sport: 'multi', id: 'multi|' + ts, legs: S.slip.map(l => ({ ...l, status: 'pending' })),
-        odds: mi.odds, p: mi.p, stake, ts, status: 'pending', label: `Multipla (${S.slip.length})`,
+        odds: mi.odds, p: mi.p, stake, ts, day: todayStr(), status: 'pending', label: `Multipla (${S.slip.length})`,
         ctx: S.slip.map(l => l.label).join(' + ') });
-      S.slip = []; S.multiStake = null; save(); settleBets(); toast('Multipla registrata'); location.hash = '#/roi'; return;
+      S.slip = []; S.multiStake = null; save(); settleBets(); toast('Multipla registrata'); S.bkTab = 'registro'; location.hash = '#/roi'; return;
     }
     case 'tennisOdds': {
       const m = S.data.tennis.matches.find(x => x.id === el.dataset.id);
@@ -2639,11 +2837,67 @@ function handle(act, el) {
       const c = (S.chicche || [])[+el.dataset.i]; if (!c) return;
       addToSlip(c.sel); break;
     }
-    case 'settle': setOutcome(S.bets[+el.dataset.i], v); break;
+    case 'settle': setOutcome(S.bets[+el.dataset.i], v); S.bkOpen = null; break;
+    case 'bkTab': S.bkTab = v; S.limit = 0; S.bkForm = false; break;
+    case 'bkFilter': S.bkFilter = v; S.limit = 0; break;
+    case 'planEdit': S.planEdit = true; break;
+    case 'planCancel': S.planEdit = false; break;
+    case 'planSave': {
+      const g = id => num((document.getElementById(id) || {}).value);
+      const start = g('pl-start');
+      if (!(start > 0)) { toast('Inserisci il budget iniziale'); return; }
+      const old = S.plan || {};
+      const pc = (x, d) => x > 0 && x < 100 ? x / 100 : d;
+      S.plan = { ...old, start, startDate: (document.getElementById('pl-date') || {}).value || todayStr(),
+        unitPct: pc(g('pl-unit'), 0.02), lossPct: pc(g('pl-loss'), 0.06), maxBets: Math.max(1, Math.round(g('pl-max') || 3)), maxUnits: g('pl-mu') > 0 ? g('pl-mu') : 1.5 };
+      S.plan.unitDate = todayStr(); S.plan.unit = r2(bankrollNow() * S.plan.unitPct);
+      S.plan.hist = (old.hist || []).concat([{ d: todayStr(), br: bankrollNow(), u: S.plan.unit }]);
+      S.bankroll = bankrollNow(); S.planEdit = false; toast('Piano salvato'); break;
+    }
+    case 'unitNow': recalcUnit(true); toast('Unità ricalcolata: ' + eur(S.plan.unit)); break;
+    case 'bkNew': S.bkTab = 'registro'; S.bkForm = true; S.bkEdit = null; S.bkDraft = null; window.scrollTo(0, 0); break;
+    case 'bkClose': S.bkForm = false; S.bkEdit = null; S.bkDraft = null; break;
+    case 'bkEdit': S.bkTab = 'registro'; S.bkForm = true; S.bkEdit = +el.dataset.i; S.bkDraft = null; window.scrollTo(0, 0); break;
+    case 'bkField': { if (S.bkDraft) S.bkDraft[el.dataset.k] = el.value; break; }
+    case 'bkSpot': if (S.bkDraft) { S.bkDraft.spot = v; S.bkDraft.stake = spotStake(v); } break;
+    case 'bkSave': {
+      const f = S.bkDraft; if (!f) return;
+      const odds = num(f.odds), stake = num(f.stake);
+      if (!(odds > 1)) { toast('Inserisci una quota valida'); return; }
+      if (!(stake > 0)) { toast('Inserisci la puntata'); return; }
+      const line = f.line === '' ? null : num(f.line);
+      const fields = { day: f.day || todayStr(), sport: f.sport, league: f.league.trim(), game: f.game.trim(), player: f.player.trim(), market: f.market.trim(),
+        line, side: f.side, odds, stake, book: f.book.trim(), reason: f.reason.trim(), spot: f.spot };
+      const lbl = [fields.player || fields.game, { over: 'Over', under: 'Under', si: 'Sì', no: 'No' }[fields.side] || '', line ?? '', fields.market].filter(x => x !== '').join(' ');
+      if (S.bkEdit != null && S.bets[S.bkEdit]) {
+        const b = S.bets[S.bkEdit];
+        if (b.type === 'manual') Object.assign(b, fields, { label: lbl, ctx: [fields.league, fields.game].filter(Boolean).join(' · ') });
+        else Object.assign(b, { day: fields.day, odds, stake, book: fields.book, reason: fields.reason, spot: fields.spot, league: fields.league || b.league });
+        if (b.status !== 'pending') setOutcome(b, b.status, b.cash);
+        toast('Giocata aggiornata');
+      } else {
+        const ts = new Date().toISOString();
+        S.bets.push({ type: 'manual', id: 'man|' + ts, ts, status: 'pending', label: lbl, ctx: [fields.league, fields.game].filter(Boolean).join(' · '), ...fields });
+        toast('Giocata registrata');
+      }
+      if (fields.book) S.lastBook = fields.book;
+      S.bkForm = false; S.bkEdit = null; S.bkDraft = null; break;
+    }
+    case 'bkOpen': S.bkOpen = +el.dataset.i; break;
+    case 'bkCash': S.bkCash = +el.dataset.i; break;
+    case 'bkCashNo': S.bkCash = null; break;
+    case 'bkCashAmt': S.bkCashVal = num(el.value); return;
+    case 'bkCashOk': {
+      const inp = document.querySelector('[data-act=bkCashAmt]');
+      const x = num(inp ? inp.value : S.bkCashVal);
+      if (x === null || x < 0) { toast("Inserisci l'importo incassato"); return; }
+      setOutcome(S.bets[+el.dataset.i], 'cashout', x); S.bkCash = null; S.bkOpen = null; break;
+    }
+    case 'slipSpot': { const it = S.slip[+el.dataset.i]; if (it) { it.spot = v; it.stake = null; } break; }
     case 'delBet': S.bets.splice(+el.dataset.i, 1); break;
     case 'period': S.roiPeriod = v; break;
     case 'export': {
-      const blob = new Blob([JSON.stringify({ bets: S.bets, bankroll: S.bankroll, manual: S.manual, favs: S.favs }, null, 1)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ bets: S.bets, bankroll: S.bankroll, manual: S.manual, favs: S.favs, plan: S.plan }, null, 1)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'valore-backup.json'; a.click();
       return;
     }
@@ -2655,6 +2909,7 @@ function handle(act, el) {
           const ids = new Set(S.bets.map(b => b.id + b.ts));
           for (const b of d.bets || []) if (!ids.has(b.id + b.ts)) S.bets.push(b);
           if (d.bankroll) S.bankroll = d.bankroll;
+          if (d.plan && !planOn()) S.plan = d.plan;
           for (const f of d.favs || []) if (!S.favs.some(x => x.key === f.key)) S.favs.push(f);
           save(); toast('Backup importato'); render();
         } catch (e) { toast('File non valido'); }
