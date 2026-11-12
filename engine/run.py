@@ -444,20 +444,6 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     for s_, p_, l_, e_ in upcoming:
         if s_ == "soccer":
             by_league[l_].append(e_)
-    # calcio 1X2
-    if oc.get("soccer_h2h", True):
-        for lg in sorted(by_league):
-            if st["used"] + cost_region > budget:
-                break
-            rows, rem = odds.soccer_h2h(lg, region)
-            st["used"] += cost_region
-            for ev in by_league[lg]:
-                hn = teams["soccer"].get(ev["home"]["id"], {}).get("name", "")
-                an = teams["soccer"].get(ev["away"]["id"], {}).get("name", "")
-                best = _match_event(rows, hn, an)
-                if best:
-                    new["soccer"][ev["id"]] = [best["o1"], best["ox"], best["o2"], best["book"], best.get("f1"), best.get("fx"), best.get("f2"),
-                                              best["b1"], best["bx"], best["b2"], best["ref"], best["nb"]]
     # NBA prop giocatori
     markets = oc.get("nba_prop_markets", ["player_points"])
     nreg = oc.get("nba_regions", "us")
@@ -477,6 +463,24 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
             st["used"] += cost
             for r in rows:
                 new["nba"].setdefault(ev["id"], []).append([r["player"], r["m"], r["line"], r["over"], r["under"], r["book"], r.get("fair"), r.get("nb", 0)])
+    # calcio 1X2 (dopo l'NBA, con i crediti che restano): solo i campionati che The Odds API copre,
+    # prima quelli principali; il credito si conta solo quando la richiesta parte davvero
+    if oc.get("soccer_h2h", True):
+        prio = ["ita.1", "uefa.champions", "uefa.europa", "uefa.europa.conf", "eng.1", "esp.1", "ger.1", "fra.1", "ita.2"]
+        lgs = [lg for lg in by_league if lg in odds.SOCCER_KEYS]
+        lgs.sort(key=lambda lg: (prio.index(lg) if lg in prio else len(prio), lg))
+        for lg in lgs:
+            if st["used"] + cost_region > budget:
+                break
+            rows, rem = odds.soccer_h2h(lg, region)
+            st["used"] += cost_region
+            for ev in by_league[lg]:
+                hn = teams["soccer"].get(ev["home"]["id"], {}).get("name", "")
+                an = teams["soccer"].get(ev["away"]["id"], {}).get("name", "")
+                best = _match_event(rows, hn, an)
+                if best:
+                    new["soccer"][ev["id"]] = [best["o1"], best["ox"], best["o2"], best["book"], best.get("f1"), best.get("fx"), best.get("f2"),
+                                              best["b1"], best["bx"], best["b2"], best["ref"], best["nb"]]
     # calcio prop giocatori (facoltative, consumano molti crediti)
     smarkets = oc.get("soccer_prop_markets", [])
     sreg = oc.get("soccer_prop_regions", "us")
@@ -499,6 +503,12 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
                 st["used"] += cost
                 for r in rows:
                     new["soccer_props"].setdefault(ev["id"], []).append([r["player"], r["m"], r["line"], r["over"], r["under"], r["book"], r.get("fair"), r.get("nb", 0)])
+    # le quote gia' scaricate delle partite non ancora giocate restano (se oggi non sono state aggiornate)
+    up_ids = {e["id"] for s_, p_, l_, e in upcoming}
+    for k in new:
+        for gid, v in (cache.get(k) or {}).items():
+            if gid in up_ids and gid not in new[k]:
+                new[k][gid] = v
     st["last"] = now.replace(microsecond=0).isoformat()
     log("Quote: %d crediti usati oggi su %d" % (st["used"], budget))
     state["odds_usage"] = st
