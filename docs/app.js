@@ -1226,7 +1226,7 @@ function viewMatch(id) {
       <p class="note">Scrivi la quota del tuo bookmaker accanto al mercato: l'app calcola il valore (EV). Il + aggiunge la giocata alla schedina.${m.odds && m.odds[3] ? ' Quote 1X2 automatiche: ' + esc(m.odds[3]) + '.' : ''}</p></div>
     <div class="card" style="gap:0">${list}</div>
     ${h2hCard('soccer', m)}
-    <div class="card"><p class="note">Gol: modello di Poisson con correzione Dixon-Coles su attacco e difesa delle squadre${/^(uefa|afc|conmebol)\./.test(m.lg) ? ' (per le coppe internazionali un modello unico su tutti i campionati)' : ''}, più peso alle partite recenti. Primo tempo: ${pct(m.f1 || 0.445)} dei gol della lega. Angoli e cartellini: stesso metodo sulle statistiche di squadra${m.ref ? ', con l\'arbitro ' + esc(m.ref) : ''}.</p></div>
+    <div class="card"><p class="note">Gol: modello di Poisson con correzione Dixon-Coles su attacco e difesa delle squadre${/^(uefa|afc|conmebol|caf|concacaf|fifa)\./.test(m.lg) ? ' (per le coppe internazionali un modello unico su tutti i campionati)' : ''}, più peso alle partite recenti. Primo tempo: ${pct(m.f1 || 0.445)} dei gol della lega. Angoli e cartellini: stesso metodo sulle statistiche di squadra${m.ref ? ', con l\'arbitro ' + esc(m.ref) : ''}.</p></div>
     <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Statistiche giocatori (${ps.length})</a>
     ${updatedLine()}</main>`;
 }
@@ -1312,6 +1312,12 @@ function viewStato() {
       <span class="mono" style="color:${Math.abs(r.p - r.y) <= 0.04 ? 'var(--model)' : 'var(--book)'}">${pct(r.y)}</span></div>`).join('');
   const nb = D.nba || {};
   return header('Stato dati', 'Copertura e affidabilità', '#/') + `</header><main>
+    ${D.odds ? `<div class="card" style="gap:8px"><h2>Quote automatiche (The Odds API)</h2>
+      ${D.odds.key ? `<div class="grid3"><div class="kv"><span>Crediti usati oggi</span><span>${D.odds.used} / ${D.odds.budget}</span></div>
+        <div class="kv"><span>Rimasti nel mese</span><span style="color:${D.odds.remaining != null && D.odds.remaining < 30 ? 'var(--book)' : 'var(--text)'}">${D.odds.remaining ?? '—'}</span></div>
+        <div class="kv"><span>Partite NBA con quote</span><span>${D.odds.nba_with_odds} / ${D.odds.nba_games}</span></div></div>
+        <p class="note">Le prop NBA si scaricano quando mancano meno di 14 ore alla partita (prima i bookmaker non le pubblicano). Se i crediti del mese finiscono, le quote tornano al rinnovo del piano.</p>`
+        : '<p class="note">Nessuna chiave ODDS_API_KEY su GitHub: le quote dei giocatori si inseriscono a mano.</p>'}</div>` : ''}
     <div class="card"><h2>Aggiornamento</h2>
       <div class="list-row"><span>Ultimo aggiornamento</span><span class="mono">${esc(new Date(D.generated).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span></div>
       <div class="list-row"><span>Tabellini ancora da scaricare</span><span class="mono">${D.queue}</span></div>
