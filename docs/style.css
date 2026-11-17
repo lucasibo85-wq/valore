@@ -157,3 +157,39 @@ details.how p.note{margin-top:4px}
 .mr-act .badge{justify-self:start}
 .seg.tall button{height:auto;min-height:46px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.2}
 .seg.tall button small{font-family:var(--mono);font-size:11px;font-weight:600;opacity:.8}
+
+/* ---------- schede giocatore (foto, percentuali, barre) */
+:root{--good:#2BD98E;--bad2:#FF4D4D}
+.hs{position:relative;flex-shrink:0;border-radius:50%;background:radial-gradient(circle at 50% 35%,#2A3542,#18202A);overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+.hs>span{font-weight:800;color:var(--muted);font-size:14px}
+.hs img{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:100%;width:auto;object-fit:cover}
+.pcard{gap:10px;padding:12px 12px 12px}
+.pname{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pname small{font-size:11px;font-weight:600;color:var(--muted);margin-left:2px}
+.pline{font-size:15px;color:var(--text2)}
+.pk{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:48px}
+.pk span{font-size:10px;color:var(--muted);letter-spacing:.06em}
+.pk b{font-family:var(--mono);font-size:17px}
+.hc6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.hc{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;background:var(--bg2);border:1px solid var(--line)}
+.hc span{font-size:10px;color:var(--muted);font-weight:600}
+.hc b{font-family:var(--mono);font-size:13px}
+.gstrip{padding-bottom:4px}
+.gs{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:74px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);color:var(--text2);cursor:pointer;scroll-snap-align:start}
+.gs b{font-size:12px;font-weight:800;line-height:1.2}
+.gs span{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.gs.on{border-color:rgba(200,242,90,.6);background:var(--accent-soft);color:var(--accent)}
+.hero{gap:14px;content-visibility:visible}
+.hname{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.hstats .kv span:last-child{font-size:17px}
+.bars{position:relative;display:flex;align-items:flex-end;gap:4px;padding-top:4px}
+.bcol{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.bar2{width:100%;border-radius:5px 5px 2px 2px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px}
+.bar2.up{background:var(--good)}.bar2.dn{background:var(--bad2)}
+.bar2 b{font-family:var(--mono);font-size:11px;color:#0B0F14}
+.bline{position:absolute;left:0;right:0;border-top:2px solid rgba(238,242,246,.85);z-index:2;pointer-events:none}
+.bline span{position:absolute;left:0;top:-18px;font-family:var(--mono);font-size:11px;font-weight:700;background:var(--surface);padding:0 4px;border-radius:4px}
+.blab{display:flex;gap:4px}
+.blab span{flex:1;min-width:0;text-align:center;font-size:9px;line-height:1.3;color:var(--muted);overflow:hidden;white-space:nowrap}
+.wseg button{height:auto;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.2}
+.wseg button small{font-family:var(--mono);font-size:13px;font-weight:800}
