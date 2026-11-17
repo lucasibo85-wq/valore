@@ -102,6 +102,13 @@ Modifica `config.json` direttamente su GitHub (icona della matita):
 | `odds.refresh_hours` | Ogni quante ore riscaricare le quote (24 con il piano gratuito). |
 | `odds.soccer_prop_markets` | Prop dei calciatori da The Odds API (es. `player_shots_on_target`, `player_goal_scorer_anytime`). Vuoto = disattivate, perché consumano molti crediti. |
 
+### Prop giocatori gratis con PropLine (consigliato)
+1. Registrati gratis su [prop-line.com](https://prop-line.com) (nessuna carta) e copia la tua API key.
+2. Su GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Nome: `PROPLINE_API_KEY`, valore: la chiave.
+3. Il workflow `aggiorna.yml` deve contenere la riga `PROPLINE_API_KEY: ${{ secrets.PROPLINE_API_KEY }}` (c'è già nella versione dello zip).
+
+Con PropLine l'app scarica linee e quote dei giocatori di NBA (tutti i mercati), NFL (yard, ricezioni, touchdown…), MLB (valide, fuoricampo, strikeout…) e calcio (tiri, tiri in porta, marcatore, cartellino) per ogni partita, preferendo i bookmaker italiani quando ci sono (Lottomatica, William Hill, Snai, Eurobet). Le richieste partono solo quando ci sono partite in programma (quindi solo in stagione) e restano molto sotto le 1.000 gratuite al giorno. The Odds API resta per le quote 1X2 del calcio.
+
 ### Se un giorno passi a un piano quote a pagamento
 Non serve cambiare codice. Basta modificare `config.json`: alza `daily_credit_budget` (ad esempio 600 con 20.000 crediti al mese), abbassa `refresh_hours` (ad esempio 3) e aggiungi i mercati che ti interessano in `nba_prop_markets` e `soccer_prop_markets`. Le quote arrivano in automatico nelle schede dei giocatori e il valore viene calcolato da solo.
 
