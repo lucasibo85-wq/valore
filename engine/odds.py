@@ -51,7 +51,16 @@ def key():
     return os.environ.get("ODDS_API_KEY", "").strip()
 
 
+LAST = {"cost": None}
+
+
 def _remaining(headers):
+    """Crediti rimasti nel mese; salva anche il costo vero dell'ultima richiesta (x-requests-last):
+    The Odds API non fa pagare le richieste che non trovano quote."""
+    try:
+        LAST["cost"] = int(float((headers or {}).get("x-requests-last", "")))
+    except (TypeError, ValueError, AttributeError):
+        LAST["cost"] = None
     try:
         return int(float(headers.get("x-requests-remaining", "")))
     except (TypeError, ValueError):

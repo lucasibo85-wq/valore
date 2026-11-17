@@ -12,7 +12,7 @@ import sys
 import time
 from collections import defaultdict
 
-from . import calib, espn, models, net, odds, props, secure, store, teamus, tennis
+from . import calib, espn, models, net, odds, propline, props, secure, store, teamus, tennis
 
 ROOT = store.ROOT
 OUT_DIR = os.environ.get("VALORE_OUT") or os.path.join(ROOT, "docs", "data")
@@ -352,11 +352,11 @@ def main():
 
     # ---------------- Quote automatiche
     odds_cache = state.get("odds_cache", {})
-    if not args.no_odds and cfg.get("odds", {}).get("enabled") and odds.key():
+    if not args.no_odds and cfg.get("odds", {}).get("enabled") and (odds.key() or propline.key()):
         odds_cache = fetch_odds(cfg, state, today, upcoming, teams, odds_cache)
         state["odds_cache"] = odds_cache
-    elif not odds.key():
-        log("Quote automatiche: nessuna chiave ODDS_API_KEY, salto (inserimento manuale nell'app).")
+    else:
+        log("Quote automatiche: nessuna chiave (ODDS_API_KEY / PROPLINE_API_KEY), salto (inserimento manuale nell'app).")
 
     # ---------------- Salvataggio archivio
     store.write_csv("nba_logs.csv", sorted(nba_logs, key=lambda r: (r["date"], r["gid"])), store.NBA_COLS)
@@ -378,6 +378,15 @@ def main():
         app[sp] = {"games": [], "players": []}
         hist[sp] = {}
         props.build(sp, app, us_logs[sp], upcoming, previews, teams, today, hist, matches, calib_factors(state, sp))
+        # quote automatiche delle prop (PropLine), se ci sono
+        by_g = {}
+        for gid, rows_ in (odds_cache.get(sp) or {}).items():
+            for row in rows_:
+                by_g.setdefault(gid, {}).setdefault(name_key(row[0]), {})[row[1]] = row[2:]
+        for p_ in app[sp]["players"]:
+            od = by_g.get(p_["g"], {}).get(name_key(p_["n"]))
+            if od:
+                p_["odds"] = od
     if cfg.get("tennis", {}).get("enabled"):
         app["tennis"] = {"matches": []}
         tennis.build(app, t_matches, t_up)
@@ -438,7 +447,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     for gid in [g for g in evst if g not in up_ids]:
         del evst[gid]
     # si parte dalle quote gia' salvate delle partite ancora da giocare
-    new = {k: {gid: v for gid, v in (cache.get(k) or {}).items() if gid in up_ids} for k in ("soccer", "nba", "soccer_props")}
+    new = {k: {gid: v for gid, v in (cache.get(k) or {}).items() if gid in up_ids} for k in ("soccer", "nba", "soccer_props", "nfl", "mlb")}
 
     def remember_rem(rem):
         if rem is not None:
@@ -465,8 +474,64 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
         age = (now - dt.datetime.fromisoformat(rec["t"])).total_seconds() / 3600
         return age >= (3 if rec.get("n", 0) == 0 else 10)
 
-    nba_due = sorted([e for s_, p_, l_, e in upcoming if s_ == "nba" and due(e)], key=lambda e: e["date"])
-    if markets and nba_due and st["used"] + cost <= budget:
+    if propline.key():
+        # PropLine (gratis, 1.000 richieste al giorno): tutti i mercati giocatore di NBA, NFL, MLB e calcio,
+        # anche dei bookmaker italiani. Si scarica solo quando ci sono partite in programma (quindi solo in
+        # stagione): ogni partita entro 14 ore dall'inizio, aggiornata ogni 3 ore. Massimo 200 richieste per giro.
+        pst = state.setdefault("propline_events", {})
+        for gid in [g for g in pst if g not in up_ids]:
+            del pst[gid]
+
+        def pl_due(e):
+            if not (-0.25 <= hours_to(e) <= 14):
+                return False
+            rec = pst.get(e["id"])
+            return not rec or (now - dt.datetime.fromisoformat(rec["t"])).total_seconds() >= 3 * 3600
+        budget_pl = 200
+        groups = []  # (cache key, sport key PropLine, eventi, mercati, riserva, mappa, squadre)
+        for sp in ("nba", "nfl", "mlb"):
+            ev_due = [e for s_, p_, l_, e in upcoming if s_ == sp and pl_due(e)]
+            if ev_due:
+                skey, mk, core, mp = propline.SPORTS[sp]
+                groups.append((sp, skey, ev_due, mk, core, mp, teams.get(sp, {})))
+        soc_due = defaultdict(list)
+        for s_, p_, l_, e in upcoming:
+            if s_ == "soccer" and l_ in odds.SOCCER_KEYS and pl_due(e):
+                soc_due[l_].append(e)
+        if soc_due:
+            avail = set(state.get("propline_sports", {}).get("keys") or [])
+            if not avail or state.get("propline_sports", {}).get("date") != iso(today):
+                avail = set(propline.sports())
+                state["propline_sports"] = {"date": iso(today), "keys": sorted(avail)}
+            for lg, evs_ in soc_due.items():
+                sk = odds.SOCCER_KEYS[lg]
+                if avail and sk not in avail:
+                    continue
+                mk, core, mp = propline.SOCCER
+                groups.append(("soccer_props", sk, evs_, mk, core, mp, teams.get("soccer", {})))
+        for ck, skey, ev_due, mk, core, mp, tnames in groups:
+            if budget_pl <= 0:
+                break
+            pevs = propline.events(skey)
+            if not pevs:
+                continue
+            for ev in sorted(ev_due, key=lambda e: e["date"]):
+                if budget_pl <= 0:
+                    break
+                hn = tnames.get(ev["home"]["id"], {}).get("name", "") or ev["home"].get("name", "")
+                an = tnames.get(ev["away"]["id"], {}).get("name", "") or ev["away"].get("name", "")
+                match = _match_event(pevs, hn, an, 0.5 if ck != "soccer_props" else 0.34)
+                if not match:
+                    continue
+                rows = propline.event_props(match["id"], skey, mk, core, mp)
+                budget_pl -= 1
+                pst[ev["id"]] = {"t": now.replace(microsecond=0).isoformat(), "n": len(rows)}
+                if rows:
+                    new.setdefault(ck, {})[ev["id"]] = [[r["player"], r["m"], r["line"], r["over"], r["under"], r["book"], r.get("fair"), r.get("nb", 0)] for r in rows]
+                log("PropLine %s %s – %s: %d linee" % (ck, an, hn, len(rows)))
+        st["propline_used"] = propline.STATS.get("used_today")
+    nba_due = sorted([e for s_, p_, l_, e in upcoming if s_ == "nba" and due(e) and not propline.key()], key=lambda e: e["date"])
+    if odds.key() and markets and nba_due and st["used"] + cost <= budget:
         evs = odds.nba_events()
         for ev in nba_due:
             if st["used"] + cost > budget:
@@ -476,8 +541,9 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
             match = _match_event(evs, hn, an, 0.5)
             if not match:
                 continue
+            odds.LAST["cost"] = None
             rows, rem = odds.nba_props(match["id"], markets, nreg)
-            st["used"] += cost
+            st["used"] += odds.LAST["cost"] if odds.LAST.get("cost") is not None else cost
             remember_rem(rem)
             evst[ev["id"]] = {"t": now.replace(microsecond=0).isoformat(), "n": len(rows)}
             if rows:
@@ -494,7 +560,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     for s_, p_, l_, e_ in upcoming:
         if s_ == "soccer":
             by_league[l_].append(e_)
-    if oc.get("soccer_h2h", True) and not fresh:
+    if odds.key() and oc.get("soccer_h2h", True) and not fresh:
         prio = ["ita.1", "uefa.champions", "uefa.europa", "uefa.europa.conf", "eng.1", "esp.1", "ger.1", "fra.1", "ita.2"]
         lgs = [lg for lg in by_league if lg in odds.SOCCER_KEYS]
         lgs.sort(key=lambda lg: (prio.index(lg) if lg in prio else len(prio), lg))
@@ -502,8 +568,9 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
         for lg in lgs:
             if st["used"] + cost_region > budget:
                 break
+            odds.LAST["cost"] = None
             rows, rem = odds.soccer_h2h(lg, region)
-            st["used"] += cost_region
+            st["used"] += odds.LAST["cost"] if odds.LAST.get("cost") is not None else cost_region
             remember_rem(rem)
             done += 1
             for ev in by_league[lg]:
@@ -520,7 +587,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     smarkets = oc.get("soccer_prop_markets", [])
     sreg = oc.get("soccer_prop_regions", "us")
     cost = len(smarkets) * len(sreg.split(","))
-    if smarkets and not fresh:
+    if odds.key() and smarkets and not fresh:
         for lg in sorted(by_league):
             sk = odds.SOCCER_KEYS.get(lg)
             if not sk or st["used"] + cost > budget:
@@ -534,8 +601,9 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
                 match = _match_event(evs, hn, an)
                 if not match:
                     continue
+                odds.LAST["cost"] = None
                 rows, rem = odds.event_props(sk, match["id"], smarkets, sreg, odds.SOCCER_PROP_MAP)
-                st["used"] += cost
+                st["used"] += odds.LAST["cost"] if odds.LAST.get("cost") is not None else cost
                 remember_rem(rem)
                 new["soccer_props"][ev["id"]] = [[r["player"], r["m"], r["line"], r["over"], r["under"], r["book"], r.get("fair"), r.get("nb", 0)] for r in rows]
     log("Quote: %d crediti usati oggi su %d%s" % (st["used"], budget,
@@ -639,7 +707,9 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
 
     tabbr = lambda tid: teams["nba"].get(tid, {}).get("abbr", "?")
     # quanto concede ogni difesa per mercato (1 = media): serve alla classifica DvP nell'app
-    app["nba"]["dvp"] = {m: {tabbr(t): round(f.get(m, 1.0), 3) for t, f in opp_f.items() if tabbr(t) != "?"} for m in markets}
+    # solo le 30 squadre vere (con almeno 10 partite nell'archivio): fuori All-Star e squadre di esibizione
+    real_t = [t for t in opp_f if tabbr(t) != "?" and len(team_games.get(t, [])) >= 10]
+    app["nba"]["dvp"] = {m: {tabbr(t): round(opp_f[t].get(m, 1.0), 3) for t in real_t} for m in markets}
     for sport, path, league, ev in upcoming:
         if sport != "nba":
             continue
@@ -878,10 +948,12 @@ def build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today):
           "prossime": len(app.get("nba", {}).get("games", [])), "giocatori": len(app.get("nba", {}).get("players", [])),
           "con_quote_espn": sum(1 for g in app.get("nba", {}).get("games", []) if g.get("tot"))}
     ou = state.get("odds_usage", {})
-    odds_info = {"key": bool(odds.key()), "used": ou.get("used", 0), "budget": int(cfg.get("odds", {}).get("daily_credit_budget", 15)),
+    odds_info = {"key": bool(odds.key() or propline.key()), "propline": bool(propline.key()), "propline_used": ou.get("propline_used"), "used": ou.get("used", 0), "budget": int(cfg.get("odds", {}).get("daily_credit_budget", 15)),
                  "remaining": ou.get("remaining"), "date": ou.get("date"),
                  "nba_games": len(app.get("nba", {}).get("games", [])),
-                 "nba_with_odds": len({p["g"] for p in app.get("nba", {}).get("players", []) if p.get("odds")})}
+                 "nba_with_odds": len({p["g"] for p in app.get("nba", {}).get("players", []) if p.get("odds")}),
+                 "props_games": {sp: [len({p["g"] for p in app.get(sp, {}).get("players", []) if p.get("odds")}),
+                                      len(app.get(sp, {}).get("games" if sp != "soccer" else "matches", []))] for sp in ("nba", "nfl", "mlb", "soccer")}}
     return {"generated": app["generated"], "soccer": lg, "nba": nb, "queue": len(state.get("queue", [])), "odds": odds_info}
 
 
