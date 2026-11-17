@@ -1,7 +1,8 @@
 {
   "nba": {
     "enabled": true,
-    "backfill_days": 400
+    "backfill_days": 1100,
+    "history_days": 1150
   },
   "soccer": {
     "enabled": true,
