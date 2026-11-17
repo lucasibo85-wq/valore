@@ -1316,6 +1316,7 @@ function viewStato() {
       ${D.odds.key ? `<div class="grid3"><div class="kv"><span>Crediti usati oggi</span><span>${D.odds.used} / ${D.odds.budget}</span></div>
         <div class="kv"><span>Rimasti nel mese</span><span style="color:${D.odds.remaining != null && D.odds.remaining < 30 ? 'var(--book)' : 'var(--text)'}">${D.odds.remaining ?? '—'}</span></div>
         <div class="kv"><span>Partite NBA con quote</span><span>${D.odds.nba_with_odds} / ${D.odds.nba_games}</span></div></div>
+        ${D.odds.propline ? `<span class="small" style="color:var(--text2)">PropLine attivo${D.odds.propline_used != null ? ' · ' + D.odds.propline_used + ' richieste oggi su 1.000' : ''}. Partite con quote dei giocatori: ${Object.entries(D.odds.props_games || {}).filter(([, v]) => v[1]).map(([k, v]) => SPORT_LABEL[k] + ' ' + v[0] + '/' + v[1]).join(' · ') || '—'}</span>` : ''}
         <p class="note">Le prop NBA si scaricano quando mancano meno di 14 ore alla partita (prima i bookmaker non le pubblicano). Se i crediti del mese finiscono, le quote tornano al rinnovo del piano.</p>`
         : '<p class="note">Nessuna chiave ODDS_API_KEY su GitHub: le quote dei giocatori si inseriscono a mano.</p>'}</div>` : ''}
     <div class="card"><h2>Aggiornamento</h2>
@@ -2624,7 +2625,9 @@ function betRow(b) {
     : `<span class="mono b" style="color:${ST_COL[b.status]}">${b.status === 'void' ? 'Rimborsata' : (b.profit >= 0 ? '+' : '−') + eur(Math.abs(b.profit))}</span>`;
   const title = b.type === 'manual' && b.legs_txt ? b.label : b.type === 'manual' ? [b.player, b.player ? '' : b.game].filter(Boolean).join('') + ' ' + [b.side === 'over' ? 'Over' : b.side === 'under' ? 'Under' : b.side === 'si' ? 'Sì' : b.side === 'no' ? 'No' : '', b.line, b.market].filter(x => x !== '' && x != null).join(' ') : b.label;
   const sub = [fmtDay(dayOf(b)), sportName(b), b.league && b.league !== sportName(b) ? b.league : '', b.type === 'manual' ? (b.player ? b.game : '') : (b.type === 'multi' ? '' : b.ctx), b.book].filter(Boolean).join(' · ');
-  const settleUI = S.bkCash === i ? `<div class="row" style="gap:6px"><input inputmode="decimal" placeholder="importo incassato €" data-act="bkCashAmt" style="flex:1;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);padding:0 10px;font:700 14px var(--mono);color:var(--text)">
+  const settleUI = S.bkDel === i ? `<div class="warnbox" style="flex-direction:column;gap:8px;border-color:var(--bad2)"><span>Vuoi eliminare questa giocata? Non si può annullare.</span>
+      <div class="row" style="gap:8px"><button class="btn small" style="flex:1;background:var(--bad2);color:#fff" data-act="delBetOk" data-i="${i}">Sì, elimina</button><button class="btn small ghost" style="flex:1" data-act="delBetNo">No, tienila</button></div></div>`
+    : S.bkCash === i ? `<div class="row" style="gap:6px"><input inputmode="decimal" placeholder="importo incassato €" data-act="bkCashAmt" style="flex:1;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);padding:0 10px;font:700 14px var(--mono);color:var(--text)">
       <button class="chip" data-act="bkCashOk" data-i="${i}">Conferma</button><button class="chip" data-act="bkCashNo">Annulla</button></div>`
     : `<div class="row wrap">${b.status === 'pending' || S.bkOpen === i ? ['won', 'lost', 'void'].map(o => `<button class="chip ${b.status === o ? 'on' : ''}" data-act="settle" data-i="${i}" data-v="${o}">${ST_LBL[o]}</button>`).join('') + `<button class="chip ${b.status === 'cashout' ? 'on' : ''}" data-act="bkCash" data-i="${i}">Cash out</button>` : `<button class="chip" data-act="bkOpen" data-i="${i}">Cambia esito</button>`}
       ${b.type !== 'multi' ? `<button class="chip" data-act="bkEdit" data-i="${i}">Modifica</button>` : ''}<button class="chip" data-act="delBet" data-i="${i}">Elimina</button></div>`;
@@ -3218,7 +3221,9 @@ function handle(act, el) {
       setOutcome(S.bets[+el.dataset.i], 'cashout', x); S.bkCash = null; S.bkOpen = null; break;
     }
     case 'slipSpot': { const it = S.slip[+el.dataset.i]; if (it) { it.spot = v; it.stake = null; } break; }
-    case 'delBet': S.bets.splice(+el.dataset.i, 1); break;
+    case 'delBet': S.bkDel = +el.dataset.i; S.bkCash = null; break;
+    case 'delBetNo': S.bkDel = null; break;
+    case 'delBetOk': { const i = +el.dataset.i; if (S.bkDel === i && S.bets[i]) { S.bets.splice(i, 1); toast('Giocata eliminata'); } S.bkDel = null; S.bkOpen = null; break; }
     case 'period': S.roiPeriod = v; break;
     case 'export': {
       const blob = new Blob([JSON.stringify({ bets: S.bets, bankroll: S.bankroll, manual: S.manual, favs: S.favs, plan: S.plan }, null, 1)], { type: 'application/json' });
