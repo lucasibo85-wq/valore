@@ -193,3 +193,6 @@ details.how p.note{margin-top:4px}
 .blab span{flex:1;min-width:0;text-align:center;font-size:9px;line-height:1.3;color:var(--muted);overflow:hidden;white-space:nowrap}
 .wseg button{height:auto;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.2}
 .wseg button small{font-family:var(--mono);font-size:13px;font-weight:800}
+.stepper{display:grid;grid-template-columns:38px minmax(0,1fr) 38px;gap:4px;align-items:center}
+.stepper .iconbtn{width:38px;height:44px;font-size:20px;font-weight:700}
+.stepper input{text-align:center;padding:0 4px}

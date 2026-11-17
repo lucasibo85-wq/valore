@@ -2115,7 +2115,7 @@ function viewPlayer(sport, id, g, mq) {
           <div class="kv"><span>Fonte quote</span><span style="font-size:13px">${esc(e.src || '—')}</span></div>
         </div>
         <div class="grid3">
-          <div class="field"><label for="in-line">Linea</label><input id="in-line" inputmode="decimal" data-act="odds" data-k="line" value="${e.line}"></div>
+          <div class="field"><label for="in-line">Linea</label><div class="stepper"><button class="iconbtn" data-act="lineStep" data-v="-1" aria-label="Linea più bassa">−</button><input id="in-line" inputmode="decimal" data-act="odds" data-k="line" value="${e.line}"><button class="iconbtn" data-act="lineStep" data-v="1" aria-label="Linea più alta">+</button></div></div>
           <div class="field"><label for="in-over">Quota ${bern ? 'Sì' : 'Over'}</label><input id="in-over" inputmode="decimal" data-act="odds" data-k="over" value="${e.over || ''}" placeholder="—"></div>
           ${noUnder(sport) ? '<div></div>' : `<div class="field"><label for="in-under">Quota ${bern ? 'No' : 'Under'}</label><input id="in-under" inputmode="decimal" data-act="odds" data-k="under" value="${e.under || ''}" placeholder="—"></div>`}
         </div>
@@ -2996,6 +2996,19 @@ function handle(act, el) {
       if (el.dataset.k === 'line') { if (x === null || x < 0) return render(); man.line = x; }
       else man[el.dataset.k] = x && x > 1 ? x : null;
       S.manual[k] = man; break;
+    }
+    case 'lineStep': {
+      // +/- : da 9.5 a 10.5 (sempre linee .5); una linea intera (9) passa alla .5 vicina
+      const c = currentPlayer(); if (!c) return;
+      const k = oddsKey(c.sport, c.p, c.m);
+      const cur = lineFor(c.sport, c.p, c.m);
+      const L = Number(cur.line), d = +v;
+      let x = Number.isInteger(L) ? L + d * 0.5 : L + d;
+      x = Math.max(0.5, Math.round(x * 2) / 2);
+      const auto = c.p.odds && c.p.odds[c.m];
+      if (auto && Number(auto[0]) === x) delete S.manual[k];
+      else S.manual[k] = { line: x, over: null, under: null };
+      break;
     }
     case 'clearOdds': { const c = currentPlayer(); if (c) delete S.manual[oddsKey(c.sport, c.p, c.m)]; break; }
     case 'addProp': {
