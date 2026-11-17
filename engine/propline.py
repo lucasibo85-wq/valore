@@ -175,7 +175,11 @@ def event_props(event_id, sport=NBA, markets=None, core=None, mapping=None):
             continue
         if dist > 0.3 and m not in BERN:
             continue  # linee troppo lontane dalla principale (alternative)
-        score = (-round(dist, 2), len(d["books"]))
+        # la linea principale e' quella che quasi tutti i bookmaker offrono con over e under: prima il
+        # numero di bookmaker con entrambe le quote, poi le linee .5 (niente rimborso), poi la vicinanza al 50%
+        n_pairs = sum(1 for pr in d["pairs"].values() if pr.get("over") and pr.get("under"))
+        half = 1 if abs(point - int(point) - 0.5) < 1e-6 else 0
+        score = (n_pairs, half, -round(dist, 2), len(d["books"]))
         k = (player, m)
         if k not in best or score > best[k][0]:
             best[k] = (score, point, d, nv)

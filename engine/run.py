@@ -106,7 +106,8 @@ def main():
     if cfg["nba"].get("enabled"):
         key = "nba"
         purge = not state.get("nba_solo_stagione")
-        if purge or key not in state["scan"]:
+        deep = state.get("nba_deep") != 3  # una volta sola: storico di 3 stagioni (H2H piu' lunghi)
+        if purge or deep or key not in state["scan"]:
             start = today - dt.timedelta(days=cfg["nba"]["backfill_days"])
         else:
             start = dt.date.fromisoformat(state["scan"][key])
@@ -138,6 +139,7 @@ def main():
         if no_type:
             log("NBA: %d partite senza tipo di stagione (tenute)" % no_type)
         state["nba_solo_stagione"] = True
+        state["nba_deep"] = 3
         state["scan"][key] = iso(today - dt.timedelta(days=2))
 
     # ---------------- Calcio
@@ -294,12 +296,13 @@ def main():
 
     # ---------------- Pulizia storico
     cutoff = iso(today - dt.timedelta(days=int(cfg.get("history_days", 420))))
-    nba_logs = [r for r in nba_logs if r["date"] >= cutoff]
+    cutoff_nba = iso(today - dt.timedelta(days=int(cfg["nba"].get("history_days", cfg.get("history_days", 420)))))
+    nba_logs = [r for r in nba_logs if r["date"] >= cutoff_nba]
     soc_logs = [r for r in soc_logs if r["date"] >= cutoff]
     for sp in US:
         us_logs[sp] = [r for r in us_logs[sp] if r["date"] >= cutoff]
     t_matches = [m for m in t_matches if m["date"][:10] >= cutoff]
-    matches = [m for m in matches if m["date"] >= cutoff]
+    matches = [m for m in matches if m["date"] >= (cutoff_nba if m.get("sport") == "nba" else cutoff)]
     keep = set(r["gid"] for r in nba_logs) | set(r["gid"] for r in soc_logs) | set(m["gid"] for m in matches)
     for sp in US:
         keep |= set(r["gid"] for r in us_logs[sp])
@@ -479,12 +482,12 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
         # anche dei bookmaker italiani. Si scarica solo quando ci sono partite in programma (quindi solo in
         # stagione): ogni partita entro 14 ore dall'inizio, aggiornata ogni 3 ore. Massimo 200 richieste per giro.
         pst = state.setdefault("propline_events", {})
-        if state.get("propline_ver") != 2:
+        if state.get("propline_ver") != 3:
             # versione corretta della lettura delle linee: via le quote scaricate prima, si riscarica tutto
             pst.clear()
             for k_ in ("nba", "nfl", "mlb", "soccer_props"):
                 new[k_] = {}
-            state["propline_ver"] = 2
+            state["propline_ver"] = 3
         for gid in [g for g in pst if g not in up_ids]:
             del pst[gid]
 
@@ -537,7 +540,10 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
                 log("PropLine %s %s – %s: %d linee" % (ck, an, hn, len(rows)))
         st["propline_used"] = propline.STATS.get("used_today")
         if propline.STATS.get("sample") is not None:
-            state["propline_debug"] = {"t": now.replace(microsecond=0).isoformat(), "sample": propline.STATS["sample"]}
+            # campione piccolo in un file a parte dell'archivio, per controllare il formato delle risposte
+            first = next(iter(new.get("nba", {}).items()), (None, []))
+            store.write_json("propline_debug.json", {"t": now.replace(microsecond=0).isoformat(), "sample": propline.STATS["sample"],
+                                                     "nba_game": first[0], "nba_rows": first[1][:40]})
     nba_due = sorted([e for s_, p_, l_, e in upcoming if s_ == "nba" and due(e) and not propline.key()], key=lambda e: e["date"])
     if odds.key() and markets and nba_due and st["used"] + cost <= budget:
         evs = odds.nba_events()
@@ -883,8 +889,9 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                 if od:
                     p["odds"] = od
                 app["nba"]["players"].append(p)
+                # ultime 100 partite + tutte le sfide piu' vecchie contro l'avversario di oggi (H2H su 3 stagioni)
                 hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
-                                         for r in games[:100]]
+                                         for r in games[:100] + [g_ for g_ in games[100:] if g_["opp"] == oid]]
 
 
 # ====================================================================== Calcio
