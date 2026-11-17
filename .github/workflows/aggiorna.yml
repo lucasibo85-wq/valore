@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 150
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy2.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +42,7 @@ jobs:
       - name: Scarica statistiche e calcola le proiezioni
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          PROPLINE_API_KEY: ${{ secrets.PROPLINE_API_KEY }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: python -m engine.run
 
@@ -64,6 +65,16 @@ jobs:
           retention-days: 1
 
       - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      # a volte GitHub Pages rifiuta la pubblicazione per un errore temporaneo: si riprova dopo un minuto
+      - name: Attesa prima di riprovare
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 60
+
+      - id: deploy2
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       # Dopo la pubblicazione il pacchetto del sito non serve piu': lo cancello (e con lui quelli
