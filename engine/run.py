@@ -638,6 +638,8 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     tstr = models.team_strengths(nba_m, iso(today), half_life_days=60, prior_games=6) if nba_m else None
 
     tabbr = lambda tid: teams["nba"].get(tid, {}).get("abbr", "?")
+    # quanto concede ogni difesa per mercato (1 = media): serve alla classifica DvP nell'app
+    app["nba"]["dvp"] = {m: {tabbr(t): round(f.get(m, 1.0), 3) for t, f in opp_f.items() if tabbr(t) != "?"} for m in markets}
     for sport, path, league, ev in upcoming:
         if sport != "nba":
             continue
@@ -794,7 +796,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     "of": {m: round(opp_f.get(oid, {}).get(m, 1.0), 3) for m in markets},
                     "a30": {m: round(sum(models.market_value(r, cc, m) for r in games[:30]) / len(games[:30]), 2)
                             for m, cc in markets.items()},
-                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base]
+                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
                           for r in games[:10]],
                 }
                 p["a30"]["dd"] = round(sum(1 for r in games[:30] if models.dd_count(r) >= 2) / len(games[:30]), 3)
@@ -803,7 +805,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                 if od:
                     p["odds"] = od
                 app["nba"]["players"].append(p)
-                hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base]
+                hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
                                          for r in games[:100]]
 
 
@@ -1046,7 +1048,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                         if m_ in proj:
                             proj[m_] = (round(proj[m_][0] * kg ** ex, 4), proj[m_][1])
                 hist["soccer"][pid] = [[r["date"], tabbr(r["opp"]), round(float(r["min"])), int(r["starter"])] +
-                                       [int(float(r[b])) for b in models.SOC_BASE] for r in games[:60]]
+                                       [int(float(r[b])) for b in models.SOC_BASE] + [int(float(r.get("home") or 0))] for r in games[:60]]
                 od = props.get(name_key(games[0]["name"]))
                 app["soccer"]["players"].append({
                     "odds": od,
@@ -1059,7 +1061,7 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
                     "a30": {m: round(sum(models.market_value(r, c, m) for r in games[:30]) / len(games[:30]), 3)
                             for m, c in markets.items()},
                     "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"])), int(r["starter"])] +
-                          [int(float(r[b])) for b in models.SOC_BASE] for r in games[:10]],
+                          [int(float(r[b])) for b in models.SOC_BASE] + [int(float(r.get("home") or 0))] for r in games[:10]],
                 })
 
 
