@@ -479,6 +479,12 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
         # anche dei bookmaker italiani. Si scarica solo quando ci sono partite in programma (quindi solo in
         # stagione): ogni partita entro 14 ore dall'inizio, aggiornata ogni 3 ore. Massimo 200 richieste per giro.
         pst = state.setdefault("propline_events", {})
+        if state.get("propline_ver") != 2:
+            # versione corretta della lettura delle linee: via le quote scaricate prima, si riscarica tutto
+            pst.clear()
+            for k_ in ("nba", "nfl", "mlb", "soccer_props"):
+                new[k_] = {}
+            state["propline_ver"] = 2
         for gid in [g for g in pst if g not in up_ids]:
             del pst[gid]
 
@@ -530,6 +536,8 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
                     new.setdefault(ck, {})[ev["id"]] = [[r["player"], r["m"], r["line"], r["over"], r["under"], r["book"], r.get("fair"), r.get("nb", 0)] for r in rows]
                 log("PropLine %s %s – %s: %d linee" % (ck, an, hn, len(rows)))
         st["propline_used"] = propline.STATS.get("used_today")
+        if propline.STATS.get("sample") is not None:
+            state["propline_debug"] = {"t": now.replace(microsecond=0).isoformat(), "sample": propline.STATS["sample"]}
     nba_due = sorted([e for s_, p_, l_, e in upcoming if s_ == "nba" and due(e) and not propline.key()], key=lambda e: e["date"])
     if odds.key() and markets and nba_due and st["used"] + cost <= budget:
         evs = odds.nba_events()

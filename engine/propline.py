@@ -6,6 +6,7 @@ William Hill Italia). Formato simile a The Odds API: bookmakers -> markets -> ou
 Chiave in GitHub: secret PROPLINE_API_KEY.
 """
 import os
+import re
 from collections import defaultdict
 
 from . import odds
@@ -90,33 +91,65 @@ def sports():
     return []
 
 
+BERN = {"dd", "tdd", "td", "hr", "g", "card"}  # mercati si'/no: linea 0.5
+
+
+def _point(o, m):
+    """Linea dell'esito: dal campo point, oppure dal testo ("Over 24.5", "25+"). None se non c'e'."""
+    pt = o.get("point")
+    if pt is not None:
+        try:
+            return float(pt)
+        except (TypeError, ValueError):
+            pass
+    for txt in (o.get("name"), o.get("description")):
+        mt = re.search(r"(\d+(?:\.\d+)?)\s*\+", str(txt or ""))
+        if mt:
+            return float(mt.group(1)) - 0.5  # "25+" = over 24.5
+        mt = re.search(r"(?:over|under|o|u)\s*(\d+(?:\.\d+)?)", str(txt or ""), re.I)
+        if mt:
+            return float(mt.group(1))
+    return 0.5 if m in BERN else None
+
+
 def event_props(event_id, sport=NBA, markets=None, core=None, mapping=None):
-    """Linee per giocatore e mercato: la linea con piu' bookmaker, la quota migliore, la quota di un
-    bookmaker italiano se c'e', e la probabilita' "giusta" (media senza margine dei bookmaker)."""
+    """Per ogni giocatore e mercato sceglie la linea PRINCIPALE (quella con over e under piu' vicini al
+    50%, come la fissano i bookmaker; le linee alternative "15+, 20+, 25+" vengono scartate), poi la
+    quota migliore, quella di un bookmaker italiano se c'e', e la probabilita' "giusta" senza margine."""
     markets, core, mp = markets or NBA_MARKETS, core or NBA_CORE, mapping or MAP
     data = _get("%s/events/%s/odds" % (sport, event_id), {"markets": ",".join(markets), "includePregameOnly": "true"})
     if data is None:
         data = _get("%s/events/%s/odds" % (sport, event_id), {"markets": ",".join(core), "includePregameOnly": "true"})
     if not data:
         return []
+    if STATS.get("sample") is None:
+        # piccolo campione della risposta, salvato nell'archivio per controllare il formato
+        try:
+            bk0 = (data.get("bookmakers") or [{}])[0]
+            STATS["sample"] = {"book": bk0.get("key"), "markets": [{"key": mk.get("key"), "outcomes": (mk.get("outcomes") or [])[:4]}
+                                                                     for mk in (bk0.get("markets") or [])[:4]]}
+        except (AttributeError, TypeError, IndexError):
+            STATS["sample"] = {}
     lines = defaultdict(lambda: {"over": (0, ""), "under": (0, ""), "books": set(), "pairs": defaultdict(dict), "it": None})
     for bk in data.get("bookmakers", []) or []:
         bkey = bk.get("key") or bk.get("title") or ""
         for mk in bk.get("markets", []) or []:
-            m = mp.get(mk.get("key"))
-            if not m:
+            mkey = str(mk.get("key") or "")
+            m = mp.get(mkey)
+            if not m or "alternate" in mkey:
                 continue
             for o in mk.get("outcomes", []) or []:
                 player = o.get("description") or ""
                 name = (o.get("name") or "").lower()
+                if not player or re.fullmatch(r"(over|under|yes|no|si)", player.strip().lower() or "x"):
+                    player, name = o.get("name") or "", o.get("description") or name
                 if not player:
                     continue
                 pr = _dec(o.get("price"))
-                if not pr:
+                point = _point(o, m)
+                if not pr or point is None:
                     continue
-                point = o.get("point")
-                point = 0.5 if point is None else float(point)
-                side = "under" if name in ("under", "no") else "over"
+                side = "under" if str(name).lower().startswith(("under", "no")) else "over"
                 d = lines[(player, m, point)]
                 if pr > d[side][0]:
                     d[side] = (pr, bk.get("title") or bkey)
@@ -126,19 +159,30 @@ def event_props(event_id, sport=NBA, markets=None, core=None, mapping=None):
                     d["it"] = (pr, bk.get("title") or bkey)
     best = {}
     for (player, m, point), d in lines.items():
-        k = (player, m)
-        score = (1 if d["it"] else 0, len(d["books"]))  # prima la linea dei bookmaker italiani, poi la piu' diffusa
-        if k not in best or score > best[k][0]:
-            best[k] = (score, point, d)
-    out = []
-    for (player, m), (_, point, d) in best.items():
-        if not d["over"][0]:
-            continue
         nv = []
         for pr in d["pairs"].values():
             if pr.get("over", 0) > 1 and pr.get("under", 0) > 1:
                 a, b = 1 / pr["over"], 1 / pr["under"]
                 nv.append(a / (a + b))
+        if m in BERN:
+            dist = 0 if point == 0.5 else 9
+        elif nv:
+            fair = sorted(nv)[len(nv) // 2]
+            dist = abs(fair - 0.5)
+        elif d["over"][0]:
+            dist = abs(1 / d["over"][0] - 0.52) + 0.15  # solo over: la quota piu' vicina a 1.90
+        else:
+            continue
+        if dist > 0.3 and m not in BERN:
+            continue  # linee troppo lontane dalla principale (alternative)
+        score = (-round(dist, 2), len(d["books"]))
+        k = (player, m)
+        if k not in best or score > best[k][0]:
+            best[k] = (score, point, d, nv)
+    out = []
+    for (player, m), (_, point, d, nv) in best.items():
+        if not d["over"][0]:
+            continue
         fair = sorted(nv)[len(nv) // 2] if nv else None
         over, book = d["it"] if d["it"] else d["over"]
         out.append({"player": player, "m": m, "line": point, "over": over, "under": d["under"][0] or None,
