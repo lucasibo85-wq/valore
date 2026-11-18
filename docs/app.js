@@ -579,6 +579,7 @@ function favNow(f) {
   return { p: row ? row[3] : null, push: 0, odds, href };
 }
 function viewFavs() {
+  ensureHist(); // storico completo (H2H, U20, stagione) anche negli elenchi
   pruneFavs();
   const favs = S.favs.slice().sort((a, b) => String(a.t || '').localeCompare(String(b.t || '')) || a.ts.localeCompare(b.ts));
   const groups = [];
@@ -1187,6 +1188,7 @@ function tmOdds(m) {
 const TM_GROUPS = ['Principali', 'Multigol', 'Squadre', 'Combo', '1° tempo', '2° tempo', 'Entrambi i tempi', "Calci d'angolo", 'Cartellini', 'Risultato esatto'];
 const tmGroupOf = g => (['Esito finale', 'Gol / No gol', 'Under / Over'].includes(g) ? 'Principali' : g.startsWith('Gol ') ? 'Squadre' : g);
 function viewMatch(id) {
+  ensureHist(); // storico completo (H2H, U20, stagione) anche negli elenchi
   const m = (S.data.soccer.matches || []).find(x => x.id === id);
   if (!m) return header('Partita', 'Calcio', '#/') + '</header><main><div class="empty">Partita non trovata.</div></main>';
   const lg = (S.data.leagues || {})[m.lg] || m.lg;
@@ -1387,6 +1389,7 @@ function groupChips(groups, grp) {
   return `<div class="chips">${groups.map(g => `<button class="chip ${g === grp ? 'on' : ''}" data-act="mGroup" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div>`;
 }
 function viewGara(sport, id) {
+  ensureHist(); // storico completo (H2H, U20, stagione) anche negli elenchi
   const m = findGame(sport, id);
   if (!m) return header('Partita', SPORT_LABEL[sport] || '', '#/') + '</header><main><div class="empty">Partita non trovata.</div></main>';
   const ps = players(sport).filter(p => p.g === m.id);
@@ -1855,6 +1858,7 @@ function rankView(sport, m, plist) {
 }
 
 function viewPlayers(q) {
+  ensureHist(); // storico completo (H2H, U20, stagione) anche negli elenchi
   const segHtml = sportSeg(false);
   const sport = S.sport;
   if (q.g !== undefined) {
@@ -2170,6 +2174,7 @@ function fracCell(x) {
 // ------------------------------------------------------------------ vista: ricerca globale
 function normTxt(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function viewSearch() {
+  ensureHist(); // storico completo (H2H, U20, stagione) anche negli elenchi
   const term = normTxt(S.gsearch || '').trim();
   let res = [];
   if (term.length >= 2) {
