@@ -421,6 +421,18 @@ def main():
 
 
 # ====================================================================== quote
+def pos_group(pos):
+    """Ruolo NBA in tre gruppi: G (playmaker/guardie), F (ali), C (centri)."""
+    p = str(pos or "").upper()
+    if not p:
+        return ""
+    if p.startswith("C"):
+        return "C"
+    if p.startswith("G") or p in ("PG", "SG"):
+        return "G"
+    return "F"
+
+
 def _match_event(events, hn, an, thr=0.34):
     best, score = None, 0.0
     for o in events:
@@ -751,6 +763,17 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     # solo le 30 squadre vere (con almeno 10 partite nell'archivio): fuori All-Star e squadre di esibizione
     real_t = [t for t in opp_f if tabbr(t) != "?" and len(team_games.get(t, [])) >= 10]
     app["nba"]["dvp"] = {m: {tabbr(t): round(opp_f[t].get(m, 1.0), 3) for t in real_t} for m in markets}
+    # DvP per ruolo (come Props.Cash): quanto concede ogni difesa a guardie, ali e centri
+    since_d = since_opp
+    by_pos = defaultdict(list)
+    for r in logs:
+        if r["date"] >= since_d:
+            by_pos[pos_group(r.get("pos", ""))].append(r)
+    app["nba"]["dvpp"] = {}
+    for pg, rows_ in by_pos.items():
+        if pg and len(rows_) > 500:
+            pf, _ = models.opponent_factors(rows_, markets, since_d, k=15)
+            app["nba"]["dvpp"][pg] = {m: {tabbr(t): round(pf[t].get(m, 1.0), 3) for t in real_t if t in pf} for m in markets}
     for sport, path, league, ev in upcoming:
         if sport != "nba":
             continue
@@ -919,6 +942,33 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                 # ultime 100 partite + tutte le sfide piu' vecchie contro l'avversario di oggi (H2H su 3 stagioni)
                 hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
                                          for r in games[:100] + [g_ for g_ in games[100:] if g_["opp"] == oid]]
+    # filtro "con / senza un compagno": per le squadre in programma, le date in cui ogni giocatore della
+    # rotazione ha giocato CON QUELLA SQUADRA (cosi' nell'app si vedono le partite di uno senza l'altro)
+    base_d = dt.date(2020, 1, 1)
+    tm = {}
+    inj_all = {}
+    for sport, path, league, ev in upcoming:
+        if sport != "nba":
+            continue
+        inj_all.update(previews.get(ev["id"], {}).get("inj", {}))
+        for side in ("home", "away"):
+            tid = ev[side]["id"]
+            ab = tabbr(tid)
+            if ab == "?" or ab in tm:
+                continue
+            rows_t = []
+            for pid in current.get(tid, []):
+                g_all = [r for r in by_player[pid] if r["team"] == tid and float(r.get("min") or 0) > 0]
+                if not g_all:
+                    continue
+                avg_min = sum(float(r["min"]) for r in g_all[:20]) / len(g_all[:20])
+                if avg_min < 12 and len(g_all) < 30:
+                    continue
+                days = sorted({(dt.date.fromisoformat(r["date"][:10]) - base_d).days for r in g_all[:150]})
+                rows_t.append([pid, g_all[0].get("name", "?"), round(avg_min, 1), inj_all.get(pid, ""), days])
+            rows_t.sort(key=lambda x: -x[2])
+            tm[ab] = rows_t[:15]
+    hist["nba_tm"] = tm
 
 
 # ====================================================================== Calcio
