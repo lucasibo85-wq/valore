@@ -107,7 +107,19 @@ Modifica `config.json` direttamente su GitHub (icona della matita):
 2. Su GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Nome: `PROPLINE_API_KEY`, valore: la chiave.
 3. Il workflow `aggiorna.yml` deve contenere la riga `PROPLINE_API_KEY: ${{ secrets.PROPLINE_API_KEY }}` (c'è già nella versione dello zip).
 
-Con PropLine l'app scarica linee e quote dei giocatori di NBA (tutti i mercati), NFL (yard, ricezioni, touchdown…), MLB (valide, fuoricampo, strikeout…) e calcio (tiri, tiri in porta, marcatore, cartellino) per ogni partita, preferendo i bookmaker italiani quando ci sono (Lottomatica, William Hill, Snai, Eurobet). Le richieste partono solo quando ci sono partite in programma (quindi solo in stagione) e restano molto sotto le 1.000 gratuite al giorno. The Odds API resta per le quote 1X2 del calcio.
+Con PropLine l'app scarica linee e quote dei giocatori di NBA (tutti i mercati), NFL (yard, ricezioni, touchdown…), MLB (valide, fuoricampo, strikeout…) e calcio (tiri, tiri in porta, marcatore, cartellino) per ogni partita, preferendo i bookmaker italiani quando ci sono (Lottomatica, William Hill, Snai, Eurobet). Le richieste partono solo quando ci sono partite in programma (quindi solo in stagione) e restano molto sotto le 1.000 gratuite al giorno. The Odds API resta per le quote 1X2 del calcio. Ogni partita viene scaricata da 48 ore prima dell'inizio (ogni 8 ore, poi ogni 4 nelle ultime 24 e ogni 2 nelle ultime 14), con un tetto di 950 richieste al giorno.
+
+### Aggiornamenti puntuali con cron-job.org (gratis)
+
+GitHub fa partire i giri programmati con molto ritardo (spesso ogni 4-8 ore). Per averli ogni ora:
+
+1. GitHub → Settings (del profilo) → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token. Repository access: *Only select repositories* → `valore`. Permissions → Repository → **Actions: Read and write**. Scadenza: 1 anno. Copia il token.
+2. Su https://cron-job.org crea un account gratuito → *Create cronjob*:
+   - URL: `https://api.github.com/repos/lucasibo85-wq/valore/actions/workflows/aggiorna.yml/dispatches`
+   - Orario: ogni ora (minuto 5), fuso Europe/Rome
+   - Advanced → Request method **POST**; Headers: `Authorization: Bearer IL_TUO_TOKEN`, `Accept: application/vnd.github+json`, `Content-Type: application/json`; Request body: `{"ref":"main"}`
+3. *Test run*: la risposta giusta e' **204**, e in Actions compare un nuovo giro.
+
 
 ### Se un giorno passi a un piano quote a pagamento
 Non serve cambiare codice. Basta modificare `config.json`: alza `daily_credit_budget` (ad esempio 600 con 20.000 crediti al mese), abbassa `refresh_hours` (ad esempio 3) e aggiungi i mercati che ti interessano in `nba_prop_markets` e `soccer_prop_markets`. Le quote arrivano in automatico nelle schede dei giocatori e il valore viene calcolato da solo.
