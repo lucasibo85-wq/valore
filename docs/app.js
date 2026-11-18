@@ -214,7 +214,17 @@ function kickBox(iso, id) {
   if (L && L.st === 'in') return `<div class="kick" style="border-color:rgba(255,90,90,.5)"><b style="color:var(--live)">${esc(L.ten ? 'LIVE' : (L.clock || 'LIVE'))}</b><span>${L.ten ? esc(L.sc || '') : esc(L.hs) + '–' + esc(L.as)}</span></div>`;
   const f = fmtTime(iso);
   const hm = (f.match(/\d\d:\d\d$/) || [''])[0];
-  return `<div class="kick"><b>${esc(hm)}</b><span>${esc(f.replace(/ ?\d\d:\d\d$/, '').replace(/ [a-z]{3,}\.?$/i, ''))}</span></div>`;
+  const d = new Date(iso), rest = f.replace(/ ?\d\d:\d\d$/, '');
+  const dd = /^(Oggi|Domani)$/.test(rest) || isNaN(d) ? rest : d.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', '') + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+  return `<div class="kick"><b>${esc(hm)}</b><span>${esc(dd)}</span></div>`;
+}
+/** Divisore del giorno negli elenchi: "Oggi · mercoledì 18 novembre" */
+function dayHdr(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const f = fmtTime(iso);
+  const pre = /^Oggi/.test(f) ? 'Oggi · ' : /^Domani/.test(f) ? 'Domani · ' : '';
+  return `<div class="dayhdr">${esc(pre + d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }))}</div>`;
 }
 const fmtTime = iso => {
   const d = new Date(iso);
@@ -1068,14 +1078,17 @@ function viewGames() {
     for (const m of l2) {
       const d = new Date(m.t);
       const day = isNaN(d) ? '' : d.toDateString();
-      if (day !== lastDay) { lastDay = day; body += `<div class="league">${esc(fmtTime(m.t).replace(/ \d\d:\d\d$/, ''))}</div>`; }
+      if (day !== lastDay) { lastDay = day; body += dayHdr(m.t); }
       body += tennisCard(m);
     }
   } else if (S.sport !== 'soccer') {
     const sp = S.sport;
     const games = gamesList(sp).filter(g => matchHit(sp, g)).sort((a, b) => a.t.localeCompare(b.t));
     if (!games.length) body = `<div class="empty">Nessuna partita ${SPORT_LABEL[sp]} nei prossimi giorni${sp === 'mlb' ? ' (la stagione MLB riparte ad aprile)' : ''}.</div>`;
+    let lastDayG = '';
     for (const g of games) {
+      const dg = new Date(g.t), dayG = isNaN(dg) ? '' : dg.toDateString();
+      if (dayG !== lastDayG) { lastDayG = dayG; body += dayHdr(g.t); }
       const ps = players(sp).filter(p => p.g === g.id);
       const vals = ps.flatMap(p => mkList(sp, p).map(m => evaluate(sp, p, m[0]))).filter(e => e.ev !== null && e.ev > 0 && e.ok);
       const ml = g.odds && g.odds.h ? `<span class="mono small muted">${esc(g.a)} ${g.odds.a.toFixed(2)} · ${esc(g.h)} ${g.odds.h.toFixed(2)}${g.odds.ou ? ' · tot ' + g.odds.ou : ''}</span>` : '';
@@ -1109,8 +1122,7 @@ function viewGames() {
       const day = isNaN(d) ? '' : d.toDateString();
       if (day !== lastDay) {
         lastDay = day;
-        const lab = fmtTime(m.t).replace(/ \d\d:\d\d$/, '');
-        body += `<div class="league">${esc(lab)}</div>`;
+        body += dayHdr(m.t);
       }
       body += matchCard(m, leagues[m.lg] || m.lg);
     }
@@ -1923,18 +1935,25 @@ function headshot(sport, p, size) {
 const homeIdx = sport => L_OFF[sport] + BASE[sport].length;
 const rowHome = (sport, r) => { const v = r[homeIdx(sport)]; return v === undefined ? null : !!v; };
 /** Classifica difese (NBA): 1° = la difesa che concede meno in quel mercato, 30° = quella che concede di piu' */
-function dvpRank(sport, opp, m) {
-  const D = sport === 'nba' && S.data.nba && S.data.nba.dvp && S.data.nba.dvp[m];
+const posGroup = pos => { const p = String(pos || '').toUpperCase(); return !p ? '' : p[0] === 'C' ? 'C' : (p[0] === 'G' || p === 'PG' || p === 'SG') ? 'G' : 'F'; };
+const POS_LBL = { G: 'guardie', F: 'ali', C: 'centri' };
+/** DvP: posizione in classifica della difesa avversaria (1 = concede meno, 30 = concede di piu').
+    Se c'e' il ruolo del giocatore si usa quanto concede a quel ruolo (guardie, ali, centri), come Props.Cash. */
+function dvpRank(sport, opp, m, pos) {
+  if (sport !== 'nba' || !S.data.nba) return null;
+  const pg = posGroup(pos), PP = S.data.nba.dvpp;
+  let D = pg && PP && PP[pg] && PP[pg][m], by = pg;
+  if (!D || D[opp] == null) { D = S.data.nba.dvp && S.data.nba.dvp[m]; by = ''; }
   if (!D || D[opp] == null) return null;
   const arr = Object.values(D).sort((a, b) => a - b);
-  return { r: arr.indexOf(D[opp]) + 1, n: arr.length };
+  return { r: arr.indexOf(D[opp]) + 1, n: arr.length, by, f: D[opp] };
 }
 const hitCol = x => x == null ? 'var(--muted)' : x >= 0.6 ? 'var(--good)' : x <= 0.4 ? 'var(--bad2)' : 'var(--text)';
 /** Le 6 caselle: stagione, H2H, DvP, ultime 5/10/20 */
 function hitChips(sport, p, m, line, side) {
   const ht = hitTable(sport, p, m, line, side);
   const f = x => x ? x[0] / x[1] : null;
-  const dv = dvpRank(sport, p.o, m);
+  const dv = dvpRank(sport, p.o, m, p.pos);
   const cells = [['Stag.', f(ht.sea)], ['H2H', f(ht.vs)], ['DvP', dv], ['U5', f(ht.l5)], ['U10', f(ht.l10)], ['U20', f(ht.l20)]];
   return `<div class="hc6">${cells.map(([k, v]) => {
     if (k === 'DvP') {
@@ -1950,7 +1969,7 @@ function gameStrip(sport, games) {
   if (games.length < 2) return '';
   return `<div class="chips gstrip"><button class="gs ${!S.game ? 'on' : ''}" data-act="gamePick" data-v=""><b>Tutte</b><span>${games.length} partite</span></button>${games.map(([id, l, t]) => {
     const [a, h] = l.split(sport === 'soccer' ? ' – ' : ' @ ');
-    return `<button class="gs ${S.game === id ? 'on' : ''}" data-act="gamePick" data-v="${esc(id)}"><b>${esc(a || l)}</b><b>${esc(h || '')}</b><span>${esc((fmtTime(t).match(/\d\d:\d\d$/) || [''])[0])}</span></button>`;
+    return `<button class="gs ${S.game === id ? 'on' : ''}" data-act="gamePick" data-v="${esc(id)}"><b>${esc(a || l)}</b><b>${esc(h || '')}</b><span>${(() => { const d = new Date(t); return isNaN(d) ? '' : esc(String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + (fmtTime(t).match(/\d\d:\d\d$/) || [''])[0]); })()}</span></button>`;
   }).join('')}</div>`;
 }
 /** Grafico a barre delle partite: verde sopra la linea, rosso sotto */
@@ -2086,12 +2105,15 @@ function viewPlayer(sport, id, g, mq) {
   // ---- scheda in alto: foto, numeri chiave, grafico a barre e percentuali
   const side0 = noUnder(sport) ? 'over' : (e.side || 'over');
   const win = S.pWin || 'l10', filt = S.pFilt || '';
-  const htx = hitTable(sport, p, m, e.line, side0);
+  const mates = teammates(sport, p);
+  const mate = mates.length ? ((S.pMate || {})[p.id] || '') : '';
+  const pf = filt || mate ? Object.assign({}, p, { _rows: filterRows(sport, p, filt, mate) }) : p;
+  const htx = pf === p ? hitTable(sport, p, m, e.line, side0) : hitTableRaw(sport, pf, m, e.line, side0);
   const fr = x => x ? x[0] / x[1] : null;
   const winVal = { sea: fr(htx.sea), h2h: fr(htx.vs), l5: fr(htx.l5), l10: fr(htx.l10), l20: fr(htx.l20) };
   const v10 = gamesOf(sport, p).slice(0, 10).map(r => marketValue(sport, m, r, off));
   const avgU10 = v10.length ? v10.reduce((a, b) => a + b, 0) / v10.length : 0;
-  const dv = dvpRank(sport, p.o, m);
+  const dv = dvpRank(sport, p.o, m, p.pos);
   const gm = findGame(sport, p.g);
   const hasHome = gamesOf(sport, p).some(r => rowHome(sport, r) !== null);
   const hero = `<div class="card hero">
@@ -2103,10 +2125,14 @@ function viewPlayer(sport, id, g, mq) {
         <div class="kv"><span>Media U10</span><span style="color:${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? 'var(--good)' : 'var(--bad2)'}">${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? '▲' : '▼'} ${bern ? pct(avgU10) : avgU10.toFixed(1)}</span></div>
         <div class="kv"><span>Linea</span><span>${bern ? 'Sì' : e.line}</span></div>
         <div class="kv"><span>Hit rate</span><span style="color:${hitCol(winVal[win])}">${winVal[win] == null ? '—' : Math.round(winVal[win] * 100) + '%'}</span></div>
-        <div class="kv"><span>${dv ? 'DvP' : 'Avversario'}</span><span>${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
-      ${barChart(sport, p, m, e.line, side0, win, filt)}
+        <div class="kv"><span>${dv ? 'DvP' + (dv.by ? ' ' + POS_LBL[dv.by] : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
+      ${barChart(sport, pf, m, e.line, side0, win, '')}
       <div class="seg wseg">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
       ${hasHome ? `<div class="chips"><span class="small muted" style="align-self:center">Filtri</span>${[['casa', 'In casa'], ['fuori', 'In trasferta']].map(([k, l]) => `<button class="chip ${filt === k ? 'on' : ''}" data-act="pFilt" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
+      ${mates.length ? `<select class="sel ${mate ? 'on' : ''}" aria-label="Con o senza un compagno" data-act="pMate" data-k="${esc(p.id)}"><option value="">Compagni: tutti</option>
+        <optgroup label="Senza…">${mates.slice().sort((a, b) => (b[3] ? 1 : 0) - (a[3] ? 1 : 0)).map(x => `<option value="-${esc(x[0])}" ${mate === '-' + x[0] ? 'selected' : ''}>Senza ${esc(x[1])}${x[3] ? ' (' + esc(x[3]) + ')' : ''} · ${x[2]} min</option>`).join('')}</optgroup>
+        <optgroup label="Con…">${mates.map(x => `<option value="+${esc(x[0])}" ${mate === '+' + x[0] ? 'selected' : ''}>Con ${esc(x[1])}</option>`).join('')}</optgroup></select>` : ''}
+      ${mate || filt ? `<p class="note">Percentuali e grafico solo sulle partite filtrate (${gamesOf(sport, pf).length} partite).</p>` : ''}
     </div>`;
   return header(p.n + ' · ' + mkLabel(sport, m), `${sportCtx(sport, p)} · ${p.t} vs ${p.o}`, '#/giocatori', `<a class="chip" style="display:flex;align-items:center;flex-shrink:0" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">Tutti</a>`) + `
     <div style="padding:0 16px"><div class="chips">${mkList(sport, p).map(([k, l]) => `<a class="chip ${k === m ? 'on' : ''}" style="display:flex;align-items:center" href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${k}">${l}</a>`).join('')}</div></div></header>
@@ -2152,7 +2178,29 @@ const seasonStart = sport => {
 };
 /** Sigla dell'avversario come compare nello storico delle partite */
 const oppKey = p => p.oa || p.o;
-function gamesOf(sport, p) { return (S.hist && S.hist[sport] && S.hist[sport][p.id]) || p.l; }
+function gamesOf(sport, p) { return p._rows || (S.hist && S.hist[sport] && S.hist[sport][p.id]) || p.l; }
+const D0 = Date.UTC(2020, 0, 1);
+const dayNum = d => Math.round((Date.parse(String(d).slice(0, 10) + 'T00:00:00Z') - D0) / 86400000);
+/** Compagni di squadra (NBA) con le date in cui hanno giocato: [id, nome, minuti medi, stato, giorni] */
+function teammates(sport, p) {
+  const T = sport === 'nba' && S.hist && S.hist.nba_tm && S.hist.nba_tm[p.t];
+  return (T || []).filter(x => x[0] !== p.id);
+}
+/** Partite filtrate: in casa/trasferta e con/senza un compagno ("-id" = senza, "+id" = con) */
+function filterRows(sport, p, filt, mate) {
+  let rows = gamesOf(sport, p);
+  if (filt === 'casa') rows = rows.filter(r => rowHome(sport, r) === true);
+  if (filt === 'fuori') rows = rows.filter(r => rowHome(sport, r) === false);
+  if (mate) {
+    const tm = teammates(sport, p).find(x => x[0] === mate.slice(1));
+    if (tm) {
+      const set = new Set(tm[4]);
+      const from = tm[4].length >= 150 ? tm[4][0] : -1;  // prima di cosi' non si sa se il compagno c'era
+      rows = rows.filter(r => { const d = dayNum(r[0]); return d >= from && (mate[0] === '-' ? !set.has(d) : set.has(d)); });
+    }
+  }
+  return rows;
+}
 /** Frazioni sopra la linea su ultime 5/10/20 e stagione */
 const hitTable = (sport, p, m, line, side) => memo('ht|' + sport + '|' + p.id + '|' + p.g + '|' + m + '|' + line + '|' + side, () => hitTableRaw(sport, p, m, line, side));
 function hitTableRaw(sport, p, m, line, side) {
@@ -2970,6 +3018,7 @@ function handle(act, el) {
     case 'rankSort': S.rankSort = v; break;
     case 'rankT': S.rankT = S.rankT || {}; S.rankT[el.dataset.k] = +v; break;
     case 'sort': S.sort = S.sort === 'valore' ? 'proiezione' : 'valore'; break;
+    case 'pMate': S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: el.value }); break;
     case 'game': S.game = el.value; if (location.hash.includes('g=')) { history.replaceState(null, '', '#/giocatori'); } break;
     case 'search': S.search = el.value; break;
     case 'gsearch': S.gsearch = el.value; break;
