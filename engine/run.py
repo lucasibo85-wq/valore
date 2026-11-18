@@ -480,7 +480,9 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     if propline.key():
         # PropLine (gratis, 1.000 richieste al giorno): tutti i mercati giocatore di NBA, NFL, MLB e calcio,
         # anche dei bookmaker italiani. Si scarica solo quando ci sono partite in programma (quindi solo in
-        # stagione): ogni partita entro 14 ore dall'inizio, aggiornata ogni 3 ore. Massimo 200 richieste per giro.
+        # stagione): ogni partita da 48 ore prima dell'inizio (i bookmaker come bet365 pubblicano presto),
+        # aggiornata ogni 8 ore se manca piu' di un giorno, ogni 4 ore se mancano 14-24 ore, ogni 2 ore nelle
+        # ultime 14. Massimo 200 richieste per giro e 950 al giorno (il limite gratuito e' 1.000).
         pst = state.setdefault("propline_events", {})
         if state.get("propline_ver") != 3:
             # versione corretta della lettura delle linee: via le quote scaricate prima, si riscarica tutto
@@ -488,14 +490,36 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
             for k_ in ("nba", "nfl", "mlb", "soccer_props"):
                 new[k_] = {}
             state["propline_ver"] = 3
-        for gid in [g for g in pst if g not in up_ids]:
+        for gid in [g for g in pst if g not in up_ids]:  # partite finite
             del pst[gid]
 
         def pl_due(e):
-            if not (-0.25 <= hours_to(e) <= 14):
+            h = hours_to(e)
+            if not (-0.25 <= h <= 48):
                 return False
             rec = pst.get(e["id"])
-            return not rec or (now - dt.datetime.fromisoformat(rec["t"])).total_seconds() >= 3 * 3600
+            if not rec:
+                return True
+            every = 2 if h <= 14 else 4 if h <= 24 else 8
+            if not rec.get("n"):
+                every = min(every, 3)  # niente linee la volta scorsa: si riprova prima
+            return (now - dt.datetime.fromisoformat(rec["t"])).total_seconds() >= every * 3600
+
+        evcache = state.setdefault("propline_evcache", {})
+
+        def pl_events(skey, refresh=False):
+            # elenco partite di PropLine, tenuto 4 ore (ogni elenco costa una richiesta)
+            c = evcache.get(skey)
+            if not refresh and c and (now - dt.datetime.fromisoformat(c["t"])).total_seconds() < 4 * 3600:
+                return c["ev"]
+            evs_ = propline.events(skey) or []
+            evcache[skey] = {"t": now.replace(microsecond=0).isoformat(),
+                             "ev": [{k: x.get(k) for k in ("id", "home_team", "away_team", "commence_time")} for x in evs_]}
+            return evcache[skey]["ev"]
+
+        def pl_cap():
+            u = propline.STATS.get("used_today")
+            return u is not None and u >= 950
         budget_pl = 200
         groups = []  # (cache key, sport key PropLine, eventi, mercati, riserva, mappa, squadre)
         for sp in ("nba", "nfl", "mlb"):
@@ -519,17 +543,20 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
                 mk, core, mp = propline.SOCCER
                 groups.append(("soccer_props", sk, evs_, mk, core, mp, teams.get("soccer", {})))
         for ck, skey, ev_due, mk, core, mp, tnames in groups:
-            if budget_pl <= 0:
+            if budget_pl <= 0 or pl_cap():
                 break
-            pevs = propline.events(skey)
-            if not pevs:
-                continue
+            pevs = pl_events(skey)
+            fresh_ev = False
             for ev in sorted(ev_due, key=lambda e: e["date"]):
-                if budget_pl <= 0:
+                if budget_pl <= 0 or pl_cap():
                     break
                 hn = tnames.get(ev["home"]["id"], {}).get("name", "") or ev["home"].get("name", "")
                 an = tnames.get(ev["away"]["id"], {}).get("name", "") or ev["away"].get("name", "")
-                match = _match_event(pevs, hn, an, 0.5 if ck != "soccer_props" else 0.34)
+                thr = 0.5 if ck != "soccer_props" else 0.34
+                match = _match_event(pevs, hn, an, thr) if pevs else None
+                if not match and not fresh_ev:
+                    pevs, fresh_ev = pl_events(skey, True), True  # partita nuova: elenco aggiornato
+                    match = _match_event(pevs, hn, an, thr) if pevs else None
                 if not match:
                     continue
                 rows = propline.event_props(match["id"], skey, mk, core, mp)
