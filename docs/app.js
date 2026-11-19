@@ -2025,16 +2025,17 @@ function dvpHistCard(p, m) {
   const sel = (act, cur, opts) => `<select class="sel" style="height:36px;font-size:13px;width:auto;flex:0 0 auto" data-act="${act}">${opts.map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
   const lbl = { G: 'Guardie', F: 'Ali', C: 'Centri' };
   return `<div class="card dvph"><div class="row between"><b>Difesa ${esc(p.o)}</b><button class="iconbtn" style="width:34px;height:34px" data-act="dvpOpen" aria-label="Chiudi">✕</button></div>
-    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">Ultime partite contro</span>${sel('dvpPos', pg, Object.entries(lbl))}${sel('dvpMk', mm, DVP_MK.map(k => [k, mkLabel('nba', k)]))}</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">Contro</span>${sel('dvpPos', pg, Object.entries(lbl))}${sel('dvpMk', mm, DVP_MK.map(k => [k, mkLabel('nba', k)]))}</div>
     <div class="small muted">${mean != null ? `Concessi in media alle ${lbl[pg].toLowerCase()}: <b style="color:var(--text)">${mean.toFixed(1)}</b>${lgAvg != null ? ` (lega ${lgAvg.toFixed(1)})` : ''}` : ''}${rank ? ` · ${rank[0]}° su ${rank[1]}` : ''}</div>
-    <div class="dvrow head"><span>Giocatore</span><span>Risultato</span><span>Linea</span><span>Quota</span><span>Data</span></div>
-    ${rows.map(r => { const up = r.ref != null && r.v > r.ref; const dn = r.ref != null && !up; return `<div class="dvrow">
+    ${(() => { S._dvq = rows.some(r => r.odds); return ''; })()}
+    <div class="dvrow head ${S._dvq ? 'q' : ''}"><span>Giocatore</span><span>Ris.</span><span>Linea</span>${S._dvq ? '<span>Quota</span>' : ''}<span>Data</span></div>
+    ${rows.map(r => { const up = r.ref != null && r.v > r.ref; const dn = r.ref != null && !up; return `<div class="dvrow ${S._dvq ? 'q' : ''}">
       <span class="nm">${esc(r.n)}<small>${r.mi}'${r.st ? ' · T' : ''}</small></span>
       <span class="b" style="color:${up ? 'var(--good)' : dn ? 'var(--bad2)' : 'var(--text)'}">${up ? '▲' : dn ? '▼' : ''} ${r.v}</span>
-      <span>${r.line != null ? r.line : r.ref != null ? `<span class="muted" title="media delle 10 partite precedenti">m ${r.ref.toFixed(1)}</span>` : '—'}</span>
-      <span>${r.odds ? Number(r.odds).toFixed(2) : '—'}</span>
+      <span>${r.line != null ? r.line : r.ref != null ? `<span style="color:var(--text2)">${r.ref.toFixed(1)}</span>` : '—'}</span>
+      ${S._dvq ? `<span>${r.odds ? Number(r.odds).toFixed(2) : '—'}</span>` : ''}
       <span class="muted">${esc(r.o)} ${esc(r.d.slice(8, 10) + '/' + r.d.slice(5, 7))}</span></div>`; }).join('') || '<p class="note">Nessun dato per questo ruolo.</p>'}
-    <p class="note">Linea = quella del bookmaker prima della partita (archiviata dall'app da adesso in poi); se manca, "m" = media del giocatore nelle 10 partite precedenti. ▲ sopra, ▼ sotto. T = titolare.</p>
+    <p class="note">Linea = quella del bookmaker prima della partita (archiviata dall'app da adesso in poi); se manca, la media del giocatore nelle 10 partite precedenti. ▲ sopra, ▼ sotto. T = titolare.</p>
   </div>`;
 }
 const posGroup = pos => { const p = String(pos || '').toUpperCase(); return !p ? '' : p[0] === 'C' ? 'C' : (p[0] === 'G' || p === 'PG' || p === 'SG') ? 'G' : 'F'; };

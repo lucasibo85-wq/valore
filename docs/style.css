@@ -216,8 +216,10 @@ header.top.slim h1{font-size:20px;white-space:nowrap;overflow:hidden;text-overfl
 .bars,.blab{justify-content:center}
 .blab span{max-width:46px}
 .blab.sparse span{max-width:46px}
-.dvrow{display:grid;grid-template-columns:minmax(0,1.7fr) .9fr .8fr .7fr 1fr;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13px;font-family:var(--mono)}
-.dvrow.head{border-top:0;padding:4px 0;font-size:10px;color:var(--muted);font-family:inherit;text-transform:uppercase;letter-spacing:.05em}
-.dvrow .nm{font-family:Inter,system-ui,sans-serif;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dvrow .nm small{display:block;font-weight:400;font-size:10px;color:var(--muted)}
-.dvrow span:nth-child(5){font-size:11px;text-align:right}
+.dvrow{display:grid;grid-template-columns:minmax(0,1.9fr) .8fr .7fr 1.1fr;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px;font-family:var(--mono);white-space:nowrap}
+.dvrow.q{grid-template-columns:minmax(0,1.7fr) .8fr .7fr .7fr 1.1fr}
+.dvrow.head{border-top:0;padding:2px 0 6px;font-size:10px;color:var(--muted);font-family:inherit;text-transform:uppercase;letter-spacing:.05em}
+.dvrow .nm{font-family:Inter,system-ui,sans-serif;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.dvrow .nm small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+.dvrow>span:last-child{font-size:11px;text-align:right}
+.dvrow .b{font-weight:800}
