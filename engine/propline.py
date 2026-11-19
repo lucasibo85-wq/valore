@@ -20,7 +20,9 @@ NBA_MARKETS = ["player_points", "player_rebounds", "player_assists", "player_thr
                "player_rebounds_assists", "player_blocks_steals", "double_double", "triple_double"]
 NBA_CORE = ["player_points", "player_rebounds", "player_assists", "player_threes", "player_points_rebounds_assists"]
 MAP = dict(odds.NBA_MARKET_MAP)
-MAP.update({"double_double": "dd", "triple_double": "tdd"})
+MAP.update({"double_double": "dd", "triple_double": "tdd",
+            "player_points_q1": "q1p", "player_rebounds_q1": "q1r", "player_assists_q1": "q1a"})
+NBA_MARKETS = NBA_MARKETS + ["player_points_q1", "player_rebounds_q1", "player_assists_q1"]
 NFL = "americanfootball_nfl"
 NFL_MAP = {"player_pass_yds": "pass_yds", "player_pass_tds": "pass_td", "player_pass_completions": "pass_cmp",
            "player_pass_attempts": "pass_att", "player_pass_interceptions": "int", "player_rush_yds": "rush_yds",
@@ -118,6 +120,9 @@ def event_props(event_id, sport=NBA, markets=None, core=None, mapping=None):
     quota migliore, quella di un bookmaker italiano se c'e', e la probabilita' "giusta" senza margine."""
     markets, core, mp = markets or NBA_MARKETS, core or NBA_CORE, mapping or MAP
     data = _get("%s/events/%s/odds" % (sport, event_id), {"markets": ",".join(markets), "includePregameOnly": "true"})
+    if data is None and any(x.endswith("_q1") for x in markets):
+        # se il servizio non conosce i mercati del 1° quarto si riprova senza
+        data = _get("%s/events/%s/odds" % (sport, event_id), {"markets": ",".join(x for x in markets if not x.endswith("_q1")), "includePregameOnly": "true"})
     if data is None:
         data = _get("%s/events/%s/odds" % (sport, event_id), {"markets": ",".join(core), "includePregameOnly": "true"})
     if not data:

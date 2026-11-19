@@ -186,7 +186,67 @@ def parse_nba_box(summ):
                 if row["min"] <= 0 or not row["pid"]:
                     continue
                 rows.append(row)
+    q1 = parse_nba_q1(summ)
+    if q1 is not None:
+        for row in rows:
+            row.update(q1.get(row["pid"], {"q1p": 0, "q1r": 0, "q1a": 0}))
     return rows
+
+
+def _period(pl):
+    pr = pl.get("period")
+    if isinstance(pr, dict):
+        pr = pr.get("number")
+    try:
+        return int(pr)
+    except (TypeError, ValueError):
+        return 0
+
+
+def parse_nba_q1(summ):
+    """Punti, rimbalzi e assist di ogni giocatore nel 1° quarto, dalla cronaca azione per azione (plays).
+    None se la cronaca manca o non copre il 1° quarto."""
+    plays = (summ or {}).get("plays") or []
+    q = [pl for pl in plays if isinstance(pl, dict) and _period(pl) == 1]
+    if len(q) < 30 or not any(_period(pl) >= 2 for pl in plays if isinstance(pl, dict)):
+        return None
+    out = {}
+
+    def add(pid, k, v):
+        d = out.setdefault(pid, {"q1p": 0, "q1r": 0, "q1a": 0})
+        d[k] += v
+
+    for pl in q:
+        parts = [str(((x or {}).get("athlete") or {}).get("id", "")) for x in (pl.get("participants") or [])]
+        parts = [x for x in parts if x]
+        typ = str(((pl.get("type") or {}).get("text")) or "").lower()
+        txt = str(pl.get("text") or "").lower()
+        if pl.get("scoringPlay") and parts:
+            try:
+                val = int(float(pl.get("scoreValue") or 0))
+            except (TypeError, ValueError):
+                val = 0
+            if val > 0:
+                add(parts[0], "q1p", val)
+                if len(parts) > 1 and "assist" in txt:
+                    add(parts[1], "q1a", 1)
+        elif "rebound" in typ and parts and "team" not in typ:
+            add(parts[0], "q1r", 1)
+    if not out:
+        return None
+    # controllo: i punti del 1° quarto devono tornare con il parziale ufficiale delle due squadre
+    try:
+        comp = ((summ.get("header") or {}).get("competitions") or [{}])[0]
+        q1_tot, n_c = 0, 0
+        for c in comp.get("competitors") or []:
+            ls = (c.get("linescores") or [])[0]
+            q1_tot += int(float(ls.get("value", ls.get("displayValue"))))
+            n_c += 1
+        if n_c == 2 and abs(q1_tot - sum(d["q1p"] for d in out.values())) > 3:
+            return None
+    except (IndexError, TypeError, ValueError, AttributeError):
+        pass
+    return out
 
 
 def parse_injuries(summ):

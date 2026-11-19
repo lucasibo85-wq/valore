@@ -294,6 +294,31 @@ def main():
     if done and empty == done:
         log("ATTENZIONE: nessuna statistica letta. Il formato ESPN potrebbe essere cambiato.")
 
+    # ---------------- 1° quarto (punti, rimbalzi, assist) per le partite NBA gia' in archivio
+    if cfg["nba"].get("enabled") and nba_logs:
+        q1_since = iso(today - dt.timedelta(days=int(cfg["nba"].get("q1_days", 400))))
+        tried = set(state.get("q1_tried", []))
+        by_gid = defaultdict(list)
+        for r in nba_logs:
+            if "q1p" not in r and r["date"] >= q1_since and r["gid"] not in tried:
+                by_gid[r["gid"]].append(r)
+        todo = sorted(by_gid, key=lambda g: by_gid[g][0]["date"], reverse=True)[:int(cfg["nba"].get("q1_per_run", 150))]
+        ok_q1 = 0
+        for gid in todo:
+            summ = espn.summary("basketball/nba", gid)
+            if summ is None:
+                continue
+            q1 = espn.parse_nba_q1(summ)
+            if q1 is None:
+                tried.add(gid)  # cronaca mancante o incompleta: non si riprova
+                continue
+            for r in by_gid[gid]:
+                r.update(q1.get(r["pid"], {"q1p": 0, "q1r": 0, "q1a": 0}))
+            ok_q1 += 1
+        state["q1_tried"] = sorted(tried)[-3000:]
+        if todo:
+            log("NBA 1° quarto: %d partite completate su %d (ne restano %d)" % (ok_q1, len(todo), max(0, len(by_gid) - len(todo))))
+
     # ---------------- Pulizia storico
     cutoff = iso(today - dt.timedelta(days=int(cfg.get("history_days", 420))))
     cutoff_nba = iso(today - dt.timedelta(days=int(cfg["nba"].get("history_days", cfg.get("history_days", 420)))))
@@ -421,6 +446,14 @@ def main():
 
 
 # ====================================================================== quote
+def q1_cols(r):
+    """Punti, rimbalzi, assist del 1° quarto in coda alla riga (vuoto se il dato manca)."""
+    return [int(r["q1p"]), int(r["q1r"]), int(r["q1a"])] if "q1p" in r else []
+
+
+Q1_MAP = {"q1p": "pts", "q1r": "reb", "q1a": "ast"}
+
+
 def pos_group(pos):
     """Ruolo NBA in tre gruppi: G (playmaker/guardie), F (ali), C (centri)."""
     p = str(pos or "").upper()
@@ -763,6 +796,12 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     # solo le 30 squadre vere (con almeno 10 partite nell'archivio): fuori All-Star e squadre di esibizione
     real_t = [t for t in opp_f if tabbr(t) != "?" and len(team_games.get(t, [])) >= 10]
     app["nba"]["dvp"] = {m: {tabbr(t): round(opp_f[t].get(m, 1.0), 3) for t in real_t} for m in markets}
+    # quota del 1° quarto sul totale (lega): base per le proiezioni 1Q dei giocatori con pochi dati
+    q1_league = {}
+    rows_q1 = [r for r in logs if "q1p" in r and r["date"] >= since_long]
+    for qk, b in Q1_MAP.items():
+        tot_b = sum(float(r[b]) for r in rows_q1)
+        q1_league[qk] = sum(float(r[qk]) for r in rows_q1) / tot_b if tot_b > 0 else None
     # DvP per ruolo (come Props.Cash): quanto concede ogni difesa a guardie, ali e centri
     since_d = since_opp
     by_pos = defaultdict(list)
@@ -912,6 +951,17 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     proj["dd"] = [round(-math.log(1 - min(pdd, 0.97)), 4), None]
                 if ptd >= 0.003:
                     proj["tdd"] = [round(-math.log(1 - min(ptd, 0.9)), 4), None]
+                # 1° quarto: proiezione della partita x quota del giocatore nel 1° quarto (ultime 40 con il dato)
+                gq = [r for r in games[:60] if "q1p" in r][:40]
+                for qk, b in Q1_MAP.items():
+                    Lq = q1_league.get(qk)
+                    if Lq is None or b not in proj or len(gq) < 3:
+                        continue
+                    full = sum(float(r[b]) for r in gq)
+                    part = sum(float(r[qk]) for r in gq)
+                    n_q = len(gq)
+                    sh = ((part / full) * n_q + Lq * 10) / (n_q + 10) if full > 0 else Lq
+                    proj[qk] = [round(proj[b][0] * sh, 3), proj[b][1]]
                 status = c["status"]
                 if c["after"] and not status:
                     status = "Assente ultime %d" % len(c["after"])
@@ -930,7 +980,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     "of": {m: round(opp_f.get(oid, {}).get(m, 1.0), 3) for m in markets},
                     "a30": {m: round(sum(models.market_value(r, cc, m) for r in games[:30]) / len(games[:30]), 2)
                             for m, cc in markets.items()},
-                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
+                    "l": [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))] + q1_cols(r)
                           for r in games[:10]],
                 }
                 p["a30"]["dd"] = round(sum(1 for r in games[:30] if models.dd_count(r) >= 2) / len(games[:30]), 3)
@@ -940,7 +990,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
                     p["odds"] = od
                 app["nba"]["players"].append(p)
                 # ultime 100 partite + tutte le sfide piu' vecchie contro l'avversario di oggi (H2H su 3 stagioni)
-                hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))]
+                hist["nba"][c["pid"]] = [[r["date"], tabbr(r["opp"]), round(float(r["min"]))] + [int(float(r[b])) for b in base] + [int(float(r.get("home") or 0))] + q1_cols(r)
                                          for r in games[:100] + [g_ for g_ in games[100:] if g_["opp"] == oid]]
     # filtro "con / senza un compagno": per le squadre in programma, le date in cui ogni giocatore della
     # rotazione ha giocato CON QUELLA SQUADRA (cosi' nell'app si vedono le partite di uno senza l'altro)
