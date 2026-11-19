@@ -2229,7 +2229,7 @@ function viewPlayer(sport, id, g, mq) {
         <div class="kv"><span>Media U10</span><span style="color:${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? 'var(--good)' : 'var(--bad2)'}">${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? '▲' : '▼'} ${bern ? pct(avgU10) : avgU10.toFixed(1)}</span></div>
         <div class="kv"><span>Linea</span><span>${bern ? 'Sì' : e.line}</span></div>
         <div class="kv"><span>Hit rate</span><span style="color:${hitCol(winVal[win])}">${winVal[win] == null ? '—' : Math.round(winVal[win] * 100) + '%'}</span></div>
-        <div class="kv" ${dv && dvpHistOk(p) ? `role="button" tabindex="0" data-act="dvpOpen" style="cursor:pointer"` : ''}><span>${dv ? 'DvP' + (dv.by ? ' ' + POS_LBL[dv.by] : '') + (dvpHistOk(p) ? ' ›' : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
+        <div class="kv" ${dv && dvpHistOk(p) ? `role="button" tabindex="0" data-act="dvpOpen" style="cursor:pointer"` : ''}><span>${dv ? 'DvP' + (dv.by ? ' ' + dv.by : '') + (dvpHistOk(p) ? ' ›' : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
       ${barChart(sport, pf, m, e.line, side0, win, '')}
       <div class="row" style="gap:8px;align-items:stretch"><div class="seg wseg" style="flex:1;min-width:0">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
         ${(hasHome || mates.length) ? `<button class="iconbtn fbtn ${S.fOpen || filt || mate ? 'on' : ''}" style="height:auto;width:52px" data-act="fOpen" aria-label="Filtri">${ICON_FILTER}${(filt ? 1 : 0) + (mate ? 1 : 0) ? `<i>${(filt ? 1 : 0) + (mate ? 1 : 0)}</i>` : ''}</button>` : ''}</div>
@@ -2305,7 +2305,7 @@ function filterRows(sport, p, filt, mate) {
     const tm = teammates(sport, p).find(x => x[0] === mate.slice(1));
     if (tm) {
       const set = new Set(tm[4]);
-      const from = tm[4].length >= 150 ? tm[4][0] : -1;  // prima di cosi' non si sa se il compagno c'era
+      const from = tm[4][0];  // solo da quando il compagno e' in squadra (prima non avrebbe senso "senza di lui")
       rows = rows.filter(r => { const d = dayNum(r[0]); return d >= from && (mate[0] === '-' ? !set.has(d) : set.has(d)); });
     }
   }
