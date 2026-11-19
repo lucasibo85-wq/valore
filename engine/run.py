@@ -800,6 +800,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     # [data, avversario, in casa, {G: [statistiche base], F: [...], C: [...]}] + media lega per partita per ruolo
     agg = defaultdict(lambda: defaultdict(lambda: [0.0] * len(base)))
     meta_d = {}
+    who = defaultdict(lambda: defaultdict(list))
     for r in logs:
         if r["date"] < since_opp:
             continue
@@ -811,6 +812,9 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
         v = agg[key][pg]
         for i, b_ in enumerate(base):
             v[i] += float(r[b_])
+        if float(r.get("min") or 0) >= 8:
+            # chi ha giocato in quel ruolo: cognome, minuti, titolare, statistiche
+            who[key][pg].append([str(r.get("name", "?")).split(" ")[-1], round(float(r["min"])), int(float(r.get("starter") or 0))] + [int(float(r[b_])) for b_ in base])
     lg_sum = defaultdict(lambda: [0.0] * len(base))
     for key, d in agg.items():
         for pg, v in d.items():
@@ -820,11 +824,13 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     app["nba"]["dvpavg"] = {pg: [round(x / n_tg, 2) for x in v] for pg, v in lg_sum.items()}
     by_def = defaultdict(list)
     for (d_tid, gid), d in agg.items():
-        by_def[d_tid].append((meta_d[(d_tid, gid)], d))
+        by_def[d_tid].append((meta_d[(d_tid, gid)], d, gid))
     app["nba"]["dvph"] = {}
     for d_tid in real_t:
         rows_ = sorted(by_def.get(d_tid, []), key=lambda x: x[0][0], reverse=True)[:10]
-        app["nba"]["dvph"][tabbr(d_tid)] = [[m_[0], tabbr(m_[1]), m_[2], {pg: [int(x) for x in v] for pg, v in d.items()}] for m_, d in rows_]
+        app["nba"]["dvph"][tabbr(d_tid)] = [[m_[0], tabbr(m_[1]), m_[2], {pg: [int(x) for x in v] for pg, v in d.items()},
+                                             {pg: sorted(lst, key=lambda x: -x[1])[:4] for pg, lst in who[(d_tid, gid_)].items()}]
+                                            for m_, d, gid_ in rows_]
     # quota del 1° quarto sul totale (lega): base per le proiezioni 1Q dei giocatori con pochi dati
     q1_league = {}
     rows_q1 = [r for r in logs if "q1p" in r and r["date"] >= since_long]
