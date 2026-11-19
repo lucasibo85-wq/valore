@@ -265,7 +265,7 @@ const ICON_X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stro
 
 // ------------------------------------------------------------------ dati
 // ------------------------------------------------------------------ codice d'accesso (dati cifrati)
-const b64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+const b64 = t => { const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
 async function deriveKey(code, saltB64, iter) {
   const ck = (S.keys = S.keys || {});
   const id = saltB64 + '|' + iter;
@@ -278,6 +278,11 @@ async function deriveKey(code, saltB64, iter) {
 async function decryptEnv(env) {
   const key = await deriveKey(S.code, env.salt, env.iter);
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(env.iv) }, key, b64(env.ct));
+  if (env.z === 'gzip') {
+    // dati compressi (file molto piu' piccoli): si scompattano nel browser
+    const txt = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return JSON.parse(txt);
+  }
   return JSON.parse(new TextDecoder().decode(pt));
 }
 const bustQ = () => '?t=' + Math.floor(Date.now() / 300000);
