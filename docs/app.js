@@ -11,6 +11,7 @@ const MARKETS = {
     ['pra', 'P+R+A', ['pts', 'reb', 'ast']], ['pr', 'P+R', ['pts', 'reb']], ['pa', 'P+A', ['pts', 'ast']],
     ['ra', 'R+A', ['reb', 'ast']], ['sb', 'Rub+Stop', ['stl', 'blk']], ['tov', 'Palle perse', ['tov']],
     ['dd', 'Doppia doppia', ['pts', 'reb', 'ast', 'stl', 'blk']], ['tdd', 'Tripla doppia', ['pts', 'reb', 'ast', 'stl', 'blk']],
+    ['q1p', '1Q Punti', ['q1p']], ['q1r', '1Q Rimbalzi', ['q1r']], ['q1a', '1Q Assist', ['q1a']],
   ],
   soccer: [
     ['shots', 'Tiri', ['shots']], ['sot', 'Tiri in porta', ['sot']], ['fc', 'Falli commessi', ['fc']],
@@ -85,7 +86,17 @@ function expInfo(sport, p) {
   return null;
 }
 
+// statistiche del 1° quarto (NBA): in coda alle righe dello storico, dopo il flag casa/trasferta
+const Q1F = { q1p: 1, q1r: 2, q1a: 3 };
+const isQ1 = (sport, m) => sport === 'nba' && !!Q1F[m];
+/** Solo le partite che hanno il dato richiesto (il 1° quarto manca nelle partite piu' vecchie) */
+const withM = (sport, m, rows) => isQ1(sport, m) ? rows.filter(r => r[homeIdx(sport) + Q1F[m]] != null) : rows;
 function marketValue(sport, m, arr, off) {
+  if (isQ1(sport, m)) {
+    if (off !== L_OFF[sport]) return null; // tabellino live: niente dati per quarto
+    const x = arr[homeIdx(sport) + Q1F[m]];
+    return x == null ? null : Number(x);
+  }
   const comps = mkInfo(sport, m)[2];
   if (sport === 'nba' && DD_NEED[m]) {
     // doppia/tripla doppia: almeno 2 (o 3) statistiche tra punti, rimbalzi, assist, rubate, stoppate a quota 10
@@ -348,7 +359,7 @@ function evaluateRaw(sport, p, m) {
 
 function hitRate(sport, p, m, line, side) {
   const off = L_OFF[sport];
-  return p.l.map(g => {
+  return withM(sport, m, p.l).map(g => {
     const v = marketValue(sport, m, g, off);
     return side === 'under' ? v < line : v > line;
   });
@@ -439,6 +450,7 @@ function legOutcome(b) {
   const row = R.p[b.pid];
   if (!row) return 'void';
   const v = marketValue(b.sport, b.m, row, 1);
+  if (v == null) return null; // 1° quarto: da chiudere a mano
   b.actual = v;
   if (v === b.line) return 'void';
   return ((v > b.line) === (b.side === 'over')) ? 'won' : 'lost';
@@ -481,7 +493,7 @@ function updateBadge() {
 // ------------------------------------------------------------------ PRECEDENTI (H2H)
 /** Il giocatore contro l'avversario di oggi: frequenza sopra la linea e ultime sfide */
 function vsBlock(sport, p, m, line) {
-  const rows = gamesOf(sport, p).filter(g => g[1] === oppKey(p)).slice(0, 10);
+  const rows = withM(sport, m, gamesOf(sport, p)).filter(g => g[1] === oppKey(p)).slice(0, 10);
   if (!rows.length) return `<p class="note">Nessuna sfida contro ${esc(p.o)} nello storico disponibile.</p>`;
   const off = L_OFF[sport];
   const vals = rows.map(g => marketValue(sport, m, g, off));
@@ -859,6 +871,7 @@ function liveProgress(b) {
   if (!L || L.st === 'pre') return '';
   if (b.pid && box && box.p[b.pid]) {
     const v = marketValue(b.sport, b.m, box.p[b.pid], 1);
+    if (v == null) return '';
     const line = b.line;
     const ok = b.side === 'over' ? v > line : v < line;
     const pctv = line ? Math.min(100, v / (line + 0.5) * 100) : 0;
@@ -1588,7 +1601,7 @@ function buildDailyRaw() {
       let best = null;
       for (const [m, label] of mkList(sp, p)) {
         if (BERNOULLI.has(m)) continue;
-        const rows = gamesOf(sp, p);
+        const rows = withM(sp, m, gamesOf(sp, p));
         if (rows.length < 8) continue;
         const off = L_OFF[sp];
         const v10 = rows.slice(0, 10).map(r => marketValue(sp, m, r, off));
@@ -1830,7 +1843,7 @@ function rankView(sport, m, plist) {
     const [mu, rr] = r.p.mk[m];
     r.mu = mu;
     r.prob = bern ? 1 - Math.exp(-mu) : probs(T - 0.5, mu, rr).over;
-    const hist = gamesOf(sport, r.p);
+    const hist = withM(sport, m, gamesOf(sport, r.p));
     const v10 = hist.slice(0, 10).map(g => marketValue(sport, m, g, off));
     r.l10 = v10.length ? [v10.filter(v => bern ? v > 0 : v >= T).length, v10.length] : null;
     const seas = hist.filter(g => g[0] >= ss).map(g => marketValue(sport, m, g, off));
@@ -1877,7 +1890,8 @@ function viewPlayers(q) {
     S.game = q.g;
     for (const sp of PROP_SPORTS) if (gamesList(sp).some(x => x.id === q.g)) { S.sport = sp; return viewPlayers({}); }
   }
-  const m = mkOf(sport);
+  const mSel = mkOf(sport), trend = mSel === 'trend';
+  const m = trend ? DEFAULT_MK[sport] : mSel;
   const term = normTxt(S.search).trim();
   const toks = term ? term.split(/\s+/) : [];
   // cercando un nome si mostrano tutti i giocatori, anche senza il mercato selezionato
@@ -1897,8 +1911,21 @@ function viewPlayers(q) {
     <select class="sel" aria-label="Partita" data-act="game"><option value="">Tutte le partite</option>${games.map(([id, l, t]) => `<option value="${esc(id)}" ${id === S.game ? 'selected' : ''}>${esc(l)} · ${esc(fmtTime(t))}</option>`).join('')}</select></div></header>
     <main>${R.body}${updatedLine()}</main>`;
   }
+  if (trend && !toks.length) {
+    // Trend: tutte le giocate consigliate della giornata, di tutti i mercati, mescolate (le migliori prima)
+    rows = [];
+    for (const p of players(sport)) {
+      if (S.game && p.g !== S.game) continue;
+      if (p.st && /out|assente|dubbio|questionable|doubtful/i.test(p.st)) continue;
+      for (const [mm] of mkList(sport, p)) {
+        const e = evaluate(sport, p, mm);
+        if (e.ev !== null && e.ev > 0 && e.ok) rows.push({ p, mm, e, tr: 1 });
+      }
+    }
+  }
   if (S.onlyValue) rows = rows.filter(r => r.e.ev !== null && r.e.ev > 0 && r.e.ok);
   rows.sort((a, b) => {
+    if (a.tr && b.tr) return b.e.ev - a.e.ev;
     if (S.sort === 'valore') {
       const av = a.e.ev === null ? -9 : a.e.ev, bv = b.e.ev === null ? -9 : b.e.ev;
       if (av !== bv) return bv - av;
@@ -1907,11 +1934,11 @@ function viewPlayers(q) {
   });
   const lim = S.limit || 40;
   const shown = rows.slice(0, lim);
-  const list = shown.map(({ p, e, mm }) => playerRow(sport, p, mm, e, mm !== m)).join('') ||
-    '<div class="empty">Nessun giocatore per questi filtri.</div>';
+  const list = shown.map(({ p, e, mm, tr }) => playerRow(sport, p, mm, e, tr || mm !== m)).join('') ||
+    (trend ? '<div class="empty">Nessuna giocata consigliata per ora: servono le quote dei bookmaker (arrivano fino a 48 ore prima delle partite).</div>' : '<div class="empty">Nessun giocatore per questi filtri.</div>');
   return header('Prop giocatori', 'Statistiche giocatori', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
     ${segHtml}${viewSeg}
-    <div class="chips">${MARKETS[sport].map(([k, l]) => `<button class="chip ${k === m ? 'on' : ''}" data-act="market" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="chips"><button class="chip ${trend ? 'on' : ''}" data-act="market" data-v="trend">🔥 Trend</button>${MARKETS[sport].map(([k, l]) => `<button class="chip ${!trend && k === m ? 'on' : ''}" data-act="market" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="row">
       <input class="search" type="search" placeholder="Cerca giocatore o squadra" aria-label="Cerca giocatore o squadra" data-act="search" value="${esc(S.search)}">
     </div>
@@ -1941,6 +1968,7 @@ const POS_LBL = { G: 'guardie', F: 'ali', C: 'centri' };
     Se c'e' il ruolo del giocatore si usa quanto concede a quel ruolo (guardie, ali, centri), come Props.Cash. */
 function dvpRank(sport, opp, m, pos) {
   if (sport !== 'nba' || !S.data.nba) return null;
+  m = ({ q1p: 'pts', q1r: 'reb', q1a: 'ast' })[m] || m; // 1° quarto: come la partita intera
   const pg = posGroup(pos), PP = S.data.nba.dvpp;
   let D = pg && PP && PP[pg] && PP[pg][m], by = pg;
   if (!D || D[opp] == null) { D = S.data.nba.dvp && S.data.nba.dvp[m]; by = ''; }
@@ -1975,7 +2003,7 @@ function gameStrip(sport, games) {
 /** Grafico a barre delle partite: verde sopra la linea, rosso sotto */
 function barChart(sport, p, m, line, side, win, filt) {
   const off = L_OFF[sport];
-  let rows = gamesOf(sport, p);
+  let rows = withM(sport, m, gamesOf(sport, p));
   if (win === 'h2h') rows = rows.filter(r => r[1] === oppKey(p));
   if (win === 'sea') { const ss = seasonStart(sport); rows = rows.filter(r => r[0] >= ss); }
   if (filt === 'casa') rows = rows.filter(r => rowHome(sport, r) === true);
@@ -2047,7 +2075,7 @@ function viewPlayer(sport, id, g, mq) {
   const e = evaluate(sport, p, m);
   const key = oddsKey(sport, p, m);
   const off = L_OFF[sport];
-  const vals = p.l.map(x => marketValue(sport, m, x, off));
+  const vals = withM(sport, m, p.l).map(x => marketValue(sport, m, x, off));
   const max = Math.max(e.line * 1.25, ...vals, 1);
   const H = 120;
   const hitsO = vals.filter(v => v > e.line).length;
@@ -2111,7 +2139,7 @@ function viewPlayer(sport, id, g, mq) {
   const htx = pf === p ? hitTable(sport, p, m, e.line, side0) : hitTableRaw(sport, pf, m, e.line, side0);
   const fr = x => x ? x[0] / x[1] : null;
   const winVal = { sea: fr(htx.sea), h2h: fr(htx.vs), l5: fr(htx.l5), l10: fr(htx.l10), l20: fr(htx.l20) };
-  const v10 = gamesOf(sport, p).slice(0, 10).map(r => marketValue(sport, m, r, off));
+  const v10 = withM(sport, m, gamesOf(sport, p)).slice(0, 10).map(r => marketValue(sport, m, r, off));
   const avgU10 = v10.length ? v10.reduce((a, b) => a + b, 0) / v10.length : 0;
   const dv = dvpRank(sport, p.o, m, p.pos);
   const gm = findGame(sport, p.g);
@@ -2204,7 +2232,7 @@ function filterRows(sport, p, filt, mate) {
 /** Frazioni sopra la linea su ultime 5/10/20 e stagione */
 const hitTable = (sport, p, m, line, side) => memo('ht|' + sport + '|' + p.id + '|' + p.g + '|' + m + '|' + line + '|' + side, () => hitTableRaw(sport, p, m, line, side));
 function hitTableRaw(sport, p, m, line, side) {
-  const rows = gamesOf(sport, p), off = L_OFF[sport];
+  const rows = withM(sport, m, gamesOf(sport, p)), off = L_OFF[sport];
   const ok = g => { const v = marketValue(sport, m, g, off); return side === 'under' ? v < line : v > line; };
   const ss = seasonStart(sport);
   const seas = rows.filter(g => g[0] >= ss);
