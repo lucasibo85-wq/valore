@@ -78,7 +78,7 @@ def _nb_pmf(mu, r, n=26):
     return out
 
 
-def mlb_markets(mh, ma, total_line=None, r=4.0):
+def mlb_markets(mh, ma, total_line=None, r=4.0, labels=("Run line", "Totale run")):
     ph_ = _nb_pmf(mh, r)
     pa_ = _nb_pmf(ma, r)
     out = []
@@ -103,14 +103,14 @@ def mlb_markets(mh, ma, total_line=None, r=4.0):
     g = "Vincente"
     add("ml1", g, "1 · casa", p_home)
     add("ml2", g, "2 · ospite", 1 - p_home)
-    g = "Run line"
+    g = labels[0]
     ge2 = sum(p for d, p in diff.items() if d >= 2)
     le_2 = sum(p for d, p in diff.items() if d <= -2)
     add("hsp:-1.5", g, "Casa -1.5", ge2)
     add("asp:1.5", g, "Ospite +1.5", 1 - ge2)
     add("asp:-1.5", g, "Ospite -1.5", le_2)
     add("hsp:1.5", g, "Casa +1.5", 1 - le_2)
-    g = "Totale run"
+    g = labels[1]
     c = total_line if total_line is not None else _half(mh + ma)
     c = _half(c) if float(c).is_integer() else c
     for d in (-1, 0, 1):

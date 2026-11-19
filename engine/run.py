@@ -75,7 +75,7 @@ def main():
     state.setdefault("scan", {})
     processed = {k: set(v) for k, v in state["processed"].items()}
     teams = store.read_json("teams.json", {"nba": {}, "soccer": {}})
-    US = [sp for sp in ("nfl", "mlb") if cfg.get(sp, {}).get("enabled")]
+    US = [sp for sp in ("nfl", "mlb", "nhl") if cfg.get(sp, {}).get("enabled")]
     us_logs = {sp: store.read_csv(sp + "_logs.csv") for sp in US}
     for sp in US:
         teams.setdefault(sp, {})
@@ -174,7 +174,7 @@ def main():
             state["scan"][league] = iso(today - dt.timedelta(days=3))
             log("Calcio %s: %d partite trovate, %d nuove" % (league, len(evs), n_new))
 
-    # ---------------- NFL e MLB (solo stagione regolare e playoff)
+    # ---------------- NFL, MLB e NHL (solo stagione regolare e playoff)
     for sp in US:
         path = props.SPORTS[sp]["path"]
         start = dt.date.fromisoformat(state["scan"][sp]) if sp in state["scan"] else today - dt.timedelta(days=cfg[sp].get("backfill_days", 400))
@@ -428,7 +428,7 @@ def main():
     ev_logs = {"nba": nba_logs, "soccer": soc_logs}
     ev_logs.update(us_logs)
     calib.evaluate(state, ev_logs, results, today)
-    calib.record(state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb")})
+    calib.record(state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb", "nhl")})
     diag = build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today)
     diag["calib"] = calib.report(state, today)
     secure.write_outputs(OUT_DIR, {"app": app, "hist": hist, "results": results, "diag": diag})
@@ -495,7 +495,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
     for gid in [g for g in evst if g not in up_ids]:
         del evst[gid]
     # si parte dalle quote gia' salvate delle partite ancora da giocare
-    new = {k: {gid: v for gid, v in (cache.get(k) or {}).items() if gid in up_ids} for k in ("soccer", "nba", "soccer_props", "nfl", "mlb")}
+    new = {k: {gid: v for gid, v in (cache.get(k) or {}).items() if gid in up_ids} for k in ("soccer", "nba", "soccer_props", "nfl", "mlb", "nhl")}
 
     def remember_rem(rem):
         if rem is not None:
@@ -532,7 +532,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
         if state.get("propline_ver") != 3:
             # versione corretta della lettura delle linee: via le quote scaricate prima, si riscarica tutto
             pst.clear()
-            for k_ in ("nba", "nfl", "mlb", "soccer_props"):
+            for k_ in ("nba", "nfl", "mlb", "nhl", "soccer_props"):
                 new[k_] = {}
             state["propline_ver"] = 3
         for gid in [g for g in pst if g not in up_ids]:  # partite finite
@@ -567,7 +567,7 @@ def fetch_odds(cfg, state, today, upcoming, teams, cache):
             return u is not None and u >= 950
         budget_pl = 200
         groups = []  # (cache key, sport key PropLine, eventi, mercati, riserva, mappa, squadre)
-        for sp in ("nba", "nfl", "mlb"):
+        for sp in ("nba", "nfl", "mlb", "nhl"):
             ev_due = [e for s_, p_, l_, e in upcoming if s_ == sp and pl_due(e)]
             if ev_due:
                 skey, mk, core, mp = propline.SPORTS[sp]
@@ -1095,7 +1095,7 @@ def build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today):
                  "nba_games": len(app.get("nba", {}).get("games", [])),
                  "nba_with_odds": len({p["g"] for p in app.get("nba", {}).get("players", []) if p.get("odds")}),
                  "props_games": {sp: [len({p["g"] for p in app.get(sp, {}).get("players", []) if p.get("odds")}),
-                                      len(app.get(sp, {}).get("games" if sp != "soccer" else "matches", []))] for sp in ("nba", "nfl", "mlb", "soccer")}}
+                                      len(app.get(sp, {}).get("games" if sp != "soccer" else "matches", []))] for sp in ("nba", "nfl", "mlb", "nhl", "soccer")}}
     return {"generated": app["generated"], "soccer": lg, "nba": nb, "queue": len(state.get("queue", [])), "odds": odds_info}
 
 

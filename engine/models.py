@@ -13,7 +13,7 @@ SOC_MARKETS = {
     "shots": ["shots"], "sot": ["sot"], "fc": ["fc"], "fs": ["fs"], "card": ["yc", "rc"],
     "g": ["g"], "a": ["a"], "ga": ["g", "a"], "goa": ["g", "a"],
 }
-BERNOULLI = {"card", "goa", "td", "hr"}  # conta solo "almeno uno"
+BERNOULLI = {"card", "goa", "td", "hr", "gs"}  # conta solo "almeno uno"
 
 
 def market_value(row, comps, market):
@@ -27,6 +27,8 @@ def pos_group(sport, pos):
         return p if p in ("QB", "RB", "WR", "TE") else "X"
     if sport == "mlb":
         return "P" if p == "P" else "B"
+    if sport == "nhl":
+        return "G" if p.startswith("G") else ("D" if p.startswith("D") else "F")
     if sport == "nba":
         if "C" in p:
             return "C"

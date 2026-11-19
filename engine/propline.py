@@ -34,11 +34,15 @@ MLB_MAP = {"batter_hits": "h", "batter_hits_runs_rbis": "hrr", "batter_runs_scor
            "batter_home_runs": "hr", "batter_walks": "bb", "batter_strikeouts": "so", "pitcher_strikeouts": "p_k",
            "pitcher_outs": "outs", "pitcher_earned_runs": "er", "pitcher_hits_allowed": "p_h", "pitcher_walks": "p_bb"}
 MLB_CORE = ["batter_hits", "batter_home_runs", "batter_total_bases", "pitcher_strikeouts"]
+NHL = "icehockey_nhl"
+NHL_MAP = {"player_points": "pts", "player_assists": "a", "player_shots_on_goal": "sog", "player_blocked_shots": "bs",
+           "player_total_saves": "sv", "player_goal_scorer_anytime": "gs"}
+NHL_CORE = ["player_points", "player_shots_on_goal", "player_goal_scorer_anytime", "player_total_saves"]
 SOC_MAP = dict(odds.SOCCER_PROP_MAP)
 SOC_CORE = ["player_shots_on_target", "player_goal_scorer_anytime"]
 # per sport: chiave PropLine, mercati richiesti, mercati di riserva, traduzione nei mercati dell'app
 SPORTS = {"nba": (NBA, NBA_MARKETS, NBA_CORE, MAP), "nfl": (NFL, list(NFL_MAP), NFL_CORE, NFL_MAP),
-          "mlb": (MLB, list(MLB_MAP), MLB_CORE, MLB_MAP)}
+          "mlb": (MLB, list(MLB_MAP), MLB_CORE, MLB_MAP), "nhl": (NHL, list(NHL_MAP), NHL_CORE, NHL_MAP)}
 SOCCER = (list(SOC_MAP), SOC_CORE, SOC_MAP)
 ITALIAN = ("lottomatica", "williamhill_it", "snai", "eurobet", "sisal", "goldbet", "bet365_it", "betflag", "planetwin365")
 STATS = {"requests": 0, "used_today": None}
@@ -93,7 +97,7 @@ def sports():
     return []
 
 
-BERN = {"dd", "tdd", "td", "hr", "g", "card"}  # mercati si'/no: linea 0.5
+BERN = {"dd", "tdd", "td", "hr", "g", "card", "gs"}  # mercati si'/no: linea 0.5
 
 
 def _point(o, m):

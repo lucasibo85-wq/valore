@@ -1,9 +1,10 @@
-"""NFL e MLB: lettura dei tabellini ESPN e proiezioni dei giocatori.
+"""NFL, MLB e NHL: lettura dei tabellini ESPN e proiezioni dei giocatori.
 
 Stesso metodo dell'NBA: tasso per unita' di "esposizione" pesato sulle partite recenti,
 corretto verso la media del ruolo, per l'esposizione attesa e per l'avversario.
 - NFL: esposizione = 1 partita (statistiche per partita).
 - MLB battitori: esposizione = turni in battuta (AB + BB); lanciatori: eliminazioni (outs).
+- NHL: esposizione = minuti sul ghiaccio (TOI); i portieri hanno una riga separata con pid + 'p'.
 """
 import datetime as dt
 from collections import defaultdict
@@ -46,6 +47,23 @@ SPORTS = {
         },
         "half_life": 25, "prior_exposure": 40.0, "season_month": 3,
     },
+    "nhl": {
+        "path": "hockey/nhl",
+        "base": ["g", "a", "sog", "bs", "hit", "sv", "ga", "sa"],
+        "markets": {
+            "pts": ["g", "a"], "gs": ["g"], "a": ["a"], "sog": ["sog"], "bs": ["bs"], "hit": ["hit"],
+            "sv": ["sv"],
+        },
+        "bernoulli": {"gs"},
+        "pmk": {"sv"},
+        "categories": {
+            "forward": {"G": "g", "A": "a", "S": "sog", "BS": "bs", "HT": "hit", "TOI": "toi"},
+            "defens": {"G": "g", "A": "a", "S": "sog", "BS": "bs", "HT": "hit", "TOI": "toi"},
+            "skater": {"G": "g", "A": "a", "S": "sog", "BS": "bs", "HT": "hit", "TOI": "toi"},
+            "goalie": {"SV": "sv", "GA": "ga", "SA": "sa", "TOI": "toi"},
+        },
+        "half_life": 15, "prior_exposure": 120.0, "season_month": 10,
+    },
 }
 PITCH = ["outs", "p_k", "er", "p_h", "p_bb"]
 BAT = ["h", "r", "rbi", "hr", "bb", "so"]
@@ -82,19 +100,19 @@ def parse_box(sport, summ):
             fmap = spec["categories"][cat]
             labels = [str(x).upper() for x in (st.get("labels") or st.get("names") or [])]
             for i_ath, ath in enumerate(st.get("athletes", []) or []):
-                if ath.get("didNotPlay"):
+                if ath.get("didNotPlay") or ath.get("scratched"):
                     continue
                 vals = ath.get("stats") or []
                 a = ath.get("athlete") or {}
                 pid = str(a.get("id", ""))
                 if not pid or not vals:
                     continue
-                pitcher = sport == "mlb" and cat == "pitching"
+                pitcher = (sport == "mlb" and cat == "pitching") or (sport == "nhl" and cat == "goalie")
                 key = pid + ("p" if pitcher else "")
                 row = rows.get(key)
                 if row is None:
                     row = {"pid": key, "name": a.get("displayName") or a.get("shortName", "?"),
-                           "pos": "P" if pitcher else ((a.get("position") or {}).get("abbreviation") or ""),
+                           "pos": ("G" if sport == "nhl" else "P") if pitcher else ((a.get("position") or {}).get("abbreviation") or ""),
                            "team": team_id, "starter": 1 if (ath.get("starter") or (pitcher and i_ath == 0)) else 0,
                            "min": 0.0}
                     for b in spec["base"]:
@@ -116,6 +134,12 @@ def parse_box(sport, summ):
                         row["outs"] = float(_innings_to_outs(raw))
                     elif field == "ab":
                         row["_ab"] = espn._num(raw)
+                    elif field == "toi":  # "13:12" -> 13.2 minuti
+                        mm = str(raw).split(":")
+                        try:
+                            row["_toi"] = int(mm[0]) + (int(mm[1]) / 60 if len(mm) > 1 else 0)
+                        except ValueError:
+                            row["_toi"] = 0.0
                     else:
                         row[field] = espn._num(raw)
     out = []
@@ -124,6 +148,10 @@ def parse_box(sport, summ):
             if r["pass_att"] + r["rush_att"] + r["rec"] + r["tgt"] <= 0:
                 continue
             r["min"] = 1.0
+        elif sport == "nhl":
+            r["min"] = round(r.pop("_toi", 0.0), 2)
+            if r["min"] <= 0:
+                continue
         else:
             if key.endswith("p"):
                 r["min"] = r["outs"]
@@ -134,6 +162,7 @@ def parse_box(sport, summ):
                 if r["min"] <= 0:
                     continue
         r.pop("_ab", None)
+        r.pop("_toi", None)
         out.append(r)
     return out
 
@@ -168,7 +197,7 @@ def _implied(odds, side, home_abbr, away_abbr):
 
 
 def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None, calib=None):
-    """Proiezioni NFL / MLB e mercati di squadra.
+    """Proiezioni NFL / MLB / NHL e mercati di squadra.
 
     Rispetto alla versione base:
     - mercati di squadra (vincente, handicap / run line, totali) dal modello punti/run;
@@ -188,6 +217,7 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
     since = (today - dt.timedelta(days=400)).isoformat()
     priors = models.league_priors(sport, logs, markets, since)
     opp_f, home_f = models.opponent_factors(logs, markets, since, k=8 if sport == "nfl" else 20)
+    pmk = set(spec.get("pmk", PITCH))
     yr = today.year if today.month >= spec["season_month"] else today.year - 1
     season_start = dt.date(yr, spec["season_month"], 1).isoformat()
     tabbr = lambda tid: teams.get(sport, {}).get(tid, {}).get("abbr", "?")
@@ -282,6 +312,8 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
             game.update({"mh": round(mh, 2), "ma": round(ma, 2), "notes": notes})
             if sport == "mlb":
                 game["mk"] = teamus.mlb_markets(mh, ma, odds_ev.get("ou"))
+            elif sport == "nhl":
+                game["mk"] = teamus.mlb_markets(mh, ma, odds_ev.get("ou"), r=40.0, labels=("Puck line", "Totale gol"))
             else:
                 game["mk"] = teamus.normal_markets(sport, mh, ma, hl, odds_ev.get("ou"))
             exp_team = {h_id: mh, a_id: ma}
@@ -291,6 +323,16 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
             tid, oid = ev[side]["id"], ev[opp_side]["id"]
             recent = team_games.get(tid, [])[:6]
             cands = []
+            # NHL: portiere titolare probabile = quello con piu' partite intere nelle ultime 5 della squadra
+            g_start = None
+            if sport == "nhl":
+                cnt_g = defaultdict(int)
+                last5 = set(recent[:5])
+                for pid_ in current.get(tid, []):
+                    if pid_.endswith("p"):
+                        cnt_g[pid_] = sum(1 for r in by_player[pid_][:8] if r["gid"] in last5 and float(r["min"]) >= 40)
+                if cnt_g:
+                    g_start = max(cnt_g, key=lambda k_: (cnt_g[k_], by_player[k_][0]["date"]))
             missing = defaultdict(float)
             for pid in current.get(tid, []):
                 games = by_player[pid]
@@ -313,6 +355,10 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
                         if apps < 3:
                             continue
                         rel = games[:10]
+                elif sport == "nhl" and pitcher:
+                    if pid != g_start or status:
+                        continue
+                    rel = [r for r in games[:10] if float(r["min"]) >= 40] or games[:10]
                 else:
                     if apps < 1:
                         continue
@@ -321,9 +367,9 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
                 exp = models.wmean([float(r["min"]) for r in rel], ws)
                 if exp <= 0:
                     continue
-                use = [m for m in markets if (m in PITCH) == pitcher or sport != "mlb"]
+                use = [m for m in markets if (m in pmk) == pitcher or sport not in ("mlb", "nhl")]
                 avg = {m: sum(models.market_value(r, markets[m], m) for r in games[:12]) / len(games[:12]) for m in use}
-                mk_ok = {m: markets[m] for m in use if avg[m] > (0.05 if m in bern else 0.4)}
+                mk_ok = {m: markets[m] for m in use if avg[m] > (0.05 if m in bern else (0.15 if sport == "nhl" else 0.4))}
                 if sport == "nfl":
                     if avg.get("pass_att", 0) < 8:
                         for m in ("pass_yds", "pass_td", "pass_cmp", "pass_att", "int", "pr_yds"):
@@ -347,11 +393,13 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
             avg_pts = pts_avg.get(tid)
             if exp_pts and avg_pts:
                 k = max(0.75, min(1.3, exp_pts / avg_pts))
-                notes_t.append("%s attesi %.1f (media %.1f)%s" % ("Punti" if sport == "nfl" else "Run", exp_pts, avg_pts,
+                notes_t.append("%s attesi %.1f (media %.1f)%s" % ({"nfl": "Punti", "nhl": "Gol"}.get(sport, "Run"), exp_pts, avg_pts,
                                                                   " da quote ESPN" if ip is not None else ""))
                 if sport == "nfl":
                     kb.update({"pass_yds": k ** 0.5, "rec_yds": k ** 0.5, "rush_yds": k ** 0.5, "pass_td": k, "rush_td": k,
                                "rec_td": k, "rec": k ** 0.3, "pass_cmp": k ** 0.3, "pass_att": k ** 0.2, "tgt": k ** 0.3})
+                elif sport == "nhl":
+                    kb.update({"g": k, "a": k, "sog": k ** 0.5, "sv": 1.0})
                 else:
                     kb.update({"h": k ** 0.5, "r": k, "rbi": k, "hr": k ** 0.8, "bb": k ** 0.3})
             if sport == "nfl":
