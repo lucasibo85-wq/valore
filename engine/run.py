@@ -383,6 +383,17 @@ def main():
     if not args.no_odds and cfg.get("odds", {}).get("enabled") and (odds.key() or propline.key()):
         odds_cache = fetch_odds(cfg, state, today, upcoming, teams, odds_cache)
         state["odds_cache"] = odds_cache
+        # archivio delle linee NBA (l'ultima prima della partita): serve allo storico difesa "come Props"
+        lh = store.read_json("lines_hist.json", {})
+        dates = {ev["id"]: ev["date"][:10] for s_, p_, l_, ev in upcoming if s_ == "nba"}
+        for gid, rows_ in (odds_cache.get("nba") or {}).items():
+            if gid in dates and rows_:
+                lh[gid] = {"d": dates[gid], "p": {}}
+                for row in rows_:
+                    lh[gid]["p"].setdefault(name_key(row[0]), {})[row[1]] = [row[2], row[3]]
+        old = iso(today - dt.timedelta(days=70))
+        lh = {g: v for g, v in lh.items() if v.get("d", "") >= old}
+        store.write_json("lines_hist.json", lh, compact=True)
     else:
         log("Quote automatiche: nessuna chiave (ODDS_API_KEY / PROPLINE_API_KEY), salto (inserimento manuale nell'app).")
 
@@ -419,7 +430,8 @@ def main():
         app["tennis"] = {"matches": []}
         tennis.build(app, t_matches, t_up)
     if cfg["nba"].get("enabled"):
-        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"), matches)
+        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"), matches,
+                  store.read_json("lines_hist.json", {}))
     if cfg["soccer"].get("enabled"):
         build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
                      calib_factors(state, "soccer"))
@@ -735,7 +747,7 @@ def spread_home(odds, home_abbr, away_abbr):
     return float(sp) if sp not in (None, "") else None
 
 
-def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, calib=None, matches=None):
+def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, calib=None, matches=None, lines_hist=None):
     """Proiezioni NBA.
 
     1. Tasso per minuto pesato sulle partite recenti, corretto verso la media del ruolo.
@@ -801,6 +813,7 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     agg = defaultdict(lambda: defaultdict(lambda: [0.0] * len(base)))
     meta_d = {}
     who = defaultdict(lambda: defaultdict(list))
+    gidx = {}
     for r in logs:
         if r["date"] < since_opp:
             continue
@@ -814,7 +827,18 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
             v[i] += float(r[b_])
         if float(r.get("min") or 0) >= 8:
             # chi ha giocato in quel ruolo: cognome, minuti, titolare, statistiche
-            who[key][pg].append([str(r.get("name", "?")).split(" ")[-1], round(float(r["min"])), int(float(r.get("starter") or 0))] + [int(float(r[b_])) for b_ in base])
+            # [nome, minuti, titolare, statistiche (7), media delle 10 partite precedenti (7), linee del bookmaker {mercato: [linea, quota over]}]
+            nm = str(r.get("name", "?"))
+            parts_ = nm.split(" ")
+            short = (parts_[0][:1] + ". " + " ".join(parts_[1:])) if len(parts_) > 1 else nm
+            if r["pid"] not in gidx:
+                gidx[r["pid"]] = {g_["gid"]: i_ for i_, g_ in enumerate(by_player.get(r["pid"], []))}
+            i0 = gidx[r["pid"]].get(r["gid"])
+            prev = by_player.get(r["pid"], [])[i0 + 1:i0 + 11] if i0 is not None else []
+            avg_p = [round(sum(float(g_[b_]) for g_ in prev) / len(prev), 1) for b_ in base] if prev else []
+            ln = {m_: v_ for m_, v_ in ((lines_hist or {}).get(r["gid"]) or {}).get("p", {}).get(name_key(nm), {}).items()
+                  if m_ in ("pts", "reb", "ast", "fg3m", "pra", "pr", "pa", "ra", "blk", "stl")}
+            who[key][pg].append([short, round(float(r["min"])), int(float(r.get("starter") or 0))] + [int(float(r[b_])) for b_ in base] + [avg_p, ln])
     lg_sum = defaultdict(lambda: [0.0] * len(base))
     for key, d in agg.items():
         for pg, v in d.items():
@@ -825,10 +849,10 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     by_def = defaultdict(list)
     for (d_tid, gid), d in agg.items():
         by_def[d_tid].append((meta_d[(d_tid, gid)], d, gid))
-    app["nba"]["dvph"] = {}
+    hist["nba_dvph"] = {}
     for d_tid in real_t:
         rows_ = sorted(by_def.get(d_tid, []), key=lambda x: x[0][0], reverse=True)[:10]
-        app["nba"]["dvph"][tabbr(d_tid)] = [[m_[0], tabbr(m_[1]), m_[2], {pg: [int(x) for x in v] for pg, v in d.items()},
+        hist["nba_dvph"][tabbr(d_tid)] = [[m_[0], tabbr(m_[1]), m_[2], {pg: [int(x) for x in v] for pg, v in d.items()},
                                              {pg: sorted(lst, key=lambda x: -x[1])[:4] for pg, lst in who[(d_tid, gid_)].items()}]
                                             for m_, d, gid_ in rows_]
     # quota del 1° quarto sul totale (lega): base per le proiezioni 1Q dei giocatori con pochi dati
