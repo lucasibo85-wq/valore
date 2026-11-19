@@ -2173,7 +2173,7 @@ function viewPlayer(sport, id, g, mq) {
           <div class="kv"><span>Fonte quote</span><span style="font-size:13px">${esc(e.src || '—')}</span></div>
         </div>
         <div class="grid3">
-          <div class="field"><label for="in-line">Linea</label><div class="stepper"><button class="iconbtn" data-act="lineStep" data-v="-1" aria-label="Linea più bassa">−</button><input id="in-line" inputmode="decimal" data-act="odds" data-k="line" value="${e.line}"><button class="iconbtn" data-act="lineStep" data-v="1" aria-label="Linea più alta">+</button></div></div>
+          <div class="field fline"><label for="in-line">Linea</label><div class="stepper"><button class="iconbtn" data-act="lineStep" data-v="-1" aria-label="Linea più bassa">−</button><input id="in-line" inputmode="decimal" data-act="odds" data-k="line" value="${e.line}"><button class="iconbtn" data-act="lineStep" data-v="1" aria-label="Linea più alta">+</button></div></div>
           <div class="field"><label for="in-over">Quota ${bern ? 'Sì' : 'Over'}</label><input id="in-over" inputmode="decimal" data-act="odds" data-k="over" value="${e.over || ''}" placeholder="—"></div>
           ${noUnder(sport) ? '<div></div>' : `<div class="field"><label for="in-under">Quota ${bern ? 'No' : 'Under'}</label><input id="in-under" inputmode="decimal" data-act="odds" data-k="under" value="${e.under || ''}" placeholder="—"></div>`}
         </div>
