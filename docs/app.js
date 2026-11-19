@@ -2004,17 +2004,21 @@ function dvpHistCard(p, m, dv) {
   const comps = mkInfo('nba', mm)[2];
   const val = arr => arr ? comps.reduce((a, c) => a + Number(arr[NBA_BASE.indexOf(c)] || 0), 0) : null;
   const avg = val(AVG);
-  const rows = H.map(([d, o, h, by]) => [d, o, h, val(by[pg])]).filter(r => r[3] != null);
+  const rows = H.map(([d, o, h, by, who]) => [d, o, h, val(by[pg]), ((who || {})[pg] || [])]).filter(r => r[3] != null);
+  // chi ha giocato in quel ruolo: cognome, valore nel mercato, minuti, (T) = titolare; i migliori prima
+  const whoTxt = lst => lst.map(x => [x[0], comps.reduce((a, c) => a + Number(x[3 + NBA_BASE.indexOf(c)] || 0), 0), x[1], x[2]])
+    .sort((a, b) => b[1] - a[1]).map(([n, v, mi, st]) => `<span style="white-space:nowrap"><b>${esc(n)}</b> ${v} <span class="muted">${mi}'${st ? ' T' : ''}</span></span>`).join(' · ');
   if (!rows.length) return '';
   const mean = rows.reduce((a, r) => a + r[3], 0) / rows.length;
   const lbl = mkLabel('nba', mm).toLowerCase();
   const col = x => avg ? (x >= avg * 1.1 ? 'var(--good)' : x <= avg * 0.9 ? 'var(--bad2)' : 'var(--text)') : 'var(--text)';
   return `<div class="card"><div class="row between"><b>Difesa ${esc(p.o)} contro le ${POS_LBL[pg]}</b><button class="iconbtn" style="width:34px;height:34px" data-act="dvpOpen" aria-label="Chiudi">✕</button></div>
-    <p class="small muted">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))} concessi alle ${POS_LBL[pg]} avversarie, partita per partita (somma di tutti i giocatori del ruolo). ${dv.r}° su ${dv.n}: più alto = concede di più.</p>
+    <p class="small muted">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))} concessi alle ${POS_LBL[pg]} avversarie, partita per partita (somma di tutti i giocatori del ruolo). ${dv.r}° su ${dv.n}: più alto = concede di più. Sotto ogni partita: chi ha giocato in quel ruolo, quanto ha fatto e i minuti (T = titolare).</p>
     <div class="grid2"><div class="kv"><span>Media ultime ${rows.length}</span><span style="color:${col(mean)}">${mean.toFixed(1)}</span></div><div class="kv"><span>Media lega</span><span>${avg != null ? avg.toFixed(1) : '—'}</span></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;font-size:11px" class="muted"><span>Data</span><span>Contro</span><span>Concessi</span><span>vs media</span></div>
-    ${rows.map(([d, o, h, x]) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:6px 0;border-top:1px solid var(--line)" class="mono small">
-      <span>${esc(fmtDate(d))}</span><span>${h ? 'vs' : '@'} ${esc(o)}</span><span class="b" style="color:${col(x)}">${x}</span><span>${avg ? ((x - avg >= 0 ? '+' : '') + (x - avg).toFixed(1)) : '—'}</span></div>`).join('')}
+    ${rows.map(([d, o, h, x, w]) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:6px 0;border-top:1px solid var(--line)" class="mono small">
+      <span>${esc(fmtDate(d))}</span><span>${h ? 'vs' : '@'} ${esc(o)}</span><span class="b" style="color:${col(x)}">${x}</span><span>${avg ? ((x - avg >= 0 ? '+' : '') + (x - avg).toFixed(1)) : '—'}</span>
+      ${w.length ? `<span class="tiny" style="grid-column:1/-1;font-family:Inter,system-ui,-apple-system,sans-serif;color:var(--text2);line-height:1.6">${whoTxt(w)}</span>` : ''}</div>`).join('')}
   </div>`;
 }
 const posGroup = pos => { const p = String(pos || '').toUpperCase(); return !p ? '' : p[0] === 'C' ? 'C' : (p[0] === 'G' || p === 'PG' || p === 'SG') ? 'G' : 'F'; };
