@@ -212,6 +212,7 @@ const save = () => {
 
 // ------------------------------------------------------------------ utilita'
 const $ = sel => document.querySelector(sel);
+const ICON_FILTER = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>';
 const SCR = {}; // posizione di scorrimento di ogni pagina (vedi hashchange)
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (p, d = 0) => (p * 100).toFixed(d) + '%';
@@ -2209,11 +2210,15 @@ function viewPlayer(sport, id, g, mq) {
         <div class="kv"><span>Hit rate</span><span style="color:${hitCol(winVal[win])}">${winVal[win] == null ? '—' : Math.round(winVal[win] * 100) + '%'}</span></div>
         <div class="kv" ${dv && dvpHistOk(p) ? `role="button" tabindex="0" data-act="dvpOpen" style="cursor:pointer"` : ''}><span>${dv ? 'DvP' + (dv.by ? ' ' + POS_LBL[dv.by] : '') + (dvpHistOk(p) ? ' ›' : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
       ${barChart(sport, pf, m, e.line, side0, win, '')}
-      <div class="seg wseg">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
-      ${hasHome ? `<div class="chips"><span class="small muted" style="align-self:center">Filtri</span>${[['casa', 'In casa'], ['fuori', 'In trasferta']].map(([k, l]) => `<button class="chip ${filt === k ? 'on' : ''}" data-act="pFilt" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
+      <div class="row" style="gap:8px;align-items:stretch"><div class="seg wseg" style="flex:1;min-width:0">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
+        ${(hasHome || mates.length) ? `<button class="iconbtn fbtn ${S.fOpen || filt || mate ? 'on' : ''}" style="height:auto;width:52px" data-act="fOpen" aria-label="Filtri">${ICON_FILTER}${(filt ? 1 : 0) + (mate ? 1 : 0) ? `<i>${(filt ? 1 : 0) + (mate ? 1 : 0)}</i>` : ''}</button>` : ''}</div>
+      ${!S.fOpen && (filt || mate) ? `<div class="chips">${filt ? `<button class="chip on" data-act="pFilt" data-v="${filt}">${filt === 'casa' ? 'In casa' : 'In trasferta'} ✕</button>` : ''}${mate ? `<button class="chip on" data-act="pMateClear" data-k="${esc(p.id)}">${mate[0] === '-' ? 'Senza' : 'Con'} ${esc((mates.find(x => x[0] === mate.slice(1)) || [0, '?'])[1])} ✕</button>` : ''}</div>` : ''}
+      ${S.fOpen ? `<div class="fpanel">
+      ${hasHome ? `<div class="chips"><span class="small muted" style="align-self:center">Dove</span>${[['casa', 'In casa'], ['fuori', 'In trasferta']].map(([k, l]) => `<button class="chip ${filt === k ? 'on' : ''}" data-act="pFilt" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
       ${mates.length ? `<select class="sel ${mate ? 'on' : ''}" aria-label="Con o senza un compagno" data-act="pMate" data-k="${esc(p.id)}"><option value="">Compagni: tutti</option>
         <optgroup label="Senza…">${mates.slice().sort((a, b) => (b[3] ? 1 : 0) - (a[3] ? 1 : 0)).map(x => `<option value="-${esc(x[0])}" ${mate === '-' + x[0] ? 'selected' : ''}>Senza ${esc(x[1])}${x[3] ? ' (' + esc(x[3]) + ')' : ''} · ${x[2]} min</option>`).join('')}</optgroup>
         <optgroup label="Con…">${mates.map(x => `<option value="+${esc(x[0])}" ${mate === '+' + x[0] ? 'selected' : ''}>Con ${esc(x[1])}</option>`).join('')}</optgroup></select>` : ''}
+      </div>` : ''}
       ${mate || filt ? `<p class="note">Percentuali e grafico solo sulle partite filtrate (${gamesOf(sport, pf).length} partite).</p>` : ''}
     </div>`;
   return header(p.n, `${sportCtx(sport, p)} · ${p.t} ${p.h ? 'vs' : '@'} ${p.o}`, '#/giocatori', `<a class="chip" style="display:flex;align-items:center;flex-shrink:0" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">Tutti</a>`, 'slim') + `
@@ -3097,6 +3102,8 @@ function handle(act, el) {
     case 'pWin': S.pWin = v; break;
     case 'pFilt': S.pFilt = S.pFilt === v ? '' : v; break;
     case 'dvpOpen': S.dvpOpen = !S.dvpOpen; break;
+    case 'fOpen': S.fOpen = !S.fOpen; break;
+    case 'pMateClear': S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: '' }); break;
     case 'more': { S.limit = (S.limit || 40) + 40; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
     case 'mrKey': S.mrKey = S.mrKey || {}; S.mrKey[S.sport] = v; break;
     case 'mrDay': S.mrDay = v; break;

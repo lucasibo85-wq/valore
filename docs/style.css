@@ -208,3 +208,11 @@ header.top.slim h1{font-size:20px;white-space:nowrap;overflow:hidden;text-overfl
 .bar2.zero{background:#4A5562}
 .bar2.zero b{color:#E6EAEE}
 .blab.sparse span{overflow:visible;font-size:10px}
+.fbtn{position:relative}
+.fbtn.on{border-color:rgba(200,242,90,.6);color:var(--accent);background:var(--accent-soft)}
+.fbtn i{position:absolute;top:4px;right:4px;font-style:normal;font-size:10px;font-weight:800;background:var(--accent);color:#0B0F14;border-radius:8px;min-width:16px;height:16px;line-height:16px;text-align:center}
+.fpanel{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--bg2)}
+.bcol{max-width:46px}
+.bars,.blab{justify-content:center}
+.blab span{max-width:46px}
+.blab.sparse span{max-width:46px}
