@@ -32,26 +32,31 @@ MARKETS.mlb = [
   ['p_k', 'Strikeout lanciatore', ['p_k']], ['outs', 'Eliminazioni', ['outs']], ['er', 'Punti concessi', ['er']],
   ['p_h', 'Valide concesse', ['p_h']], ['p_bb', 'Basi su ball concesse', ['p_bb']],
 ];
+MARKETS.nhl = [
+  ['pts', 'Punti (G+A)', ['g', 'a']], ['sog', 'Tiri in porta', ['sog']], ['gs', 'Marcatore', ['g']], ['a', 'Assist', ['a']],
+  ['bs', 'Tiri bloccati', ['bs']], ['hit', 'Hit', ['hit']], ['sv', 'Parate portiere', ['sv']],
+];
 const REL = { A: 'alta', B: 'media', C: 'bassa' };
-const SPORT_LABEL = { nba: 'NBA', soccer: 'Calcio', nfl: 'NFL', mlb: 'MLB', tennis: 'Tennis' };
-const PROP_SPORTS = ['nba', 'soccer', 'nfl', 'mlb'];
-const DEFAULT_MK = { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', mlb: 'h' };
-const BERNOULLI = new Set(['card', 'td', 'hr', 'goa', 'dd', 'tdd']);
+const SPORT_LABEL = { nba: 'NBA', soccer: 'Calcio', nfl: 'NFL', nhl: 'NHL', mlb: 'MLB', tennis: 'Tennis' };
+const PROP_SPORTS = ['nba', 'soccer', 'nfl', 'nhl', 'mlb'];
+const DEFAULT_MK = { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', nhl: 'sog', mlb: 'h' };
+const BERNOULLI = new Set(['card', 'td', 'hr', 'goa', 'dd', 'tdd', 'gs']);
 const DD_NEED = { dd: 2, tdd: 3 };
 /** In Italia sui giocatori si gioca solo l'over (o il Si'): l'under c'e' solo per la NFL */
 const noUnder = sport => sport !== 'nfl';
 const mkInfo = (sport, m) => MARKETS[sport].find(x => x[0] === m) || MARKETS[sport][0];
 const mkLabel = (sport, m) => mkInfo(sport, m)[1];
 // posizione delle statistiche base negli array "l" (ultime partite) e nei risultati
-const L_OFF = { nba: 3, soccer: 4, nfl: 3, mlb: 3 };
+const L_OFF = { nba: 3, soccer: 4, nfl: 3, nhl: 3, mlb: 3 };
 const BASE = {
   nba: NBA_BASE, soccer: SOC_BASE,
   nfl: ['pass_yds', 'pass_td', 'pass_cmp', 'pass_att', 'int', 'rush_yds', 'rush_att', 'rush_td', 'rec', 'rec_yds', 'rec_td', 'tgt'],
   mlb: ['h', 'r', 'rbi', 'hr', 'bb', 'so', 'outs', 'p_k', 'er', 'p_h', 'p_bb'],
+  nhl: ['g', 'a', 'sog', 'bs', 'hit', 'sv', 'ga', 'sa'],
 };
 /** Sport presenti nei dati; withTennis: includi il tennis (solo partite, niente giocatori) */
 function availSports(withTennis) {
-  const all = ['nba', 'soccer', 'nfl', 'mlb'].concat(withTennis ? ['tennis'] : []);
+  const all = ['nba', 'soccer', 'nfl', 'nhl', 'mlb'].concat(withTennis ? ['tennis'] : []);
   return all.filter(s => S.data && S.data[s] && ((S.data[s].players && S.data[s].players.length) || (S.data[s].matches && S.data[s].matches.length) || (S.data[s].games && S.data[s].games.length) || s === 'nba' || s === 'soccer'));
 }
 const mkOf = sport => (S.market && S.market[sport]) || DEFAULT_MK[sport];
@@ -59,7 +64,7 @@ const mkList = (sport, p) => MARKETS[sport].filter(x => !p || (p.mk && p.mk[x[0]
 const rawGames = sport => sport === 'soccer' ? ((S.data.soccer || {}).matches || []) : sport === 'tennis' ? ((S.data.tennis || {}).matches || []) : ((S.data[sport] || {}).games || []);
 /* Partite finite: tolte da elenchi, menu e proposte (restano raggiungibili da scommesse e preferiti).
    Finita = ESPN la da' conclusa (live), oppure c'e' gia' il risultato, oppure e' passato troppo tempo dall'inizio. */
-const OVER_AFTER = { soccer: 2.6, nba: 3.2, nfl: 4.2, mlb: 4.5, tennis: 8 };
+const OVER_AFTER = { soccer: 2.6, nba: 3.2, nfl: 4.2, nhl: 3.0, mlb: 4.5, tennis: 8 };
 function isOver(sport, g) {
   const L = S.live && S.live[g.id];
   if (L && L.st === 'post') return true;
@@ -83,6 +88,7 @@ function expInfo(sport, p) {
   if (sport === 'nba') return ['Minuti attesi', p.m.toFixed(1)];
   if (sport === 'soccer') return ['Minuti attesi', p.m + "'"];
   if (sport === 'mlb') return String(p.id).endsWith('p') ? ['Eliminazioni attese', p.m.toFixed(1)] : ['Turni in battuta attesi', p.m.toFixed(1)];
+  if (sport === 'nhl') return ['Minuti sul ghiaccio attesi', p.m.toFixed(1)];
   return null;
 }
 
@@ -180,7 +186,7 @@ const LS = {
 const S = {
   data: null, results: null, error: null,
   sport: LS.get('sport', 'nba'),
-  market: LS.get('market', { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', mlb: 'h' }),
+  market: LS.get('market', { nba: 'pts', soccer: 'sot', nfl: 'rec_yds', nhl: 'sog', mlb: 'h' }),
   slipMode: LS.get('slipMode', 'single'), multiStake: null, chTab: 'giorno',
   onlyValue: false, search: '', game: '', sort: 'valore',
   bankroll: LS.get('bankroll', 1000),
@@ -522,7 +528,7 @@ function h2hCard(sport, m) {
       ['Gol 1° tempo', ht.length ? `${ht.filter(r => r[4] + r[5] > 0).length}/${ht.length}` : '—'], ['Angoli medi', c.length ? avgOf(c).toFixed(1) : '—'], ['Cartellini medi', k.length ? avgOf(k).toFixed(1) : '—']];
   } else {
     const mg = rows.map(r => r[2] - r[3]);
-    stats = [[sport === 'mlb' ? 'Run medi' : 'Punti medi', avgOf(tot).toFixed(1)], ['Margine medio ' + (sport === 'soccer' ? m.ha : m.h), (avgOf(mg) >= 0 ? '+' : '') + avgOf(mg).toFixed(1)],
+    stats = [[sport === 'mlb' ? 'Run medi' : sport === 'nhl' ? 'Gol medi' : 'Punti medi', avgOf(tot).toFixed(1)], ['Margine medio ' + (sport === 'soccer' ? m.ha : m.h), (avgOf(mg) >= 0 ? '+' : '') + avgOf(mg).toFixed(1)],
       ['Totale max/min', Math.max(...tot) + ' / ' + Math.min(...tot)]];
   }
   const lgs = S.data.leagues || {};
@@ -646,13 +652,13 @@ S.live = {};     // gid -> { st, clock, period, hs, as, detail }
 S.liveBox = {};  // gid -> { R, stats, events, players, t }
 function espnPath(sport, lg) {
   if (sport === 'tennis') return 'tennis/' + lg;
-  return sport === 'soccer' ? 'soccer/' + lg : ({ nba: 'basketball/nba', nfl: 'football/nfl', mlb: 'baseball/mlb' })[sport];
+  return sport === 'soccer' ? 'soccer/' + lg : ({ nba: 'basketball/nba', nfl: 'football/nfl', nhl: 'hockey/nhl', mlb: 'baseball/mlb' })[sport];
 }
 function allGames() {
   const out = [];
   if (!S.data) return out;
   for (const m of (S.data.soccer || {}).matches || []) out.push({ sport: 'soccer', lg: m.lg, g: m });
-  for (const sp of ['nba', 'nfl', 'mlb']) for (const g of (S.data[sp] || {}).games || []) out.push({ sport: sp, lg: sp, g });
+  for (const sp of ['nba', 'nfl', 'nhl', 'mlb']) for (const g of (S.data[sp] || {}).games || []) out.push({ sport: sp, lg: sp, g });
   for (const g of (S.data.tennis || {}).matches || []) out.push({ sport: 'tennis', lg: String(g.tour || 'atp').toLowerCase(), g });
   return out;
 }
@@ -1422,7 +1428,7 @@ function viewGara(sport, id) {
   const groups = [...new Set((m.mk || []).map(x => x[1]))];
   const grp = groups.includes(S.mGroup) ? S.mGroup : groups[0];
   const rows = (m.mk || []).filter(x => x[1] === grp);
-  const unit = sport === 'mlb' ? 'Run' : 'Punti';
+  const unit = sport === 'mlb' ? 'Run' : sport === 'nhl' ? 'Gol' : 'Punti';
   const esp = m.odds && m.odds.ou ? `${m.odds.details || ''}${m.odds.details ? ' · ' : ''}totale ${m.odds.ou}${m.odds.book ? ' (' + esc(m.odds.book) + ')' : ''}` : '';
   const info = m.mk ? `<div class="card" style="gap:8px"><div class="grid2">
       <div class="kv"><span>${unit} attesi (modello)</span><span class="model">${esc(m.a)} ${m.ma.toFixed(1)} – ${esc(m.h)} ${m.mh.toFixed(1)}</span></div>
@@ -1541,7 +1547,7 @@ function buildChiccheRaw() {
         sel: row ? { sport: 'soccer', g: m.id, pid: null, m: 'tm', side, line: null, odds: q, p: row[3], push: 0, label: row[2], ctx: title } : null });
     }
   }
-  for (const sp of ['nba', 'nfl', 'mlb', 'tennis']) {
+  for (const sp of ['nba', 'nfl', 'nhl', 'mlb', 'tennis']) {
     const lst = gamesList(sp);
     for (const m of lst) {
       if (!m.mk) continue;
@@ -1657,7 +1663,7 @@ function buildDailyRaw() {
     }
   }
   // ---------------- squadre
-  const teamSports = [['soccer', gamesList('soccer')], ['nba', gamesList('nba')], ['nfl', gamesList('nfl')], ['mlb', gamesList('mlb')]];
+  const teamSports = [['soccer', gamesList('soccer')], ['nba', gamesList('nba')], ['nfl', gamesList('nfl')], ['nhl', gamesList('nhl')], ['mlb', gamesList('mlb')]];
   for (const [sp, all] of teamSports) {
     // mediana di ogni mercato nella stessa lega (calcio) o sport: per capire quando una partita e' "diversa"
     const med = {};
@@ -1952,7 +1958,7 @@ function viewPlayers(q) {
     <p class="note">Senza quote la linea mostrata è quella più vicina alla proiezione. Inserisci linea e quota del tuo bookmaker nella scheda del giocatore per vedere il valore.</p>${updatedLine()}</main>`;
 }
 // ------------------------------------------------------------------ SCHEDE GIOCATORE (foto, percentuali, grafico a barre)
-const HS_PATH = { nba: 'nba', soccer: 'soccer', nfl: 'nfl', mlb: 'mlb' };
+const HS_PATH = { nba: 'nba', soccer: 'soccer', nfl: 'nfl', nhl: 'nhl', mlb: 'mlb' };
 /** Foto del giocatore (archivio pubblico ESPN), con le iniziali se manca */
 function headshot(sport, p, size) {
   const id = String(p.id).replace(/\D/g, '');
@@ -2202,6 +2208,7 @@ const seasonStart = sport => {
   if (sport === 'nba') return `${mo >= 10 ? y : y - 1}-10-01`;
   if (sport === 'nfl') return `${mo >= 8 ? y : y - 1}-08-01`;
   if (sport === 'mlb') return `${mo >= 3 ? y : y - 1}-03-01`;
+  if (sport === 'nhl') return `${mo >= 10 ? y : y - 1}-10-01`;
   return `${mo >= 7 ? y : y - 1}-07-01`;
 };
 /** Sigla dell'avversario come compare nello storico delle partite */
@@ -2267,7 +2274,7 @@ function viewSearch() {
   let games = [];
   if (term.length >= 2) {
     const saved = S.msearch; S.msearch = term;
-    for (const sp of ['soccer', 'nba', 'nfl', 'mlb', 'tennis']) {
+    for (const sp of ['soccer', 'nba', 'nfl', 'nhl', 'mlb', 'tennis']) {
       const lst = gamesList(sp);
       for (const g of lst) if (matchHit(sp, g)) games.push({ sp, g });
     }
@@ -2320,6 +2327,7 @@ function viewCard(sport, id, g) {
     nfl: [['P.YD', 'pass_yds'], ['P.TD', 'pass_td'], ['CORSE', 'rush_att'], ['C.YD', 'rush_yds'], ['REC', 'rec'], ['R.YD', 'rec_yds']],
     mlb: String(p.id).endsWith('p') ? [['OUT', 'outs'], ['K', 'p_k'], ['ER', 'er'], ['H', 'p_h'], ['BB', 'p_bb'], ['', 'p_bb']]
       : [['H', 'h'], ['R', 'r'], ['RBI', 'rbi'], ['HR', 'hr'], ['BB', 'bb'], ['K', 'so']],
+    nhl: String(p.id).endsWith('p') ? [['PARATE', 'sv']] : [['PTS', 'pts'], ['A', 'a'], ['TIRI', 'sog'], ['BLK', 'bs'], ['HIT', 'hit']],
   };
   const cols = COLS[sport];
   const off = L_OFF[sport];
@@ -2358,6 +2366,8 @@ const MK_WORDS = {
     ['yard corse+ricevute', 'rr_yds'], ['rush+rec', 'rr_yds'], ['yard corse', 'rush_yds'], ['rushing yards', 'rush_yds'], ['rush yds', 'rush_yds'],
     ['corse', 'rush_att'], ['ricezioni', 'rec'], ['receptions', 'rec'], ['yard ricevute', 'rec_yds'], ['receiving yards', 'rec_yds'], ['rec yds', 'rec_yds'],
     ['touchdown', 'td'], ['anytime td', 'td'], ['td', 'td']],
+  nhl: [['tiri in porta', 'sog'], ['shots on goal', 'sog'], ['tiri', 'sog'], ['parate', 'sv'], ['saves', 'sv'], ['tiri bloccati', 'bs'], ['blocked', 'bs'],
+    ['marcatore', 'gs'], ['segna', 'gs'], ['anytime goal', 'gs'], ['assist', 'a'], ['punti', 'pts'], ['points', 'pts'], ['hits', 'hit']],
   mlb: [['h+r+rbi', 'hrr'], ['hrr', 'hrr'], ['valide', 'h'], ['hits', 'h'], ['rbi', 'rbi'], ['fuoricampo', 'hr'], ['home run', 'hr'], ['homer', 'hr'],
     ['strikeout lanciatore', 'p_k'], ['strikeouts', 'p_k'], ['strikeout', 'p_k'], ['eliminazioni', 'outs'], ['outs', 'outs'], ['punti concessi', 'er'],
     ['earned runs', 'er'], ['basi su ball', 'bb'], ['walks', 'bb'], ['runs', 'r']],
@@ -2810,7 +2820,7 @@ const BOOKS = [['bet365', 'Bet365'], ['snai', 'Snai'], ['sisal', 'Sisal'], ['eur
   ['better', 'Better'], ['william hill', 'William Hill'], ['planetwin', 'Planetwin365'], ['betflag', 'Betflag'], ['starcasino', 'StarCasinò'], ['netbet', 'NetBet'],
   ['bwin', 'Bwin'], ['leovegas', 'LeoVegas'], ['unibet', 'Unibet'], ['888', '888sport'], ['betfair', 'Betfair'], ['admiral', 'Admiral'], ['domusbet', 'Domusbet'],
   ['vincitu', 'Vincitu'], ['betwin', 'Betwin360'], ['betwins', 'Betwin360'], ['pokerstars', 'PokerStars'], ['marathonbet', 'Marathonbet'], ['betway', 'Betway'], ['e-play24', 'E-Play24'], ['sportitaliabet', 'Sportitaliabet']];
-const SPORT_BK = { nba: 'NBA', soccer: 'Calcio', nfl: 'NFL', mlb: 'MLB', tennis: 'Tennis' };
+const SPORT_BK = { nba: 'NBA', soccer: 'Calcio', nfl: 'NFL', nhl: 'NHL', mlb: 'MLB', tennis: 'Tennis' };
 function loadOcr() {
   if (window.Tesseract) return Promise.resolve(window.Tesseract);
   if (loadOcr._p) return loadOcr._p;
