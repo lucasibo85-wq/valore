@@ -201,3 +201,10 @@ details.how p.note{margin-top:4px}
 .field.fline{grid-column:1/-1}
 .stepper{grid-template-columns:48px minmax(70px,1fr) 48px}
 .stepper .iconbtn{width:48px}
+/* pagina giocatore piu' compatta */
+header.top.slim{padding-top:12px;gap:8px}
+header.top.slim h1{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero{gap:12px}
+.bar2.zero{background:#4A5562}
+.bar2.zero b{color:#E6EAEE}
+.blab.sparse span{overflow:visible;font-size:10px}

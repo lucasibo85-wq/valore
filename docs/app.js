@@ -212,6 +212,7 @@ const save = () => {
 
 // ------------------------------------------------------------------ utilita'
 const $ = sel => document.querySelector(sel);
+const SCR = {}; // posizione di scorrimento di ogni pagina (vedi hashchange)
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (p, d = 0) => (p * 100).toFixed(d) + '%';
 const sgn = (x, d = 1) => (x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(d) + '%';
@@ -925,21 +926,47 @@ function render(opts) {
     const nm = tmp.querySelector('main'), om = v.querySelector('main');
     if (nm && om) { om.replaceWith(nm); tidy(nm); bind(nm); return; }
   }
+  // le strisce orizzontali (mercati, partite, filtri) restano dove erano quando la pagina si ridisegna
+  const sameRoute = render._h === location.hash;
+  const hx = sameRoute ? [...v.querySelectorAll('.chips')].map(e => e.scrollLeft) : (SCR[location.hash] || {}).x;
+  render._h = location.hash;
   v.innerHTML = html;
   tidy(v);
   bind(v);
+  if (hx) v.querySelectorAll('.chips').forEach((e, i) => { if (hx[i]) e.scrollLeft = hx[i]; });
+  v.querySelectorAll('.chips').forEach(e => {
+    const on = e.querySelector('.chip.on');
+    if (on && (on.offsetLeft < e.scrollLeft || on.offsetLeft + on.offsetWidth > e.scrollLeft + e.clientWidth)) e.scrollLeft = on.offsetLeft - 16;
+  });
   if (parts[0] === 'cerca' && !(opts && opts.keepHeader) && !S.searchFocused) {
     S.searchFocused = true;
     const i = document.querySelector('[data-act=gsearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
 }
-window.addEventListener('hashchange', () => { S.searchFocused = false; S.limit = 0; render(); window.scrollTo(0, 0); });
+/* Posizione di ogni pagina (scorrimento verticale, strisce orizzontali, "mostra altri"): aprendo una partita o un
+   giocatore e tornando indietro si riparte esattamente da dove si era. */
+let curHash = location.hash;
+window.addEventListener('hashchange', () => {
+  SCR[curHash] = { y: window.scrollY, x: [...document.querySelectorAll('#view .chips')].map(e => e.scrollLeft), limit: S.limit };
+  curHash = location.hash;
+  const back = SCR[curHash];
+  S.searchFocused = false;
+  S.limit = back ? back.limit : 0;
+  render();
+  if (back) {
+    window.scrollTo(0, back.y);
+    // la pagina puo' allungarsi subito dopo (immagini, dati live): si riposiziona se nel frattempo non si e' scrollato
+    let last = window.scrollY;
+    [60, 250, 600].forEach(ms => setTimeout(() => { if (curHash === location.hash && Math.abs(window.scrollY - last) < 3) { window.scrollTo(0, back.y); last = window.scrollY; } }, ms));
+  } else window.scrollTo(0, 0);
+});
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 const ICON_SEARCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 const ICON_PASTE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"></rect><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"></path><path d="M9 13h6M9 17h4"></path></svg>';
 const searchBtn = () => `<a class="iconbtn" href="#/cerca" aria-label="Cerca giocatore">${ICON_SEARCH}</a>`;
-function header(title, kicker, back, right) {
-  return `<header class="top"><div class="row">${back ? `<a class="iconbtn" href="${back}" aria-label="Indietro">${ICON_BACK}</a>` : ''}
+function header(title, kicker, back, right, cls) {
+  return `<header class="top ${cls || ''}"><div class="row">${back ? `<a class="iconbtn" href="${back}" aria-label="Indietro">${ICON_BACK}</a>` : ''}
     <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span class="kicker">${esc(kicker)}</span><h1>${esc(title)}</h1></div>${right || ''}</div>`;
 }
 function sportSeg(withTennis) {
@@ -1968,6 +1995,27 @@ function headshot(sport, p, size) {
 const homeIdx = sport => L_OFF[sport] + BASE[sport].length;
 const rowHome = (sport, r) => { const v = r[homeIdx(sport)]; return v === undefined ? null : !!v; };
 /** Classifica difese (NBA): 1° = la difesa che concede meno in quel mercato, 30° = quella che concede di piu' */
+/** Storico della difesa avversaria (NBA): cosa ha concesso al ruolo del giocatore nelle ultime 10 partite */
+const dvpHistOk = p => !!(S.data.nba && S.data.nba.dvph && S.data.nba.dvph[p.o] && posGroup(p.pos));
+function dvpHistCard(p, m, dv) {
+  const pg = posGroup(p.pos), H = S.data.nba.dvph[p.o] || [], AVG = (S.data.nba.dvpavg || {})[pg];
+  const mm = ({ q1p: 'pts', q1r: 'reb', q1a: 'ast', dd: 'pts', tdd: 'pts' })[m] || m;
+  const comps = mkInfo('nba', mm)[2];
+  const val = arr => arr ? comps.reduce((a, c) => a + Number(arr[NBA_BASE.indexOf(c)] || 0), 0) : null;
+  const avg = val(AVG);
+  const rows = H.map(([d, o, h, by]) => [d, o, h, val(by[pg])]).filter(r => r[3] != null);
+  if (!rows.length) return '';
+  const mean = rows.reduce((a, r) => a + r[3], 0) / rows.length;
+  const lbl = mkLabel('nba', mm).toLowerCase();
+  const col = x => avg ? (x >= avg * 1.1 ? 'var(--good)' : x <= avg * 0.9 ? 'var(--bad2)' : 'var(--text)') : 'var(--text)';
+  return `<div class="card"><div class="row between"><b>Difesa ${esc(p.o)} contro le ${POS_LBL[pg]}</b><button class="iconbtn" style="width:34px;height:34px" data-act="dvpOpen" aria-label="Chiudi">✕</button></div>
+    <p class="small muted">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))} concessi alle ${POS_LBL[pg]} avversarie, partita per partita (somma di tutti i giocatori del ruolo). ${dv.r}° su ${dv.n}: più alto = concede di più.</p>
+    <div class="grid2"><div class="kv"><span>Media ultime ${rows.length}</span><span style="color:${col(mean)}">${mean.toFixed(1)}</span></div><div class="kv"><span>Media lega</span><span>${avg != null ? avg.toFixed(1) : '—'}</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;font-size:11px" class="muted"><span>Data</span><span>Contro</span><span>Concessi</span><span>vs media</span></div>
+    ${rows.map(([d, o, h, x]) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:6px 0;border-top:1px solid var(--line)" class="mono small">
+      <span>${esc(fmtDate(d))}</span><span>${h ? 'vs' : '@'} ${esc(o)}</span><span class="b" style="color:${col(x)}">${x}</span><span>${avg ? ((x - avg >= 0 ? '+' : '') + (x - avg).toFixed(1)) : '—'}</span></div>`).join('')}
+  </div>`;
+}
 const posGroup = pos => { const p = String(pos || '').toUpperCase(); return !p ? '' : p[0] === 'C' ? 'C' : (p[0] === 'G' || p === 'PG' || p === 'SG') ? 'G' : 'F'; };
 const POS_LBL = { G: 'guardie', F: 'ali', C: 'centri' };
 /** DvP: posizione in classifica della difesa avversaria (1 = concede meno, 30 = concede di piu').
@@ -2024,8 +2072,8 @@ function barChart(sport, p, m, line, side, win, filt) {
   const ok = v => side === 'under' ? v < line : v > line;
   const ly = (line / max * H).toFixed(0);
   return `<div class="bars" style="height:${H + 4}px"><div class="bline" style="bottom:${ly}px"><span>${bern ? '' : line}</span></div>
-      ${vals.map(v => `<div class="bcol"><div class="bar2 ${ok(v) ? 'up' : 'dn'}" style="height:${Math.max(16, v / max * H).toFixed(0)}px"><b>${v}</b></div></div>`).join('')}</div>
-    <div class="blab">${rows.map(r => { const hm = rowHome(sport, r); return `<span>${rows.length > 12 ? '' : esc(r[0].slice(8, 10) + '/' + r[0].slice(5, 7)) + '<br>'}${hm === false ? '@' : ''}${esc(r[1])}</span>`; }).join('')}</div>`;
+      ${vals.map(v => `<div class="bcol"><div class="bar2 ${!v ? 'zero' : ok(v) ? 'up' : 'dn'}" style="height:${Math.max(16, v / max * H).toFixed(0)}px"><b>${v}</b></div></div>`).join('')}</div>
+    <div class="blab ${rows.length > 12 ? 'sparse' : ''}">${rows.map((r, i) => { const hm = rowHome(sport, r); const show = rows.length <= 12 || (rows.length - 1 - i) % 4 === 0; return `<span>${show ? esc(r[0].slice(8, 10) + '/' + r[0].slice(5, 7)) + '<br>' + (hm === false ? '@' : '') + esc(r[1]) : ''}</span>`; }).join('')}</div>`;
 }
 
 function playerRow(sport, p, m, e, showMk) {
@@ -2151,7 +2199,7 @@ function viewPlayer(sport, id, g, mq) {
   const gm = findGame(sport, p.g);
   const hasHome = gamesOf(sport, p).some(r => rowHome(sport, r) !== null);
   const hero = `<div class="card hero">
-      <div class="row" style="gap:14px;align-items:center">${headshot(sport, p, 76)}
+      <div class="row" style="gap:14px;align-items:center">${headshot(sport, p, 60)}
         <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="hname">${esc(p.n)}</span>
           <span class="small muted">${esc(p.t)}${p.pos ? ' · ' + esc(p.pos) : ''}${sport === 'nba' ? ' · ' + p.m.toFixed(0) + ' min attesi' : sport === 'soccer' ? ' · titolare ' + pct(p.ps) : ''}</span>
           <span class="small" style="color:var(--text2)">${p.h ? 'vs' : '@'} ${esc(p.o)}${gm ? ' · ' + esc(fmtTime(gm.t)) : ''}</span></div></div>
@@ -2159,7 +2207,7 @@ function viewPlayer(sport, id, g, mq) {
         <div class="kv"><span>Media U10</span><span style="color:${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? 'var(--good)' : 'var(--bad2)'}">${(side0 === 'under' ? avgU10 < e.line : avgU10 > e.line) ? '▲' : '▼'} ${bern ? pct(avgU10) : avgU10.toFixed(1)}</span></div>
         <div class="kv"><span>Linea</span><span>${bern ? 'Sì' : e.line}</span></div>
         <div class="kv"><span>Hit rate</span><span style="color:${hitCol(winVal[win])}">${winVal[win] == null ? '—' : Math.round(winVal[win] * 100) + '%'}</span></div>
-        <div class="kv"><span>${dv ? 'DvP' + (dv.by ? ' ' + POS_LBL[dv.by] : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
+        <div class="kv" ${dv && dvpHistOk(p) ? `role="button" tabindex="0" data-act="dvpOpen" style="cursor:pointer"` : ''}><span>${dv ? 'DvP' + (dv.by ? ' ' + POS_LBL[dv.by] : '') + (dvpHistOk(p) ? ' ›' : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
       ${barChart(sport, pf, m, e.line, side0, win, '')}
       <div class="seg wseg">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
       ${hasHome ? `<div class="chips"><span class="small muted" style="align-self:center">Filtri</span>${[['casa', 'In casa'], ['fuori', 'In trasferta']].map(([k, l]) => `<button class="chip ${filt === k ? 'on' : ''}" data-act="pFilt" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
@@ -2168,10 +2216,11 @@ function viewPlayer(sport, id, g, mq) {
         <optgroup label="Con…">${mates.map(x => `<option value="+${esc(x[0])}" ${mate === '+' + x[0] ? 'selected' : ''}>Con ${esc(x[1])}</option>`).join('')}</optgroup></select>` : ''}
       ${mate || filt ? `<p class="note">Percentuali e grafico solo sulle partite filtrate (${gamesOf(sport, pf).length} partite).</p>` : ''}
     </div>`;
-  return header(p.n + ' · ' + mkLabel(sport, m), `${sportCtx(sport, p)} · ${p.t} vs ${p.o}`, '#/giocatori', `<a class="chip" style="display:flex;align-items:center;flex-shrink:0" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">Tutti</a>`) + `
+  return header(p.n, `${sportCtx(sport, p)} · ${p.t} ${p.h ? 'vs' : '@'} ${p.o}`, '#/giocatori', `<a class="chip" style="display:flex;align-items:center;flex-shrink:0" href="#/p/${sport}/${esc(p.id)}/${esc(p.g)}">Tutti</a>`, 'slim') + `
     <div style="padding:0 16px"><div class="chips">${mkList(sport, p).map(([k, l]) => `<a class="chip ${k === m ? 'on' : ''}" style="display:flex;align-items:center" href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${k}">${l}</a>`).join('')}</div></div></header>
     <main>
       ${hero}
+      ${S.dvpOpen && dv ? dvpHistCard(p, m, dv) : ''}
       <div class="card">
         <div class="grid3">
           <div class="kv"><span>Proiezione</span><span class="model big">${bern ? pct(1 - Math.exp(-e.mu)) : e.mu.toFixed(1)}</span></div>
@@ -3047,6 +3096,7 @@ function handle(act, el) {
     case 'gamePick': S.game = v; S.limit = 0; if (location.hash.includes('g=')) history.replaceState(null, '', '#/giocatori'); break;
     case 'pWin': S.pWin = v; break;
     case 'pFilt': S.pFilt = S.pFilt === v ? '' : v; break;
+    case 'dvpOpen': S.dvpOpen = !S.dvpOpen; break;
     case 'more': { S.limit = (S.limit || 40) + 40; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
     case 'mrKey': S.mrKey = S.mrKey || {}; S.mrKey[S.sport] = v; break;
     case 'mrDay': S.mrDay = v; break;
