@@ -796,6 +796,35 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
     # solo le 30 squadre vere (con almeno 10 partite nell'archivio): fuori All-Star e squadre di esibizione
     real_t = [t for t in opp_f if tabbr(t) != "?" and len(team_games.get(t, [])) >= 10]
     app["nba"]["dvp"] = {m: {tabbr(t): round(opp_f[t].get(m, 1.0), 3) for t in real_t} for m in markets}
+    # storico della difesa per ruolo: cosa ha concesso ogni squadra a guardie, ali e centri nelle ultime 10 partite
+    # [data, avversario, in casa, {G: [statistiche base], F: [...], C: [...]}] + media lega per partita per ruolo
+    agg = defaultdict(lambda: defaultdict(lambda: [0.0] * len(base)))
+    meta_d = {}
+    for r in logs:
+        if r["date"] < since_opp:
+            continue
+        pg = pos_group(r.get("pos", ""))
+        if not pg:
+            continue
+        key = (r["opp"], r["gid"])
+        meta_d[key] = (r["date"], r["team"], 1 - int(float(r.get("home") or 0)))
+        v = agg[key][pg]
+        for i, b_ in enumerate(base):
+            v[i] += float(r[b_])
+    lg_sum = defaultdict(lambda: [0.0] * len(base))
+    for key, d in agg.items():
+        for pg, v in d.items():
+            for i in range(len(base)):
+                lg_sum[pg][i] += v[i]
+    n_tg = max(1, len(agg))
+    app["nba"]["dvpavg"] = {pg: [round(x / n_tg, 2) for x in v] for pg, v in lg_sum.items()}
+    by_def = defaultdict(list)
+    for (d_tid, gid), d in agg.items():
+        by_def[d_tid].append((meta_d[(d_tid, gid)], d))
+    app["nba"]["dvph"] = {}
+    for d_tid in real_t:
+        rows_ = sorted(by_def.get(d_tid, []), key=lambda x: x[0][0], reverse=True)[:10]
+        app["nba"]["dvph"][tabbr(d_tid)] = [[m_[0], tabbr(m_[1]), m_[2], {pg: [int(x) for x in v] for pg, v in d.items()}] for m_, d in rows_]
     # quota del 1° quarto sul totale (lega): base per le proiezioni 1Q dei giocatori con pochi dati
     q1_league = {}
     rows_q1 = [r for r in logs if "q1p" in r and r["date"] >= since_long]
