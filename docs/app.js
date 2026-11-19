@@ -1996,29 +1996,45 @@ function headshot(sport, p, size) {
 const homeIdx = sport => L_OFF[sport] + BASE[sport].length;
 const rowHome = (sport, r) => { const v = r[homeIdx(sport)]; return v === undefined ? null : !!v; };
 /** Classifica difese (NBA): 1° = la difesa che concede meno in quel mercato, 30° = quella che concede di piu' */
-/** Storico della difesa avversaria (NBA): cosa ha concesso al ruolo del giocatore nelle ultime 10 partite */
-const dvpHistOk = p => !!(S.data.nba && S.data.nba.dvph && S.data.nba.dvph[p.o] && posGroup(p.pos));
-function dvpHistCard(p, m, dv) {
-  const pg = posGroup(p.pos), H = S.data.nba.dvph[p.o] || [], AVG = (S.data.nba.dvpavg || {})[pg];
-  const mm = ({ q1p: 'pts', q1r: 'reb', q1a: 'ast', dd: 'pts', tdd: 'pts' })[m] || m;
+/** Storico della difesa avversaria (NBA), come il "Matchup" di Props: giocatore per giocatore, partita per partita,
+    cosa hanno fatto contro questa difesa quelli del ruolo scelto, con la linea del bookmaker (se archiviata) o la loro media */
+const dvpHistOk = p => !!(S.hist && S.hist.nba_dvph && S.hist.nba_dvph[p.o]);
+const DVP_MK = ['pts', 'reb', 'ast', 'fg3m', 'pra', 'pr', 'pa', 'ra', 'blk', 'stl', 'tov', 'sb'];
+function dvpHistCard(p, m) {
+  const H = S.hist.nba_dvph[p.o] || [];
+  const pg = S.dvpPos || posGroup(p.pos) || 'G';
+  const mm0 = ({ q1p: 'pts', q1r: 'reb', q1a: 'ast', dd: 'pts', tdd: 'pts' })[m] || m;
+  const mm = S.dvpMk && DVP_MK.includes(S.dvpMk) ? S.dvpMk : (DVP_MK.includes(mm0) ? mm0 : 'pts');
   const comps = mkInfo('nba', mm)[2];
-  const val = arr => arr ? comps.reduce((a, c) => a + Number(arr[NBA_BASE.indexOf(c)] || 0), 0) : null;
-  const avg = val(AVG);
-  const rows = H.map(([d, o, h, by, who]) => [d, o, h, val(by[pg]), ((who || {})[pg] || [])]).filter(r => r[3] != null);
-  // chi ha giocato in quel ruolo: cognome, valore nel mercato, minuti, (T) = titolare; i migliori prima
-  const whoTxt = lst => lst.map(x => [x[0], comps.reduce((a, c) => a + Number(x[3 + NBA_BASE.indexOf(c)] || 0), 0), x[1], x[2]])
-    .sort((a, b) => b[1] - a[1]).map(([n, v, mi, st]) => `<span style="white-space:nowrap"><b>${esc(n)}</b> ${v} <span class="muted">${mi}'${st ? ' T' : ''}</span></span>`).join(' · ');
-  if (!rows.length) return '';
-  const mean = rows.reduce((a, r) => a + r[3], 0) / rows.length;
-  const lbl = mkLabel('nba', mm).toLowerCase();
-  const col = x => avg ? (x >= avg * 1.1 ? 'var(--good)' : x <= avg * 0.9 ? 'var(--bad2)' : 'var(--text)') : 'var(--text)';
-  return `<div class="card"><div class="row between"><b>Difesa ${esc(p.o)} contro le ${POS_LBL[pg]}</b><button class="iconbtn" style="width:34px;height:34px" data-act="dvpOpen" aria-label="Chiudi">✕</button></div>
-    <p class="small muted">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))} concessi alle ${POS_LBL[pg]} avversarie, partita per partita (somma di tutti i giocatori del ruolo). ${dv.r}° su ${dv.n}: più alto = concede di più. Sotto ogni partita: chi ha giocato in quel ruolo, quanto ha fatto e i minuti (T = titolare).</p>
-    <div class="grid2"><div class="kv"><span>Media ultime ${rows.length}</span><span style="color:${col(mean)}">${mean.toFixed(1)}</span></div><div class="kv"><span>Media lega</span><span>${avg != null ? avg.toFixed(1) : '—'}</span></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;font-size:11px" class="muted"><span>Data</span><span>Contro</span><span>Concessi</span><span>vs media</span></div>
-    ${rows.map(([d, o, h, x, w]) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:6px 0;border-top:1px solid var(--line)" class="mono small">
-      <span>${esc(fmtDate(d))}</span><span>${h ? 'vs' : '@'} ${esc(o)}</span><span class="b" style="color:${col(x)}">${x}</span><span>${avg ? ((x - avg >= 0 ? '+' : '') + (x - avg).toFixed(1)) : '—'}</span>
-      ${w.length ? `<span class="tiny" style="grid-column:1/-1;font-family:Inter,system-ui,-apple-system,sans-serif;color:var(--text2);line-height:1.6">${whoTxt(w)}</span>` : ''}</div>`).join('')}
+  const val = (arr, off) => comps.reduce((a, c) => a + Number(arr[off + NBA_BASE.indexOf(c)] || 0), 0);
+  const AVG = (S.data.nba.dvpavg || {})[pg];
+  const lgAvg = AVG ? val(AVG, 0) : null;
+  const tot = H.map(r => (r[3] || {})[pg]).filter(Boolean).map(a => val(a, 0));
+  const mean = tot.length ? tot.reduce((a, b) => a + b, 0) / tot.length : null;
+  const D = ((S.data.nba.dvpp || {})[pg] || {})[mm];
+  let rank = null;
+  if (D && D[p.o] != null) { const arr = Object.values(D).sort((a, b) => a - b); rank = [arr.indexOf(D[p.o]) + 1, arr.length]; }
+  const rows = [];
+  for (const [d, o, h, by, who] of H) {
+    for (const x of ((who || {})[pg] || [])) {
+      const v = val(x, 3), ln = (x[11] || {})[mm];
+      const ref = ln ? Number(ln[0]) : (x[10] && x[10].length ? val(x[10], 0) : null);
+      rows.push({ n: x[0], mi: x[1], st: x[2], v, line: ln ? ln[0] : null, odds: ln ? ln[1] : null, ref, d, o });
+    }
+  }
+  const sel = (act, cur, opts) => `<select class="sel" style="height:36px;font-size:13px;width:auto;flex:0 0 auto" data-act="${act}">${opts.map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  const lbl = { G: 'Guardie', F: 'Ali', C: 'Centri' };
+  return `<div class="card dvph"><div class="row between"><b>Difesa ${esc(p.o)}</b><button class="iconbtn" style="width:34px;height:34px" data-act="dvpOpen" aria-label="Chiudi">✕</button></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">Ultime partite contro</span>${sel('dvpPos', pg, Object.entries(lbl))}${sel('dvpMk', mm, DVP_MK.map(k => [k, mkLabel('nba', k)]))}</div>
+    <div class="small muted">${mean != null ? `Concessi in media alle ${lbl[pg].toLowerCase()}: <b style="color:var(--text)">${mean.toFixed(1)}</b>${lgAvg != null ? ` (lega ${lgAvg.toFixed(1)})` : ''}` : ''}${rank ? ` · ${rank[0]}° su ${rank[1]}` : ''}</div>
+    <div class="dvrow head"><span>Giocatore</span><span>Risultato</span><span>Linea</span><span>Quota</span><span>Data</span></div>
+    ${rows.map(r => { const up = r.ref != null && r.v > r.ref; const dn = r.ref != null && !up; return `<div class="dvrow">
+      <span class="nm">${esc(r.n)}<small>${r.mi}'${r.st ? ' · T' : ''}</small></span>
+      <span class="b" style="color:${up ? 'var(--good)' : dn ? 'var(--bad2)' : 'var(--text)'}">${up ? '▲' : dn ? '▼' : ''} ${r.v}</span>
+      <span>${r.line != null ? r.line : r.ref != null ? `<span class="muted" title="media delle 10 partite precedenti">m ${r.ref.toFixed(1)}</span>` : '—'}</span>
+      <span>${r.odds ? Number(r.odds).toFixed(2) : '—'}</span>
+      <span class="muted">${esc(r.o)} ${esc(r.d.slice(8, 10) + '/' + r.d.slice(5, 7))}</span></div>`; }).join('') || '<p class="note">Nessun dato per questo ruolo.</p>'}
+    <p class="note">Linea = quella del bookmaker prima della partita (archiviata dall'app da adesso in poi); se manca, "m" = media del giocatore nelle 10 partite precedenti. ▲ sopra, ▼ sotto. T = titolare.</p>
   </div>`;
 }
 const posGroup = pos => { const p = String(pos || '').toUpperCase(); return !p ? '' : p[0] === 'C' ? 'C' : (p[0] === 'G' || p === 'PG' || p === 'SG') ? 'G' : 'F'; };
@@ -2229,7 +2245,7 @@ function viewPlayer(sport, id, g, mq) {
     <div style="padding:0 16px"><div class="chips">${mkList(sport, p).map(([k, l]) => `<a class="chip ${k === m ? 'on' : ''}" style="display:flex;align-items:center" href="#/g/${sport}/${esc(p.id)}/${esc(p.g)}?m=${k}">${l}</a>`).join('')}</div></div></header>
     <main>
       ${hero}
-      ${S.dvpOpen && dv ? dvpHistCard(p, m, dv) : ''}
+      ${S.dvpOpen && dvpHistOk(p) ? dvpHistCard(p, m) : ''}
       <div class="card">
         <div class="grid3">
           <div class="kv"><span>Proiezione</span><span class="model big">${bern ? pct(1 - Math.exp(-e.mu)) : e.mu.toFixed(1)}</span></div>
@@ -3105,7 +3121,9 @@ function handle(act, el) {
     case 'gamePick': S.game = v; S.limit = 0; if (location.hash.includes('g=')) history.replaceState(null, '', '#/giocatori'); break;
     case 'pWin': S.pWin = v; break;
     case 'pFilt': S.pFilt = S.pFilt === v ? '' : v; break;
-    case 'dvpOpen': S.dvpOpen = !S.dvpOpen; break;
+    case 'dvpOpen': S.dvpOpen = !S.dvpOpen; S.dvpPos = ''; S.dvpMk = ''; break;
+    case 'dvpPos': S.dvpPos = el.value; break;
+    case 'dvpMk': S.dvpMk = el.value; break;
     case 'fOpen': S.fOpen = !S.fOpen; break;
     case 'pMateClear': S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: '' }); break;
     case 'more': { S.limit = (S.limit || 40) + 40; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
