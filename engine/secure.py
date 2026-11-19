@@ -5,6 +5,7 @@ dal codice con PBKDF2-SHA256): chi apre il sito senza codice non vede nulla, nem
 scaricando i file. Senza codice i file restano in chiaro come prima.
 """
 import base64
+import gzip
 import json
 import os
 
@@ -32,8 +33,10 @@ def write_outputs(out_dir, files):
     for name, obj in files.items():
         iv = os.urandom(12)
         data = json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        # compressi prima di cifrare: i dati cifrati non si possono piu' comprimere, cosi' il file e' 8-10 volte piu' piccolo
+        data = gzip.compress(data, compresslevel=9, mtime=0)
         ct = aes.encrypt(iv, data, None)
-        env = {"v": 1, "iter": ITER, "salt": _b64(salt), "iv": _b64(iv), "ct": _b64(ct)}
+        env = {"v": 1, "iter": ITER, "salt": _b64(salt), "iv": _b64(iv), "z": "gzip", "ct": _b64(ct)}
         _write(os.path.join(out_dir, name + ".enc"), json.dumps(env))
         _rm(os.path.join(out_dir, name + ".json"))
     # file "spia" in chiaro, senza dati: dice all'app che serve il codice
