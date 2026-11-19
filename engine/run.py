@@ -323,6 +323,20 @@ def main():
     cutoff = iso(today - dt.timedelta(days=int(cfg.get("history_days", 420))))
     cutoff_nba = iso(today - dt.timedelta(days=int(cfg["nba"].get("history_days", cfg.get("history_days", 420)))))
     nba_logs = [r for r in nba_logs if r["date"] >= cutoff_nba]
+    # via le partite di esibizione (All-Star con squadre "World", "Stars", "USA"...): contano solo le partite tra
+    # le 30 squadre vere, cioe' quelle con molte partite in archivio
+    for sp_, lst_ in [("nba", nba_logs)] + [(k, v) for k, v in us_logs.items()]:
+        cnt_t = defaultdict(set)
+        for r in lst_:
+            cnt_t[r["team"]].add(r["gid"])
+        ns_ = sorted(len(g) for g in cnt_t.values())
+        med_ = ns_[len(ns_) // 2] if ns_ else 0
+        real_ = {t for t, g in cnt_t.items() if len(g) >= max(4, med_ * 0.25)}
+        if len(real_) >= 20 and med_ >= 12:
+            bad = {r["gid"] for r in lst_ if r["team"] not in real_ or r["opp"] not in real_}
+            if bad:
+                lst_[:] = [r for r in lst_ if r["gid"] not in bad]
+                log("%s: tolte %d partite di esibizione (All-Star)" % (sp_.upper(), len(bad)))
     soc_logs = [r for r in soc_logs if r["date"] >= cutoff]
     for sp in US:
         us_logs[sp] = [r for r in us_logs[sp] if r["date"] >= cutoff]
