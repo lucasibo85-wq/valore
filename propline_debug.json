@@ -1,0 +1,511 @@
+{
+ "t": "2026-11-21T12:05:52",
+ "sample": {
+  "book": "betmgm",
+  "markets": [
+   {
+    "key": "player_assists",
+    "outcomes": [
+     {
+      "name": "10+ Assists",
+      "description": "Damian Lillard",
+      "price": 1850,
+      "point": null,
+      "book_updated_at": null,
+      "book_version": null,
+      "payout_multiplier": null,
+      "dfs_odds_type": null,
+      "last_change_at": "2026-11-21T10:58:42.208983Z",
+      "last_seen_at": "2026-11-21T12:05:43.983808Z",
+      "liquidity": null,
+      "liquidity_updated_at": null,
+      "line_gap": null,
+      "book_outcome_id": null,
+      "outcome_id": null,
+      "player_id": "nba:203081",
+      "player_team": "Portland Trail Blazers",
+      "side": null
+     }
+    ]
+   },
+   {
+    "key": "player_assists",
+    "outcomes": [
+     {
+      "name": "3+ Assists",
+      "description": "Damian Lillard",
+      "price": -450,
+      "point": null,
+      "book_updated_at": null,
+      "book_version": null,
+      "payout_multiplier": null,
+      "dfs_odds_type": null,
+      "last_change_at": "2026-11-21T10:58:42.208983Z",
+      "last_seen_at": "2026-11-21T12:05:43.983808Z",
+      "liquidity": null,
+      "liquidity_updated_at": null,
+      "line_gap": null,
+      "book_outcome_id": null,
+      "outcome_id": null,
+      "player_id": "nba:203081",
+      "player_team": "Portland Trail Blazers",
+      "side": null
+     }
+    ]
+   },
+   {
+    "key": "player_assists",
+    "outcomes": [
+     {
+      "name": "5+ Assists",
+      "description": "Damian Lillard",
+      "price": 120,
+      "point": null,
+      "book_updated_at": null,
+      "book_version": null,
+      "payout_multiplier": null,
+      "dfs_odds_type": null,
+      "last_change_at": "2026-11-21T10:58:42.208983Z",
+      "last_seen_at": "2026-11-21T12:05:43.983808Z",
+      "liquidity": null,
+      "liquidity_updated_at": null,
+      "line_gap": null,
+      "book_outcome_id": null,
+      "outcome_id": null,
+      "player_id": "nba:203081",
+      "player_team": "Portland Trail Blazers",
+      "side": null
+     }
+    ]
+   },
+   {
+    "key": "player_assists",
+    "outcomes": [
+     {
+      "name": "7+ Assists",
+      "description": "Damian Lillard",
+      "price": 450,
+      "point": null,
+      "book_updated_at": null,
+      "book_version": null,
+      "payout_multiplier": null,
+      "dfs_odds_type": null,
+      "last_change_at": "2026-11-21T10:58:42.208983Z",
+      "last_seen_at": "2026-11-21T12:05:43.983808Z",
+      "liquidity": null,
+      "liquidity_updated_at": null,
+      "line_gap": null,
+      "book_outcome_id": null,
+      "outcome_id": null,
+      "player_id": "nba:203081",
+      "player_team": "Portland Trail Blazers",
+      "side": null
+     }
+    ]
+   }
+  ]
+ },
+ "nba_game": "401910024",
+ "nba_rows": [
+  [
+   "Damian Lillard",
+   "ast",
+   4.5,
+   2.2,
+   2.0,
+   "William Hill IT",
+   0.4328,
+   17
+  ],
+  [
+   "Deni Avdija",
+   "ast",
+   5.5,
+   2.0,
+   2.0,
+   "William Hill IT",
+   0.4797,
+   22
+  ],
+  [
+   "Jalen Brunson",
+   "ast",
+   5.5,
+   1.699,
+   2.13,
+   "William Hill IT",
+   0.5306,
+   21
+  ],
+  [
+   "Josh Hart",
+   "ast",
+   3.5,
+   2.2,
+   2.0,
+   "William Hill IT",
+   0.42,
+   21
+  ],
+  [
+   "Karl-Anthony Towns",
+   "ast",
+   3.5,
+   1.952,
+   2.05,
+   "William Hill IT",
+   0.4941,
+   24
+  ],
+  [
+   "Mikal Bridges",
+   "ast",
+   2.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.4898,
+   22
+  ],
+  [
+   "Damian Lillard",
+   "pts",
+   20.5,
+   1.901,
+   2.0,
+   "William Hill IT",
+   0.5,
+   20
+  ],
+  [
+   "Deni Avdija",
+   "pts",
+   22.5,
+   1.8,
+   2.06,
+   "William Hill IT",
+   0.5175,
+   21
+  ],
+  [
+   "Donovan Clingan",
+   "pts",
+   10.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.4979,
+   21
+  ],
+  [
+   "Jalen Brunson",
+   "pts",
+   27.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4946,
+   20
+  ],
+  [
+   "Josh Hart",
+   "pts",
+   8.5,
+   1.752,
+   2.09,
+   "William Hill IT",
+   0.5,
+   22
+  ],
+  [
+   "Karl-Anthony Towns",
+   "pts",
+   21.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.4812,
+   21
+  ],
+  [
+   "Mikal Bridges",
+   "pts",
+   10.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4963,
+   23
+  ],
+  [
+   "OG Anunoby",
+   "pts",
+   16.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.4832,
+   22
+  ],
+  [
+   "Sidy Cissoko",
+   "pts",
+   7.5,
+   1.8,
+   2.04,
+   "Lottomatica",
+   0.5163,
+   22
+  ],
+  [
+   "Toumani Camara",
+   "pts",
+   12.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.4815,
+   13
+  ],
+  [
+   "Damian Lillard",
+   "pa",
+   24.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.502,
+   16
+  ],
+  [
+   "Deni Avdija",
+   "pa",
+   28.5,
+   1.847,
+   2.04,
+   "William Hill IT",
+   0.5,
+   16
+  ],
+  [
+   "Jalen Brunson",
+   "pa",
+   33.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4972,
+   12
+  ],
+  [
+   "Josh Hart",
+   "pa",
+   11.5,
+   2.0,
+   2.14,
+   "PrizePicks",
+   0.5325,
+   10
+  ],
+  [
+   "Karl-Anthony Towns",
+   "pa",
+   24.5,
+   2.0,
+   2.0,
+   "DraftKings Pick6",
+   0.5095,
+   11
+  ],
+  [
+   "Mikal Bridges",
+   "pa",
+   13.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.4719,
+   14
+  ],
+  [
+   "OG Anunoby",
+   "pa",
+   18.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.4861,
+   15
+  ],
+  [
+   "Sidy Cissoko",
+   "pa",
+   9.5,
+   1.719,
+   2.05,
+   "William Hill IT",
+   0.5322,
+   10
+  ],
+  [
+   "Damian Lillard",
+   "pr",
+   23.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.5134,
+   14
+  ],
+  [
+   "Deni Avdija",
+   "pr",
+   29.5,
+   2.07,
+   2.0,
+   "Dabble",
+   0.4859,
+   12
+  ],
+  [
+   "Donovan Clingan",
+   "pr",
+   21.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.4821,
+   16
+  ],
+  [
+   "Jalen Brunson",
+   "pr",
+   30.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4861,
+   14
+  ],
+  [
+   "Josh Hart",
+   "pr",
+   15.5,
+   1.752,
+   2.03,
+   "William Hill IT",
+   0.5,
+   16
+  ],
+  [
+   "Karl-Anthony Towns",
+   "pr",
+   34.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4898,
+   13
+  ],
+  [
+   "Mikal Bridges",
+   "pr",
+   13.5,
+   1.8,
+   2.03,
+   "William Hill IT",
+   0.5102,
+   15
+  ],
+  [
+   "OG Anunoby",
+   "pr",
+   21.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.5,
+   17
+  ],
+  [
+   "Sidy Cissoko",
+   "pr",
+   11.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.5,
+   13
+  ],
+  [
+   "Toumani Camara",
+   "pr",
+   16.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4853,
+   15
+  ],
+  [
+   "Damian Lillard",
+   "pra",
+   28.5,
+   1.847,
+   2.0,
+   "Lottomatica",
+   0.4797,
+   14
+  ],
+  [
+   "Deni Avdija",
+   "pra",
+   34.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.5009,
+   17
+  ],
+  [
+   "Donovan Clingan",
+   "pra",
+   23.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.4846,
+   16
+  ],
+  [
+   "Jalen Brunson",
+   "pra",
+   36.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4944,
+   13
+  ],
+  [
+   "Josh Hart",
+   "pra",
+   18.5,
+   2.0,
+   2.06,
+   "PrizePicks",
+   0.5095,
+   16
+  ],
+  [
+   "Karl-Anthony Towns",
+   "pra",
+   37.5,
+   1.752,
+   2.0,
+   "Eurobet",
+   0.5132,
+   11
+  ]
+ ]
+}
