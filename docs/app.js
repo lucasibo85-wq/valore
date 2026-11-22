@@ -981,6 +981,16 @@ function sportSeg(withTennis) {
   return `<div class="seg" role="tablist" aria-label="Sport">${list.map(k =>
     `<button role="tab" aria-selected="${S.sport === k}" class="${S.sport === k ? 'on' : ''}" data-act="sport" data-v="${k}">${SPORT_LABEL[k]}</button>`).join('')}</div>`;
 }
+/** Avviso se i dati sono vecchi (aggiornamento automatico fermo) o se una parte dell'aggiornamento si e' rotta */
+function staleBanner() {
+  if (!S.data || !S.data.generated) return '';
+  const h = (Date.now() - new Date(S.data.generated).getTime()) / 3600000;
+  const errs = S.data.errors || [];
+  if (h < 3 && !errs.length) return '';
+  return `<div class="card" style="border-color:rgba(245,165,36,.6);background:rgba(245,165,36,.08);gap:4px">
+    ${h >= 3 ? `<b style="color:#F5A524">⚠ Dati di ${h < 48 ? Math.round(h) + ' ore' : Math.round(h / 24) + ' giorni'} fa</b><span class="small">L'aggiornamento automatico non è andato a buon fine: le partite più recenti possono mancare. Controlla la scheda Actions su GitHub.</span>` : ''}
+    ${errs.length ? `<b style="color:#F5A524">⚠ Una parte dell'ultimo aggiornamento ha dato errore</b><span class="small mono" style="word-break:break-word">${errs.slice(0, 3).map(esc).join('<br>')}</span>` : ''}</div>`;
+}
 function updatedLine() {
   if (!S.data) return '';
   return `<p class="note">Dati aggiornati: ${esc(new Date(S.data.generated).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. Le probabilità sono stime, non certezze. Il gioco è vietato ai minori di 18 anni e può causare dipendenza.</p>`;
@@ -1184,7 +1194,7 @@ function viewGames() {
     <input class="search" type="search" placeholder="Cerca una partita o una squadra" aria-label="Cerca una partita o una squadra" data-act="msearch" value="${esc(S.msearch || '')}">
     ${S.sport === 'soccer' ? lgChips : ''}
     ${S.sport === 'tennis' ? `<div class="chips"><button class="chip ${S.onlyValue ? 'on' : ''}" data-act="onlyValue" data-v="${S.onlyValue ? 0 : 1}">Solo valore</button></div>${lgChips}` : ''}</div></header>
-    <main>${body}${updatedLine()}</main>`;
+    <main>${staleBanner()}${body}${updatedLine()}</main>`;
 }
 function matchOdds(m) {
   const man = S.manual['soccer|match|' + m.id];
@@ -2215,8 +2225,12 @@ function viewPlayer(sport, id, g, mq) {
   const side0 = noUnder(sport) ? 'over' : (e.side || 'over');
   const win = S.pWin || 'l10', filt = S.pFilt || '';
   const mates = teammates(sport, p);
-  const mate = mates.length ? ((S.pMate || {})[p.id] || '') : '';
-  const pf = filt || mate ? Object.assign({}, p, { _rows: filterRows(sport, p, filt, mate) }) : p;
+  // compagni scelti (anche piu' di uno): "-id" = senza, "+id" = con
+  const mSel = mates.length ? [].concat((S.pMate || {})[p.id] || []).filter(Boolean) : [];
+  const mate = mSel.length ? mSel : '';
+  const nF = (filt ? 1 : 0) + mSel.length;
+  const mName = id => esc((mates.find(x => x[0] === id) || [0, '?'])[1]);
+  const pf = filt || mate ? Object.assign({}, p, { _rows: filterRows(sport, p, filt, mSel) }) : p;
   const htx = pf === p ? hitTable(sport, p, m, e.line, side0) : hitTableRaw(sport, pf, m, e.line, side0);
   const fr = x => x ? x[0] / x[1] : null;
   const winVal = { sea: fr(htx.sea), h2h: fr(htx.vs), l5: fr(htx.l5), l10: fr(htx.l10), l20: fr(htx.l20) };
@@ -2237,13 +2251,15 @@ function viewPlayer(sport, id, g, mq) {
         <div class="kv" ${dv && dvpHistOk(p) ? `role="button" tabindex="0" data-act="dvpOpen" style="cursor:pointer"` : ''}><span>${dv ? 'DvP' + (dv.by ? ' ' + dv.by : '') + (dvpHistOk(p) ? ' ›' : '') : 'Avversario'}</span><span style="color:${dv ? (dv.r > dv.n * 2 / 3 ? 'var(--good)' : dv.r <= dv.n / 3 ? 'var(--bad2)' : 'var(--text)') : 'inherit'}">${dv ? dv.r + '°<small class="muted" style="font-size:11px">/' + dv.n + '</small>' : (p.of && p.of[m] ? ((p.of[m] >= 1 ? '+' : '−') + Math.abs((p.of[m] - 1) * 100).toFixed(0) + '%') : '—')}</span></div></div>
       ${barChart(sport, pf, m, e.line, side0, win, '')}
       <div class="row" style="gap:8px;align-items:stretch"><div class="seg wseg" style="flex:1;min-width:0">${[['sea', 'Stag.'], ['h2h', 'H2H'], ['l5', 'U5'], ['l10', 'U10'], ['l20', 'U20']].map(([k, l]) => `<button class="${win === k ? 'on' : ''}" data-act="pWin" data-v="${k}">${l}<small style="color:${win === k ? 'inherit' : hitCol(winVal[k])}">${winVal[k] == null ? '—' : Math.round(winVal[k] * 100) + '%'}</small></button>`).join('')}</div>
-        ${(hasHome || mates.length) ? `<button class="iconbtn fbtn ${S.fOpen || filt || mate ? 'on' : ''}" style="height:auto;width:52px" data-act="fOpen" aria-label="Filtri">${ICON_FILTER}${(filt ? 1 : 0) + (mate ? 1 : 0) ? `<i>${(filt ? 1 : 0) + (mate ? 1 : 0)}</i>` : ''}</button>` : ''}</div>
-      ${!S.fOpen && (filt || mate) ? `<div class="chips">${filt ? `<button class="chip on" data-act="pFilt" data-v="${filt}">${filt === 'casa' ? 'In casa' : 'In trasferta'} ✕</button>` : ''}${mate ? `<button class="chip on" data-act="pMateClear" data-k="${esc(p.id)}">${mate[0] === '-' ? 'Senza' : 'Con'} ${esc((mates.find(x => x[0] === mate.slice(1)) || [0, '?'])[1])} ✕</button>` : ''}</div>` : ''}
+        ${(hasHome || mates.length) ? `<button class="iconbtn fbtn ${S.fOpen || filt || mate ? 'on' : ''}" style="height:auto;width:52px" data-act="fOpen" aria-label="Filtri">${ICON_FILTER}${nF ? `<i>${nF}</i>` : ''}</button>` : ''}</div>
+      ${!S.fOpen && (filt || mate) ? `<div class="chips">${filt ? `<button class="chip on" data-act="pFilt" data-v="${filt}">${filt === 'casa' ? 'In casa' : 'In trasferta'} ✕</button>` : ''}${mSel.map(x => `<button class="chip on" data-act="pMateClear" data-k="${esc(p.id)}" data-v="${esc(x)}">${x[0] === '-' ? 'Senza' : 'Con'} ${mName(x.slice(1))} ✕</button>`).join('')}</div>` : ''}
       ${S.fOpen ? `<div class="fpanel">
       ${hasHome ? `<div class="chips"><span class="small muted" style="align-self:center">Dove</span>${[['casa', 'In casa'], ['fuori', 'In trasferta']].map(([k, l]) => `<button class="chip ${filt === k ? 'on' : ''}" data-act="pFilt" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
-      ${mates.length ? `<select class="sel ${mate ? 'on' : ''}" aria-label="Con o senza un compagno" data-act="pMate" data-k="${esc(p.id)}"><option value="">Compagni: tutti</option>
-        <optgroup label="Senza…">${mates.slice().sort((a, b) => (b[3] ? 1 : 0) - (a[3] ? 1 : 0)).map(x => `<option value="-${esc(x[0])}" ${mate === '-' + x[0] ? 'selected' : ''}>Senza ${esc(x[1])}${x[3] ? ' (' + esc(x[3]) + ')' : ''} · ${x[2]} min</option>`).join('')}</optgroup>
-        <optgroup label="Con…">${mates.map(x => `<option value="+${esc(x[0])}" ${mate === '+' + x[0] ? 'selected' : ''}>Con ${esc(x[1])}</option>`).join('')}</optgroup></select>` : ''}
+      ${mates.length ? `<div class="small muted">Compagni · tocca una volta = <b style="color:var(--bad2)">senza</b>, due volte = <b style="color:var(--good)">con</b>, tre = tutti. Puoi sceglierne più di uno.</div>
+      <div class="mates">${mates.slice().sort((a, b) => ((b[3] ? 1 : 0) - (a[3] ? 1 : 0)) || (b[2] - a[2])).map(x => {
+        const st = mSel.includes('-' + x[0]) ? 'sx' : mSel.includes('+' + x[0]) ? 'cx' : '';
+        return `<button class="chip ${st}" data-act="pMate" data-k="${esc(p.id)}" data-v="${esc(x[0])}">${st === 'sx' ? 'Senza ' : st === 'cx' ? 'Con ' : ''}${esc(x[1])}${x[3] ? ` <span class="st">${esc(x[3])}</span>` : ''}</button>`;
+      }).join('')}</div>` : ''}
       </div>` : ''}
       ${mate || filt ? `<p class="note">Percentuali e grafico solo sulle partite filtrate (${gamesOf(sport, pf).length} partite).</p>` : ''}
     </div>`;
@@ -2302,11 +2318,11 @@ function teammates(sport, p) {
   return (T || []).filter(x => x[0] !== p.id);
 }
 /** Partite filtrate: in casa/trasferta e con/senza un compagno ("-id" = senza, "+id" = con) */
-function filterRows(sport, p, filt, mate) {
+function filterRows(sport, p, filt, mates) {
   let rows = gamesOf(sport, p);
   if (filt === 'casa') rows = rows.filter(r => rowHome(sport, r) === true);
   if (filt === 'fuori') rows = rows.filter(r => rowHome(sport, r) === false);
-  if (mate) {
+  for (const mate of [].concat(mates || []).filter(Boolean)) {
     const tm = teammates(sport, p).find(x => x[0] === mate.slice(1));
     if (tm) {
       const set = new Set(tm[4]);
@@ -3131,7 +3147,10 @@ function handle(act, el) {
     case 'dvpPos': S.dvpPos = el.value; break;
     case 'dvpMk': S.dvpMk = el.value; break;
     case 'fOpen': S.fOpen = !S.fOpen; break;
-    case 'pMateClear': S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: '' }); break;
+    case 'pMateClear': {
+      const cur = [].concat((S.pMate || {})[el.dataset.k] || []);
+      S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: cur.filter(x => x !== v) }); break;
+    }
     case 'more': { S.limit = (S.limit || 40) + 40; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
     case 'mrKey': S.mrKey = S.mrKey || {}; S.mrKey[S.sport] = v; break;
     case 'mrDay': S.mrDay = v; break;
@@ -3141,7 +3160,12 @@ function handle(act, el) {
     case 'rankSort': S.rankSort = v; break;
     case 'rankT': S.rankT = S.rankT || {}; S.rankT[el.dataset.k] = +v; break;
     case 'sort': S.sort = S.sort === 'valore' ? 'proiezione' : 'valore'; break;
-    case 'pMate': S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: el.value }); break;
+    case 'pMate': {
+      // ogni tocco: tutti -> senza -> con -> tutti
+      const cur = [].concat((S.pMate || {})[el.dataset.k] || []).filter(Boolean);
+      const nx = cur.includes('-' + v) ? cur.filter(x => x !== '-' + v).concat('+' + v) : cur.includes('+' + v) ? cur.filter(x => x !== '+' + v) : cur.concat('-' + v);
+      S.pMate = Object.assign({}, S.pMate, { [el.dataset.k]: nx }); break;
+    }
     case 'game': S.game = el.value; if (location.hash.includes('g=')) { history.replaceState(null, '', '#/giocatori'); } break;
     case 'search': S.search = el.value; break;
     case 'gsearch': S.gsearch = el.value; break;

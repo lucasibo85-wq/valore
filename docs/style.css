@@ -223,3 +223,8 @@ header.top.slim h1{font-size:20px;white-space:nowrap;overflow:hidden;text-overfl
 .dvrow .nm small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
 .dvrow>span:last-child{font-size:11px;text-align:right}
 .dvrow .b{font-weight:800}
+.mates{display:flex;flex-wrap:wrap;gap:6px}
+.mates .chip{height:34px;font-size:13px;padding:0 12px}
+.mates .chip .st{font-size:10px;font-weight:800;color:var(--warn,#F5A524);margin-left:2px}
+.chip.sx{border-color:rgba(255,90,90,.7);background:rgba(255,90,90,.14);color:#FF8A8A}
+.chip.cx{border-color:rgba(46,217,140,.7);background:rgba(46,217,140,.14);color:#5BE3A6}
