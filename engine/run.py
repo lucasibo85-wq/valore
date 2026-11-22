@@ -10,6 +10,7 @@ import math
 import os
 import sys
 import time
+import traceback
 from collections import defaultdict
 
 from . import calib, espn, models, net, odds, propline, props, secure, store, teamus, tennis
@@ -121,11 +122,13 @@ def main():
             remember("nba", "nba", ev)
             if ev["completed"] and ev["id"] not in processed["nba"]:
                 queue.append(("nba", "basketball/nba", "nba", ev))
-        for ev in scan_days("basketball/nba", today, today + dt.timedelta(days=ahead), per_day=True):
+        # si parte da IERI (data americana): le partite della sera USA iniziano dopo la mezzanotte UTC,
+        # quindi per qualche ora "oggi" in UTC e' gia' il giorno dopo ma quelle partite non sono ancora giocate
+        for ev in scan_days("basketball/nba", today - dt.timedelta(days=1), today + dt.timedelta(days=ahead), per_day=True):
             if not espn.nba_counts(ev):
                 continue
             remember("nba", "nba", ev)
-            if not ev["completed"]:
+            if not ev["completed"] and ev.get("state") != "post":  # "post" non conclusa = rinviata
                 upcoming.append(("nba", "basketball/nba", "nba", ev))
         if nba_excluded:
             before = len(nba_logs)
@@ -165,7 +168,7 @@ def main():
                     n_new += 1
             cnt = state.setdefault("scan_counts", {}).setdefault(league, {})
             cnt.clear()
-            for ev in scan_days(path, today, today + dt.timedelta(days=ahead), per_day=True):
+            for ev in scan_days(path, today - dt.timedelta(days=1), today + dt.timedelta(days=ahead), per_day=True):
                 remember("soccer", league, ev)
                 k_ = "%s_%s" % ("oggi" if ev["date"][:10] == iso(today) else "poi", ev["state"])
                 cnt[k_] = cnt.get(k_, 0) + 1
@@ -186,8 +189,8 @@ def main():
             if ev["completed"] and ev["id"] not in processed[sp]:
                 queue.append((sp, path, sp, ev))
                 n_new += 1
-        for ev in scan_days(path, today, today + dt.timedelta(days=int(cfg[sp].get("days_ahead", ahead))), per_day=True):
-            if espn.nba_counts(ev, sp) and not ev["completed"]:
+        for ev in scan_days(path, today - dt.timedelta(days=1), today + dt.timedelta(days=int(cfg[sp].get("days_ahead", ahead))), per_day=True):
+            if espn.nba_counts(ev, sp) and not ev["completed"] and ev.get("state") != "post":
                 remember(sp, sp, ev)
                 upcoming.append((sp, path, sp, ev))
         state["scan"][sp] = iso(today - dt.timedelta(days=2))
@@ -244,12 +247,17 @@ def main():
             continue
         date = ev["date"][:10]
         h, a = ev["home"]["id"], ev["away"]["id"]
-        if sport == "nba":
-            rows = espn.parse_nba_box(summ)
-        elif sport == "soccer":
-            rows = espn.parse_soccer_box(summ)
-        else:
-            rows = props.parse_box(sport, summ)
+        try:
+            if sport == "nba":
+                rows = espn.parse_nba_box(summ)
+            elif sport == "soccer":
+                rows = espn.parse_soccer_box(summ)
+            else:
+                rows = props.parse_box(sport, summ)
+        except Exception as e:  # noqa: BLE001  formato inatteso: si salta solo questa partita
+            if len(ERRORS) < 20:
+                ERRORS.append("tabellino %s %s: %s" % (sport, ev["id"], e))
+            rows = []
         for r in rows:
             r.update({"gid": ev["id"], "date": date, "home": 1 if r["team"] == h else 0,
                       "opp": a if r["team"] == h else h})
@@ -395,7 +403,7 @@ def main():
     # ---------------- Quote automatiche
     odds_cache = state.get("odds_cache", {})
     if not args.no_odds and cfg.get("odds", {}).get("enabled") and (odds.key() or propline.key()):
-        odds_cache = fetch_odds(cfg, state, today, upcoming, teams, odds_cache)
+        odds_cache = safe("quote", fetch_odds, cfg, state, today, upcoming, teams, odds_cache) or odds_cache
         state["odds_cache"] = odds_cache
         # archivio delle linee NBA (l'ultima prima della partita): serve allo storico difesa "come Props"
         lh = store.read_json("lines_hist.json", {})
@@ -430,7 +438,7 @@ def main():
     for sp in US:
         app[sp] = {"games": [], "players": []}
         hist[sp] = {}
-        props.build(sp, app, us_logs[sp], upcoming, previews, teams, today, hist, matches, calib_factors(state, sp))
+        safe(sp.upper(), props.build, sp, app, us_logs[sp], upcoming, previews, teams, today, hist, matches, calib_factors(state, sp))
         # quote automatiche delle prop (PropLine), se ci sono
         by_g = {}
         for gid, rows_ in (odds_cache.get(sp) or {}).items():
@@ -442,21 +450,23 @@ def main():
                 p_["odds"] = od
     if cfg.get("tennis", {}).get("enabled"):
         app["tennis"] = {"matches": []}
-        tennis.build(app, t_matches, t_up)
+        safe("tennis", tennis.build, app, t_matches, t_up)
     if cfg["nba"].get("enabled"):
-        build_nba(app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"), matches,
-                  store.read_json("lines_hist.json", {}))
+        safe("NBA", build_nba, app, nba_logs, upcoming, previews, teams, today, odds_cache, hist, calib_factors(state, "nba"), matches,
+             store.read_json("lines_hist.json", {}))
     if cfg["soccer"].get("enabled"):
-        build_soccer(app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
-                     calib_factors(state, "soccer"))
-    results = build_results(nba_logs, soc_logs, matches, today, us_logs, t_matches)
+        safe("calcio", build_soccer, app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
+             calib_factors(state, "soccer"))
+    results = safe("risultati", build_results, nba_logs, soc_logs, matches, today, us_logs, t_matches) or {"nba": {}, "soccer": {}}
     # autocalibrazione: prima misura le previsioni passate, poi salva quelle nuove
     ev_logs = {"nba": nba_logs, "soccer": soc_logs}
     ev_logs.update(us_logs)
-    calib.evaluate(state, ev_logs, results, today)
-    calib.record(state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb", "nhl")})
-    diag = build_diag(cfg, app, nba_logs, soc_logs, matches, upcoming, state, today)
-    diag["calib"] = calib.report(state, today)
+    safe("calibrazione", calib.evaluate, state, ev_logs, results, today)
+    safe("calibrazione", calib.record, state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb", "nhl")})
+    diag = safe("diagnostica", build_diag, cfg, app, nba_logs, soc_logs, matches, upcoming, state, today) or {}
+    diag["calib"] = safe("diagnostica", calib.report, state, today)
+    diag["errors"] = ERRORS
+    app["errors"] = ERRORS
     secure.write_outputs(OUT_DIR, {"app": app, "hist": hist, "results": results, "diag": diag})
     state["queue"] = [list(q) for q in queue if q[3]["id"] not in processed[q[0]] and q[3]["date"][:10] >= cutoff]
     state["last_run"] = app["generated"]
@@ -478,6 +488,21 @@ def q1_cols(r):
 
 
 Q1_MAP = {"q1p": "pts", "q1r": "reb", "q1a": "ast"}
+
+
+ERRORS = []
+
+
+def safe(label, fn, *a, **kw):
+    """Esegue una parte del lavoro; se si rompe lo scrive nel registro e va avanti con il resto
+    (un errore nell'hockey non deve bloccare NBA e calcio)."""
+    try:
+        return fn(*a, **kw)
+    except Exception as e:  # noqa: BLE001
+        ERRORS.append("%s: %s" % (label, e))
+        log("ERRORE in %s: %s" % (label, e))
+        log(traceback.format_exc())
+        return None
 
 
 def pos_group(pos):
