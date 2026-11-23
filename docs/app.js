@@ -978,8 +978,9 @@ function header(title, kicker, back, right, cls) {
 function sportSeg(withTennis) {
   const list = availSports(withTennis);
   if (!list.includes(S.sport)) S.sport = list[0] || 'nba';
-  return `<div class="seg" role="tablist" aria-label="Sport">${list.map(k =>
-    `<button role="tab" aria-selected="${S.sport === k}" class="${S.sport === k ? 'on' : ''}" data-act="sport" data-v="${k}">${SPORT_LABEL[k]}</button>`).join('')}</div>`;
+  const ic = { nba: '🏀', soccer: '⚽', nfl: '🏈', nhl: '🏒', mlb: '⚾', tennis: '🎾' };
+  return `<div class="seg sports" role="tablist" aria-label="Sport">${list.map(k =>
+    `<button role="tab" aria-selected="${S.sport === k}" class="${S.sport === k ? 'on' : ''}" data-act="sport" data-v="${k}">${ic[k] || ''} ${SPORT_LABEL[k]}</button>`).join('')}</div>`;
 }
 /** Avviso se i dati sono vecchi (aggiornamento automatico fermo) o se una parte dell'aggiornamento si e' rotta */
 function staleBanner() {
@@ -1110,7 +1111,7 @@ function viewGames() {
   let body = '';
   let lgChips = '';
   const segHtml = sportSeg(true);
-  const gvSeg = S.sport === 'tennis' ? '' : `<div class="seg">${[['partite', 'Partite'], ['mercati', 'Classifica mercati']].map(([k, l]) => `<button class="${(S.gView || 'partite') === k ? 'on' : ''}" data-act="gView" data-v="${k}">${l}</button>`).join('')}</div>`;
+  const gvSeg = S.sport === 'tennis' ? '' : `<div class="seg small">${[['partite', 'Partite'], ['mercati', 'Classifica mercati']].map(([k, l]) => `<button class="${(S.gView || 'partite') === k ? 'on' : ''}" data-act="gView" data-v="${k}">${l}</button>`).join('')}</div>`;
   if (S.sport !== 'tennis' && S.gView === 'mercati') {
     const R = viewMarketRank(S.sport);
     return header('Partite', 'Classifica mercati', null, `<div class="row">${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${segHtml}${gvSeg}
@@ -1156,13 +1157,10 @@ function viewGames() {
       const ml = g.odds && g.odds.h ? `<span class="mono small muted">${esc(g.a)} ${g.odds.a.toFixed(2)} · ${esc(g.h)} ${g.odds.h.toFixed(2)}${g.odds.ou ? ' · tot ' + g.odds.ou : ''}</span>` : '';
       const d = g.mk ? Object.fromEntries(g.mk.map(x => [x[0], x[3]])) : null;
       const tv = tmValue(sp, g);
-      body += `<a class="card" href="#/gara/${sp}/${esc(g.id)}">
-        <div class="row between small muted"><span>${SPORT_LABEL[sp]}${!liveTag(g.id) && g.live ? ' · <b style="color:var(--book)">IN CORSO</b>' : ''}</span>${liveTag(g.id)}${tv.best !== null && tv.best > 0 ? `<span class="badge val">VALORE ${sgn(tv.best)}</span>` : vals.length ? `<span class="badge val">${vals.length} prop con valore</span>` : ''}</div>
-        <div class="row" style="gap:12px">${kickBox(g.t, g.id)}<div class="teams" style="flex:1;min-width:0">
-          <div class="team">${teamBadge(g.an)}<span class="nm">${esc(g.an)}</span></div><div class="team">${teamBadge(g.hn)}<span class="nm">${esc(g.hn)}</span></div></div>
-          ${g.mh ? `<div class="mono small muted" style="text-align:right;line-height:1.9">${g.ma.toFixed(sp === 'mlb' ? 1 : 0)}<br>${g.mh.toFixed(sp === 'mlb' ? 1 : 0)}</div>` : ''}</div>
-        ${d ? `<div class="grid2">${[[g.an, d.ml2, 'ml2'], [g.hn, d.ml1, 'ml1']].map(([n, p, k]) => `<div class="cell"><div class="row between tiny muted"><span>${esc(n)}</span><span>${tmOddsG(sp, g)[k] ? tmOddsG(sp, g)[k].toFixed(2) : ''}</span></div><div class="bar"><div style="width:${(p * 100).toFixed(0)}%;background:var(--model)"></div></div><span class="tiny model b">Modello ${pct(p)}</span></div>`).join('')}</div>` : ''}
-        ${ml}<div class="small muted">${ps.length} giocatori analizzati · tocca per mercati e prop</div></a>`;
+      const od = tmOddsG(sp, g);
+      body += gameRow({ href: `#/gara/${sp}/${esc(g.id)}`, t: g.t, id: g.id, live: g.live, top: '',
+        teams: [g.an, g.hn], cells: d ? [['2', d.ml2, od.ml2], ['1', d.ml1, od.ml1]].map(([k, p, q]) => ({ lab: '', p, q })) : [],
+        badge: tv.best !== null && tv.best > 0 ? sgn(tv.best) : vals.length ? `${vals.length} prop` : '' });
     }
   } else {
     const all = gamesList('soccer').slice().sort((a, b) => a.t.localeCompare(b.t));
@@ -1186,7 +1184,7 @@ function viewGames() {
         lastDay = day;
         body += dayHdr(m.t);
       }
-      body += matchCard(m, leagues[m.lg] || m.lg);
+      body += matchRow(m, leagues[m.lg] || m.lg);
     }
     if (ms.length > lim) body += `<button class="btn ghost" data-act="more">Mostra altre partite (${ms.length - lim})</button>`;
   }
@@ -1226,6 +1224,25 @@ function matchValue(m) {
     if (out.best === null || e > out.best) Object.assign(out, { best: e, side });
   }
   return out;
+}
+/** Riga compatta di una partita: orario (o live) · squadre · quote con la probabilita' del modello sotto.
+    La casella con valore e' evidenziata; il dettaglio (gol attesi, altri mercati) e' nella pagina della partita. */
+function gameRow(o) {
+  const L = S.live[o.id];
+  const live = L && L.st === 'in';
+  return `<a class="grow ${live ? 'is-live' : ''} ${o.badge ? 'has-val' : ''}" href="${o.href}">
+    <div class="gk">${live ? `<b class="lv">${esc(L.ten ? 'LIVE' : (L.clock || 'LIVE'))}</b><span>${L.ten ? esc(L.sc || '') : esc(L.hs) + '–' + esc(L.as)}</span>`
+      : `<b>${esc((fmtTime(o.t).match(/\d\d:\d\d$/) || [''])[0])}</b>${o.top ? `<span>${esc(o.top)}</span>` : ''}`}${o.badge ? `<span class="vb">${esc(o.badge)}</span>` : ''}</div>
+    <div class="gt">${o.teams.map(n => `<div class="team">${teamBadge(n)}<span class="nm">${esc(n)}</span></div>`).join('')}</div>
+    <div class="go">${o.cells.map(c => { const val = c.q && isValue(c.p, c.q); return `<span class="oc ${val ? 'val' : ''}">${c.lab ? `<i>${c.lab}</i>` : ''}<b>${c.q ? c.q.toFixed(2) : pct(c.p)}</b><small>${c.q ? pct(c.p) : 'modello'}</small></span>`; }).join('')}</div>
+</a>`;
+}
+function matchRow(m, lgName) {
+  const o = matchOdds(m);
+  const v = matchValue(m);
+  return gameRow({ href: `#/partita/${esc(m.id)}`, t: m.t, id: m.id, top: lgName && lgName.length <= 14 ? lgName : (lgName || '').split(' ').map(w => w[0]).join('').slice(0, 4),
+    teams: [m.h, m.a], cells: m.p1 == null ? [] : [['1', m.p1, o && o.o1], ['X', m.px, o && o.ox], ['2', m.p2, o && o.o2]].map(([lab, p, q]) => ({ lab, p, q })),
+    badge: v.best !== null && v.best > 0 ? sgn(v.best) : '' });
 }
 function matchCard(m, lgName) {
   const o = matchOdds(m);
@@ -1274,37 +1291,78 @@ function viewMatch(id) {
       <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Statistiche giocatori (${ps.length})</a></main>`;
   }
   const odds = tmOdds(m);
-  const groups = TM_GROUPS.filter(g => m.mk.some(x => tmGroupOf(x[1]) === g));
-  const grp = groups.includes(S.mGroup) ? S.mGroup : groups[0];
-  const rows = m.mk.filter(x => tmGroupOf(x[1]) === grp);
-  let lastSub = '';
-  const list = rows.map(([k, g, label, p]) => {
+  const fsOf = (k, label) => ({ sport: 'soccer', g: m.id, pid: null, m: 'tm', side: k, line: null, label, ctx: `${m.h} – ${m.a}` });
+  const rowHtml = ([k, g, label, p]) => {
     const q = odds[k];
     const e = q ? ev(p, q) : null;
-    const sub = g !== lastSub && grp === 'Principali' ? `<div class="league" style="margin-top:10px">${esc(g)}</div>` : '';
-    lastSub = g;
-    const fs = { sport: 'soccer', g: m.id, pid: null, m: 'tm', side: k, line: null, label, ctx: `${m.h} – ${m.a}` };
-    return `${sub}<div style="display:grid;grid-template-columns:30px minmax(0,1.6fr) 0.7fr 0.9fr 44px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">${favBtn(fs, 'width:30px;height:30px')}
+    return `<div class="mkrow">${favBtn(fsOf(k, label), 'width:30px;height:30px')}
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="b" style="font-size:14px">${esc(label)}</span>
         <span class="tiny muted">${pct(p, 1)} · giusta ${p > 0.001 ? (1 / p).toFixed(2) : '—'}${evTag(p, q, e)}</span></div>
       <div class="bar" style="height:8px"><div style="width:${(p * 100).toFixed(0)}%;background:${q && isValue(p, q) ? 'var(--accent)' : 'var(--model)'}"></div></div>
-      <input inputmode="decimal" aria-label="Quota ${esc(label)}" placeholder="quota" data-act="tmOdds" data-id="${esc(m.id)}" data-k="${esc(k)}" value="${q || ''}"
-        style="height:38px;border-radius:9px;border:1px solid var(--line);background:var(--bg);padding:0 8px;font:700 14px var(--mono);width:100%;color:var(--text)">
-      <button class="iconbtn" style="width:44px;height:38px;${q && isValue(p, q) ? 'background:var(--accent);color:var(--accent-ink);border-color:var(--accent)' : ''}" aria-label="Aggiungi ${esc(label)}" data-act="addTm" data-id="${esc(m.id)}" data-k="${esc(k)}" ${q ? '' : 'disabled'}>+</button></div>`;
+      <input inputmode="decimal" aria-label="Quota ${esc(label)}" placeholder="quota" data-act="tmOdds" data-id="${esc(m.id)}" data-k="${esc(k)}" value="${q || ''}" class="qin">
+      <button class="iconbtn" style="width:44px;height:38px;${q && isValue(p, q) ? 'background:var(--accent);color:var(--accent-ink);border-color:var(--accent)' : ''}" aria-label="Aggiungi ${esc(label)}" data-act="addTm" data-id="${esc(m.id)}" data-k="${esc(k)}">+</button></div>`;
+  };
+  // in primo piano solo i mercati principali; tutto il resto in tendine che si aprono a richiesta
+  const MAIN = ['1', 'X', '2', 'o25', 'u25', 'gg', 'ng'];
+  const mainRows = MAIN.map(k => m.mk.find(x => x[0] === k)).filter(Boolean);
+  const groups = TM_GROUPS.filter(g => m.mk.some(x => tmGroupOf(x[1]) === g && !MAIN.includes(x[0])));
+  const open = S.mOpen || (S.mOpen = {});
+  const acc = groups.map(g => {
+    const rs = m.mk.filter(x => tmGroupOf(x[1]) === g && !MAIN.includes(x[0]));
+    const best = rs.reduce((b, x) => { const q = odds[x[0]]; return q && isValue(x[3], q) ? Math.max(b, ev(x[3], q)) : b; }, -1);
+    const isOpen = !!open[g];
+    return `<div class="accd ${isOpen ? 'open' : ''}"><button class="acch" data-act="mAcc" data-v="${esc(g)}"><span>${esc(g === 'Principali' ? 'Altre linee (doppia chance, under/over…)' : g)}</span>
+      <span class="row" style="gap:6px">${best > 0 ? `<span class="badge val">${sgn(best)}</span>` : ''}<small class="muted">${rs.length}</small><b class="chev">›</b></span></button>
+      ${isOpen ? `<div class="accb">${rs.map(rowHtml).join('')}</div>` : ''}</div>`;
   }).join('');
+  const list = `<div class="card" style="gap:0"><div class="kicker" style="padding-bottom:4px">Mercati principali</div>${mainRows.map(rowHtml).join('')}</div>${acc}`;
   const info = `<div class="grid3">
       <div class="kv"><span>Gol attesi</span><span class="model">${m.lh.toFixed(2)} – ${m.la.toFixed(2)}</span></div>
       <div class="kv"><span>Angoli attesi</span><span class="model">${m.mk_c ? m.mk_c.toFixed(1) : '—'}</span></div>
       <div class="kv"><span>Cartellini attesi</span><span class="model">${m.mk_k ? m.mk_k.toFixed(1) : '—'}</span></div></div>`;
-  return header(`${m.h} – ${m.a}`, `${lg} · ${fmtTime(m.t)}`, '#/') + `<div style="padding:0 16px"><div class="chips">${groups.map(g =>
-    `<button class="chip ${g === grp ? 'on' : ''}" data-act="mGroup" data-v="${esc(g)}">${esc(g)}</button>`).join('')}</div></div></header><main>
+  return header(`${m.h} – ${m.a}`, `${lg} · ${fmtTime(m.t)}`, '#/') + `</header><main>
     ${liveCard('soccer', m)}<div class="card" style="gap:10px">${info}
       <p class="note">Scrivi la quota del tuo bookmaker accanto al mercato: l'app calcola il valore (EV). Il + aggiunge la giocata alla schedina.${m.odds && m.odds[3] ? ' Quote 1X2 automatiche: ' + esc(m.odds[3]) + '.' : ''}</p></div>
-    <div class="card" style="gap:0">${list}</div>
+    ${list}
     ${h2hCard('soccer', m)}
+    ${standCard(m)}
     <div class="card"><p class="note">Gol: modello di Poisson con correzione Dixon-Coles su attacco e difesa delle squadre${/^(uefa|afc|conmebol|caf|concacaf|fifa)\./.test(m.lg) ? ' (per le coppe internazionali un modello unico su tutti i campionati)' : ''}, più peso alle partite recenti. Primo tempo: ${pct(m.f1 || 0.445)} dei gol della lega. Angoli e cartellini: stesso metodo sulle statistiche di squadra${m.ref ? ', con l\'arbitro ' + esc(m.ref) : ''}.</p></div>
     <a class="btn ghost" href="#/giocatori?g=${esc(m.id)}">Statistiche giocatori (${ps.length})</a>
     ${updatedLine()}</main>`;
+}
+
+// ------------------------------------------------------------------ classifica del campionato (ESPN, letta dal telefono quando si apre)
+S.stand = {};
+async function loadStand(lg) {
+  if (!lg || S.stand[lg]) return;
+  S.stand[lg] = { loading: 1 };
+  try {
+    const j = await fetch('https://site.api.espn.com/apis/v2/sports/soccer/' + lg + '/standings').then(r => r.json());
+    const groups = (j.children && j.children.length ? j.children : [j]).map(c => ({ name: c.name || c.abbreviation || '', entries: ((c.standings || {}).entries || []) }))
+      .filter(g => g.entries.length);
+    const stat = (e, n) => { const x = (e.stats || []).find(s => s.name === n || s.type === n); return x ? (x.displayValue != null ? x.displayValue : x.value) : ''; };
+    S.stand[lg] = { groups: groups.map(g => ({ name: g.name, rows: g.entries.map(e => ({ n: (e.team || {}).displayName || (e.team || {}).name || '?', ab: (e.team || {}).abbreviation || '',
+      r: Number(stat(e, 'rank')) || 0, gp: stat(e, 'gamesPlayed'), w: stat(e, 'wins'), d: stat(e, 'ties'), l: stat(e, 'losses'), gd: stat(e, 'pointDifferential'), pts: stat(e, 'points') }))
+      .sort((a, b) => (a.r || 99) - (b.r || 99)) })) };
+  } catch (e) { S.stand[lg] = { err: 1 }; }
+  S.ver = (S.ver || 0) + 1; render();
+}
+function standCard(m) {
+  if (/^(uefa|afc|conmebol|caf|concacaf|fifa)\./.test(m.lg) || /cup|coppa|pokal|copa|coupe|fa\./i.test(m.lg)) return '';
+  const isOpen = !!(S.mOpen || {}).__stand;
+  const st = S.stand[m.lg];
+  const nk = t => normTxt(t).replace(/[^a-z0-9]/g, '');
+  const mine = r => [m.h, m.a].some(t => nk(t) && (nk(r.n).includes(nk(t)) || nk(t).includes(nk(r.n))));
+  let body = '';
+  if (isOpen) {
+    if (!st || st.loading) body = '<p class="note">Carico la classifica…</p>';
+    else if (st.err || !st.groups.length) body = '<p class="note">Classifica non disponibile per questo campionato.</p>';
+    else body = st.groups.map(g => `${st.groups.length > 1 ? `<div class="kicker" style="margin-top:8px">${esc(g.name)}</div>` : ''}
+      <div class="strow head"><span>#</span><span>Squadra</span><span>G</span><span>V</span><span>N</span><span>P</span><span>DR</span><span>Pt</span></div>
+      ${g.rows.map(r => `<div class="strow ${mine(r) ? 'me' : ''}"><span>${r.r || ''}</span><span class="nm">${esc(r.n)}</span><span>${esc(r.gp)}</span><span>${esc(r.w)}</span><span>${esc(r.d)}</span><span>${esc(r.l)}</span><span>${esc(r.gd)}</span><b>${esc(r.pts)}</b></div>`).join('')}`).join('');
+  }
+  return `<div class="accd ${isOpen ? 'open' : ''}"><button class="acch" data-act="mAcc" data-v="__stand" data-lg="${esc(m.lg)}"><span>Classifica ${esc((S.data.leagues || {})[m.lg] || '')}</span><b class="chev">›</b></button>
+    ${isOpen ? `<div class="accb">${body}</div>` : ''}</div>`;
 }
 
 // ------------------------------------------------------------------ tennis
@@ -1801,10 +1859,9 @@ function dgCard(c, i) {
   const fs = dgSel(c, null);
   return `<div class="card" style="gap:8px">
     <div class="row between" style="align-items:flex-start;gap:8px"><a href="${c.href}" style="display:flex;flex-direction:column;gap:2px;min-width:0">
-      <span class="tiny muted">${esc(c.ctx)}</span><span class="b" style="font-size:15px">${esc(c.title)}</span>
-      <span style="font-size:15px;color:var(--accent);font-weight:700">${esc(c.pick)}</span></a>
+      <span class="tiny muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.ctx)}</span><span class="b" style="font-size:14px">${esc(c.title)} · <span style="color:var(--accent)">${esc(c.pick)}</span></span></a>
       <span class="badge ${e !== null && e > 0 ? 'val' : 'no'}" style="flex-shrink:0">${pct(c.p)}</span></div>
-    <div class="row wrap" style="gap:6px">${c.why.map(w => `<span class="tiny" style="padding:3px 8px;border-radius:8px;border:1px solid var(--line);color:var(--text2)">${esc(w)}</span>`).join('')}</div>
+    <div class="tiny" style="color:var(--text2);line-height:1.5">${c.why.map(esc).join(' <span class="muted">·</span> ')}</div>
     <div class="row" style="gap:8px;align-items:center">
       <span class="small" style="flex:1;color:var(--text2)">${c.qm ? `Conviene da quota <b class="mono" style="color:var(--text)">${c.qm.toFixed(2)}</b>` : 'Fuori dai limiti dello stile'}${e !== null ? ` · EV <b style="color:${e > 0 ? 'var(--accent)' : 'var(--book)'}">${sgn(e)}</b>` : ''}</span>
       <input inputmode="decimal" placeholder="quota" aria-label="Quota del tuo bookmaker per ${esc(c.title)} ${esc(c.pick)}" data-act="dgOdds" data-i="${i}" value="${c.q || ''}"
@@ -1950,7 +2007,7 @@ function viewPlayers(q) {
   if (S.game && !games.some(g => g[0] === S.game)) S.game = '';
   let rows = all.filter(p => (!S.game || p.g === S.game) && (!toks.length || toks.every(t => normTxt(p.n + ' ' + p.t + ' ' + p.o).includes(t))))
     .map(p => { const mm = p.mk[m] ? m : mkList(sport, p)[0][0]; return { p, mm, e: evaluate(sport, p, mm) }; });
-  const viewSeg = `<div class="seg">${[['schede', 'Schede'], ['classifica', 'Classifica']].map(([k, l]) => `<button class="${(S.plView || 'schede') === k ? 'on' : ''}" data-act="plView" data-v="${k}">${l}</button>`).join('')}</div>`;
+  const viewSeg = `<div class="seg small">${[['schede', 'Schede'], ['classifica', 'Classifica']].map(([k, l]) => `<button class="${(S.plView || 'schede') === k ? 'on' : ''}" data-act="plView" data-v="${k}">${l}</button>`).join('')}</div>`;
   if (S.plView === 'classifica' && !toks.length) {
     const R = rankView(sport, m, all.filter(p => !S.game || p.g === S.game));
     return header('Prop giocatori', 'Classifica per categoria', null, `<div class="row"><a class="iconbtn" href="#/incolla" aria-label="Incolla quote">${ICON_PASTE}</a>${searchBtn()}</div>`) + `<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
@@ -3225,6 +3282,7 @@ function handle(act, el) {
       break;
     }
     case 'mGroup': S.mGroup = v; break;
+    case 'mAcc': S.mOpen = Object.assign({}, S.mOpen, { [v]: !(S.mOpen || {})[v] }); if (v === '__stand' && S.mOpen[v]) loadStand(el.dataset.lg); break;
     case 'lgFilter': S.lgFilter = v; S.limit = 0; break;
     case 'tnFilter': S.tnFilter = v; break;
     case 'msearch': S.msearch = el.value; break;
