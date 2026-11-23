@@ -221,11 +221,18 @@ const eur = v => '€ ' + Number(v).toLocaleString('it-IT', { minimumFractionDig
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
 const initials = n => n.split(' ').map(w => w[0]).slice(0, 2).join('');
 /** Stemma: iniziali della squadra su un colore fisso ricavato dal nome */
-function teamBadge(name) {
+function teamBadge(name, logo) {
   const n = String(name || '?');
   let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360;
   const ini = n.replace(/^(FC|AC|AS|SS|US|SC|CF|CD|RC|SL|SV|VfB|VfL|1\.)\s+/i, '').split(/[\s-]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3).toUpperCase();
-  return `<span class="tb" style="--c:hsl(${h},48%,38%)">${esc(ini || '?')}</span>`;
+  // logo ESPN sopra le iniziali; se l'immagine non c'e' restano le iniziali colorate
+  return `<span class="tb ${logo ? 'haslogo' : ''}" style="--c:hsl(${h},48%,38%)">${esc(ini || '?')}${logo ? `<img loading="lazy" alt="" src="${logo}" onerror="this.parentNode.classList.remove('haslogo');this.remove()">` : ''}</span>`;
+}
+/** Indirizzo del logo della squadra (ESPN): calcio per id, sport americani per sigla o id */
+function teamLogo(sport, id, abbr) {
+  const path = sport === 'soccer' ? 'soccer/500/' + id : (id ? `${sport}/500/${id}` : `${sport}/500/${String(abbr || '').toLowerCase()}`);
+  if (!id && !abbr) return '';
+  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${path}.png&w=64&h=64`;
 }
 /** Riquadro orario: ora grande, giorno piccolo (o il punteggio se e' in corso) */
 function kickBox(iso, id) {
@@ -1159,7 +1166,7 @@ function viewGames() {
       const tv = tmValue(sp, g);
       const od = tmOddsG(sp, g);
       body += gameRow({ href: `#/gara/${sp}/${esc(g.id)}`, t: g.t, id: g.id, live: g.live, top: '',
-        teams: [g.an, g.hn], cells: d ? [['2', d.ml2, od.ml2], ['1', d.ml1, od.ml1]].map(([k, p, q]) => ({ lab: '', p, q })) : [],
+        teams: [g.an, g.hn], logos: [teamLogo(sp, null, g.a), teamLogo(sp, null, g.h)], cells: d ? [['2', d.ml2, od.ml2], ['1', d.ml1, od.ml1]].map(([k, p, q]) => ({ lab: '', p, q })) : [],
         badge: tv.best !== null && tv.best > 0 ? sgn(tv.best) : vals.length ? `${vals.length} prop` : '' });
     }
   } else {
@@ -1233,7 +1240,7 @@ function gameRow(o) {
   return `<a class="grow ${live ? 'is-live' : ''} ${o.badge ? 'has-val' : ''}" href="${o.href}">
     <div class="gk">${live ? `<b class="lv">${esc(L.ten ? 'LIVE' : (L.clock || 'LIVE'))}</b><span>${L.ten ? esc(L.sc || '') : esc(L.hs) + '–' + esc(L.as)}</span>`
       : `<b>${esc((fmtTime(o.t).match(/\d\d:\d\d$/) || [''])[0])}</b>${o.top ? `<span>${esc(o.top)}</span>` : ''}`}${o.badge ? `<span class="vb">${esc(o.badge)}</span>` : ''}</div>
-    <div class="gt">${o.teams.map(n => `<div class="team">${teamBadge(n)}<span class="nm">${esc(n)}</span></div>`).join('')}</div>
+    <div class="gt">${o.teams.map((n, i) => `<div class="team">${teamBadge(n, (o.logos || [])[i])}<span class="nm">${esc(n)}</span></div>`).join('')}</div>
     <div class="go">${o.cells.map(c => { const val = c.q && isValue(c.p, c.q); return `<span class="oc ${val ? 'val' : ''}">${c.lab ? `<i>${c.lab}</i>` : ''}<b>${c.q ? c.q.toFixed(2) : pct(c.p)}</b><small>${c.q ? pct(c.p) : 'modello'}</small></span>`; }).join('')}</div>
 </a>`;
 }
@@ -1241,7 +1248,7 @@ function matchRow(m, lgName) {
   const o = matchOdds(m);
   const v = matchValue(m);
   return gameRow({ href: `#/partita/${esc(m.id)}`, t: m.t, id: m.id, top: lgName && lgName.length <= 14 ? lgName : (lgName || '').split(' ').map(w => w[0]).join('').slice(0, 4),
-    teams: [m.h, m.a], cells: m.p1 == null ? [] : [['1', m.p1, o && o.o1], ['X', m.px, o && o.ox], ['2', m.p2, o && o.o2]].map(([lab, p, q]) => ({ lab, p, q })),
+    teams: [m.h, m.a], logos: m.hi ? [teamLogo('soccer', m.hi), teamLogo('soccer', m.ai)] : [], cells: m.p1 == null ? [] : [['1', m.p1, o && o.o1], ['X', m.px, o && o.ox], ['2', m.p2, o && o.o2]].map(([lab, p, q]) => ({ lab, p, q })),
     badge: v.best !== null && v.best > 0 ? sgn(v.best) : '' });
 }
 function matchCard(m, lgName) {
