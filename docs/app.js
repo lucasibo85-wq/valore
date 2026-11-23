@@ -2070,7 +2070,9 @@ const HS_PATH = { nba: 'nba', soccer: 'soccer', nfl: 'nfl', nhl: 'nhl', mlb: 'ml
 function headshot(sport, p, size) {
   const id = String(p.id).replace(/\D/g, '');
   const sz = size || 46;
-  return `<span class="hs" style="width:${sz}px;height:${sz}px"><span>${esc(initials(p.n))}</span>${id && HS_PATH[sport] ? `<img loading="lazy" alt="" src="https://a.espncdn.com/combiner/i?img=/i/headshots/${HS_PATH[sport]}/players/full/${id}.png&w=${sz * 3}&h=${Math.round(sz * 2.2)}" onerror="this.remove()">` : ''}</span>`;
+  // p.ph = foto trovata dal server fuori da ESPN (calciatori senza foto ESPN)
+  const src = p.ph ? p.ph : (id && HS_PATH[sport] ? `https://a.espncdn.com/combiner/i?img=/i/headshots/${HS_PATH[sport]}/players/full/${id}.png&w=${sz * 3}&h=${Math.round(sz * 2.2)}` : '');
+  return `<span class="hs" style="width:${sz}px;height:${sz}px"><span>${esc(initials(p.n))}</span>${src ? `<img loading="lazy" alt="" referrerpolicy="no-referrer" src="${esc(src)}" ${p.ph ? 'class="ph"' : ''} onerror="this.remove()">` : ''}</span>`;
 }
 const homeIdx = sport => L_OFF[sport] + BASE[sport].length;
 const rowHome = (sport, r) => { const v = r[homeIdx(sport)]; return v === undefined ? null : !!v; };
