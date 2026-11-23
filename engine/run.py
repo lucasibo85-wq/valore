@@ -13,7 +13,7 @@ import time
 import traceback
 from collections import defaultdict
 
-from . import calib, espn, models, net, odds, propline, props, secure, store, teamus, tennis
+from . import calib, espn, models, net, odds, photos, propline, props, secure, store, teamus, tennis
 
 ROOT = store.ROOT
 OUT_DIR = os.environ.get("VALORE_OUT") or os.path.join(ROOT, "docs", "data")
@@ -457,6 +457,11 @@ def main():
     if cfg["soccer"].get("enabled"):
         safe("calcio", build_soccer, app, soc_logs, matches, upcoming, previews, teams, today, odds_cache, hist,
              calib_factors(state, "soccer"))
+        # foto dei calciatori che ESPN non ha (TheSportsDB / Wikipedia), cercate una volta e tenute in archivio
+        if not args.no_odds:
+            ph = store.read_json("photos.json", {})
+            safe("foto", photos.fill, app["soccer"]["players"], ph, today, int(cfg["soccer"].get("photos_per_run", 80)), log)
+            store.write_json("photos.json", ph, compact=True)
     results = safe("risultati", build_results, nba_logs, soc_logs, matches, today, us_logs, t_matches) or {"nba": {}, "soccer": {}}
     # autocalibrazione: prima misura le previsioni passate, poi salva quelle nuove
     ev_logs = {"nba": nba_logs, "soccer": soc_logs}
