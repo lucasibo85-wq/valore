@@ -109,7 +109,7 @@
     "soccer_prop_markets": []
   },
   "nhl": {
-    "enabled": true,
+    "enabled": false,
     "backfill_days": 400,
     "days_ahead": 2
   }
