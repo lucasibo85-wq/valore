@@ -1891,10 +1891,74 @@ function viewDaily(D) {
   return html;
 }
 
+/* ------------------------------------------------------------------ ULTIME 24 ORE
+   Le partite iniziate nelle ultime 36 ore, come erano prima del via (fotografia salvata dal server): le giocate
+   che avevano valore (miglior mercato di squadra e prop con quota) e come sono finite. Serve a capire come
+   ragiona il modello, non a giudicarlo su un solo giorno. */
+function recapPicks() {
+  const out = [];
+  for (const snap of (S.data.recap || [])) {
+    const sp = snap.s, g = snap.g;
+    const title = sp === 'soccer' ? `${g.h} – ${g.a}` : `${g.an || g.a} @ ${g.hn || g.h}`;
+    const ctx = (sp === 'soccer' ? ((S.data.leagues || {})[g.lg] || 'Calcio') : SPORT_LABEL[sp]) + ' · ' + fmtTime(snap.t);
+    // squadra: il mercato con il valore piu' alto
+    if (g.mk) {
+      const od = tmOddsG(sp, g);
+      let best = null;
+      for (const [k, grp, lab, p] of g.mk) {
+        const q = od[k];
+        if (!q || !isValue(p, q)) continue;
+        const e = ev(p, q);
+        if (!best || e > best.e) best = { k, lab, p, q, e };
+      }
+      if (best) out.push({ sport: sp, g: g.id, t: snap.t, title, ctx, pick: best.lab, q: best.q, p: best.p, e: best.e,
+        out: legOutcome({ sport: sp, g: g.id, m: 'tm', side: best.k }) });
+    }
+    // prop dei giocatori con quota del bookmaker e valore
+    for (const p of snap.pl || []) {
+      for (const m of Object.keys(p.odds || {})) {
+        if (!p.mk || !p.mk[m]) continue;
+        const e = evaluateRaw(sp, p, m);
+        if (!(e.ev !== null && e.ev > 0 && e.ok)) continue;
+        out.push({ sport: sp, g: g.id, t: snap.t, title: p.n, ctx: title + ' · ' + fmtTime(snap.t), pick: `${e.side === 'under' ? 'Under' : 'Over'} ${e.line} ${mkLabel(sp, m)}`,
+          q: e.odds, p: e.p, e: e.ev, out: legOutcome({ sport: sp, g: g.id, pid: p.id, m, side: e.side, line: e.line }) });
+      }
+    }
+  }
+  return out.sort((a, b) => b.t.localeCompare(a.t) || b.e - a.e);
+}
+function viewRecap() {
+  const L = recapPicks();
+  if (!L.length) return '<div class="empty">Nessuna giocata con valore nelle partite delle ultime 24 ore (oppure i dati non sono ancora stati salvati: la sezione si riempie dal prossimo aggiornamento).</div>';
+  const done = L.filter(x => x.out === 'won' || x.out === 'lost');
+  const won = done.filter(x => x.out === 'won').length;
+  const pl = done.reduce((a, x) => a + (x.out === 'won' ? x.q - 1 : -1), 0);
+  const expW = done.reduce((a, x) => a + x.p, 0);
+  const badge = o => o === 'won' ? '<span class="badge val">✓ Vinta</span>' : o === 'lost' ? '<span class="badge" style="background:rgba(255,90,90,.15);color:#FF8A8A">✗ Persa</span>'
+    : o === 'void' ? '<span class="badge no">Annullata</span>' : '<span class="badge no">In attesa</span>';
+  const score = x => { const R = ((S.results || {})[x.sport] || {})[x.g]; return R && R.s ? ` · finale ${x.sport === 'soccer' ? R.s[0] + '–' + R.s[1] : R.s[1] + '–' + R.s[0]}` : ''; };
+  return `<div class="card" style="gap:6px"><div class="grid3">
+      <div class="kv"><span>Giocate chiuse</span><span>${done.length}</span></div>
+      <div class="kv"><span>Vinte</span><span style="color:var(--good)">${won} <small class="muted" style="font-size:11px">attese ${expW.toFixed(1)}</small></span></div>
+      <div class="kv"><span>Bilancio (1 € l'una)</span><span style="color:${pl >= 0 ? 'var(--good)' : 'var(--bad2)'}">${pl >= 0 ? '+' : ''}${pl.toFixed(2)} €</span></div></div>
+      <p class="note" style="margin:0">«Attese» = quante ne avrebbe dovute vincere il modello. Su un giorno solo conta molto la fortuna: guardale per capire il ragionamento, non per giudicarlo.</p></div>
+    ${L.map(x => `<div class="card" style="gap:4px;padding:10px 12px"><div class="row between" style="gap:8px;align-items:flex-start">
+      <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="tiny muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.ctx)}${score(x)}</span>
+        <span class="b" style="font-size:14px">${esc(x.title)} · <span style="color:var(--accent)">${esc(x.pick)}</span></span>
+        <span class="tiny" style="color:var(--text2)">Quota <b class="mono">${x.q.toFixed(2)}</b> · modello ${pct(x.p)} · valore ${sgn(x.e)}</span></span>${badge(x.out)}</div></div>`).join('')}`;
+}
+function chSeg(tab, C) {
+  return `<div class="chips">${[['giorno', 'Oggi'], ['valore', 'Valore'], ['errori', 'Errori'], ['controllo', 'Controlla'], ['ieri', 'Ultime 24h']].map(([k, l]) =>
+    `<button class="chip ${tab === k ? 'on' : ''}" data-act="chTab" data-v="${k}">${l}${k === 'giorno' || k === 'ieri' ? '' : ' (' + C[k].length + ')'}</button>`).join('')}</div>`;
+}
 function viewChicche() {
   const C = buildChicche();
   const tab = S.chTab;
   const D = tab === 'giorno' ? buildDaily() : null;
+  if (tab === 'ieri') {
+    return header('Chicche', 'Le occasioni del giorno') + `<div style="padding:0 16px">${chSeg(tab, C)}</div></header>
+      <main>${viewRecap()}${updatedLine()}</main>`;
+  }
   const list = C[tab] || [];
   S.chicche = list.map(x => x);
   const intro = {
@@ -1912,8 +1976,7 @@ function viewChicche() {
     errori: 'Nessun errore di quota trovato. Servono le quote automatiche: aggiungi la chiave ODDS_API_KEY su GitHub (vedi README).',
     controllo: 'Nessuna differenza rilevante nelle prossime partite.',
   }[tab];
-  return header('Chicche', 'Le occasioni del giorno') + `<div style="padding:0 16px"><div class="seg">${[['giorno', 'Oggi'], ['valore', 'Valore'], ['errori', 'Errori'], ['controllo', 'Controlla']].map(([k, l]) =>
-    `<button class="${tab === k ? 'on' : ''}" data-act="chTab" data-v="${k}">${l}${k === 'giorno' ? '' : ' (' + C[k].length + ')'}</button>`).join('')}</div></div></header>
+  return header('Chicche', 'Le occasioni del giorno') + `<div style="padding:0 16px">${chSeg(tab, C)}</div></header>
     <main><p class="note">${intro}</p>${D ? viewDaily(D) : rows || `<div class="empty">${empty}</div>`}${updatedLine()}</main>`;
 }
 
