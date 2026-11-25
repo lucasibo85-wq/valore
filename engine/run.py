@@ -470,6 +470,7 @@ def main():
     safe("calibrazione", calib.record, state, app, now, {sp: calib_factors(state, sp) for sp in ("nba", "soccer", "nfl", "mlb", "nhl")})
     diag = safe("diagnostica", build_diag, cfg, app, nba_logs, soc_logs, matches, upcoming, state, today) or {}
     diag["calib"] = safe("diagnostica", calib.report, state, today)
+    safe("riepilogo", pregame_snapshots, app, now)
     diag["errors"] = ERRORS
     app["errors"] = ERRORS
     secure.write_outputs(OUT_DIR, {"app": app, "hist": hist, "results": results, "diag": diag})
@@ -508,6 +509,28 @@ def safe(label, fn, *a, **kw):
         log("ERRORE in %s: %s" % (label, e))
         log(traceback.format_exc())
         return None
+
+
+def pregame_snapshots(app, now):
+    """Fotografia di ogni partita prima del via (modello, quote, prop con quota), tenuta 2 giorni.
+    Nell'app la sezione "Ultime 24 ore" mostra le giocate che avevano valore e come sono finite."""
+    pg = store.read_json("pregame.json", {})
+    t_now = now.strftime("%Y-%m-%dT%H:%M")
+    keep = (now - dt.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M")
+    lists = [("soccer", app.get("soccer", {}).get("matches", []))] + [(sp, app.get(sp, {}).get("games", [])) for sp in ("nba", "nfl", "mlb")]
+    for sp, games in lists:
+        players = app.get(sp, {}).get("players", [])
+        for g in games:
+            if not g.get("t") or g["t"][:16] <= t_now or g.get("live"):
+                continue  # gia' iniziata: resta l'ultima fotografia prima del via
+            pl = [{k: p_[k] for k in ("id", "n", "t", "o", "g", "h", "st", "pos") if k in p_} |
+                  {"mk": {m: v for m, v in p_["mk"].items() if m in p_["odds"]}, "odds": p_["odds"]}
+                  for p_ in players if p_.get("g") == g["id"] and p_.get("odds")]
+            pg[g["id"]] = {"s": sp, "t": g["t"], "g": {k: v for k, v in g.items() if k not in ("hh", "notes")}, "pl": pl}
+    pg = {k: v for k, v in pg.items() if v["t"][:16] >= keep}
+    store.write_json("pregame.json", pg, compact=True)
+    since = (now - dt.timedelta(hours=36)).strftime("%Y-%m-%dT%H:%M")
+    app["recap"] = [v for v in pg.values() if since <= v["t"][:16] <= t_now]
 
 
 def pos_group(pos):
