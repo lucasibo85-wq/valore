@@ -874,6 +874,8 @@ function liveCard(sport, m) {
   const box = S.liveBox[m.id];
   const hn = sport === 'soccer' ? m.h : m.hn, an = sport === 'soccer' ? m.a : m.an;
   const head = sport === 'soccer' ? `${esc(hn)} <b>${esc(L.hs)} – ${esc(L.as)}</b> ${esc(an)}` : `${esc(an)} <b>${esc(L.as)} – ${esc(L.hs)}</b> ${esc(hn)}`;
+  const fL = sport === 'soccer' ? [m.fh, m.fa] : [m.fa, m.fh];
+  const formLive = fL[0] || fL[1] ? `<div class="formrow" style="margin-top:-2px">${formDotsR(fL[0]) || '<span></span>'}${formDotsR(fL[1]) || '<span></span>'}</div>` : '';
   let body = '';
   if (box && box.stats) body += `<div style="display:flex;flex-direction:column;gap:6px">${box.stats.map(([k, h, a]) => `<div style="display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;font-size:13px"><span class="mono b">${esc(h == null ? '–' : h)}</span><span class="muted" style="text-align:center">${esc(k)}</span><span class="mono b" style="text-align:right">${esc(a == null ? '–' : a)}</span></div>`).join('')}</div>`;
   if (box && box.events && box.events.length) body += `<div style="display:flex;flex-direction:column;gap:4px">${box.events.slice(-8).map(e => `<span class="small" style="color:var(--text2)">${esc(e.min)} · ${esc(e.t)}${e.who ? ' · ' + esc(e.who) : ''}</span>`).join('')}</div>`;
@@ -883,7 +885,7 @@ function liveCard(sport, m) {
       top.map(pl => `<div style="display:grid;grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(0,0.5fr));gap:4px;font-size:12px;padding:4px 0;border-top:1px solid var(--line)"><span class="b">${esc(pl.n)}</span>${[0, 1, 2, 3, 6].map(i => `<span class="mono">${pl.row[i]}</span>`).join('')}</div>`).join('');
   }
   return `<div class="card live-card" style="gap:10px"><div class="row between"><span class="badge ${L.st === 'post' ? 'no' : 'live'}">${L.st === 'post' ? 'FINALE' : 'LIVE ' + esc(L.clock || '')}</span><span class="tiny muted">${esc(L.detail || '')}</span></div>
-    <div style="font-size:18px;text-align:center">${head}</div>${body || (L.st === 'in' ? '<p class="note">Statistiche live in arrivo…</p>' : '')}</div>`;
+    <div style="font-size:18px;text-align:center">${head}</div>${formLive}${body || (L.st === 'in' ? '<p class="note">Statistiche live in arrivo…</p>' : '')}</div>`;
 }
 /** Avanzamento live di una scommessa (giocatore: valore attuale vs linea; squadra: punteggio) */
 function liveProgress(b) {
@@ -1166,7 +1168,7 @@ function viewGames() {
       const tv = tmValue(sp, g);
       const od = tmOddsG(sp, g);
       body += gameRow({ href: `#/gara/${sp}/${esc(g.id)}`, t: g.t, id: g.id, live: g.live, top: '',
-        teams: [g.an, g.hn], logos: [teamLogo(sp, null, g.a), teamLogo(sp, null, g.h)], cells: d ? [['2', d.ml2, od.ml2], ['1', d.ml1, od.ml1]].map(([k, p, q]) => ({ lab: '', p, q })) : [],
+        teams: [g.an, g.hn], forms: [g.fa, g.fh], logos: [teamLogo(sp, null, g.a), teamLogo(sp, null, g.h)], cells: d ? [['2', d.ml2, od.ml2], ['1', d.ml1, od.ml1]].map(([k, p, q]) => ({ lab: '', p, q })) : [],
         badge: tv.best !== null && tv.best > 0 ? sgn(tv.best) : vals.length ? `${vals.length} prop` : '' });
     }
   } else {
@@ -1240,15 +1242,20 @@ function gameRow(o) {
   return `<a class="grow ${live ? 'is-live' : ''} ${o.badge ? 'has-val' : ''}" href="${o.href}">
     <div class="gk">${live ? `<b class="lv">${esc(L.ten ? 'LIVE' : (L.clock || 'LIVE'))}</b><span>${L.ten ? esc(L.sc || '') : esc(L.hs) + '–' + esc(L.as)}</span>`
       : `<b>${esc((fmtTime(o.t).match(/\d\d:\d\d$/) || [''])[0])}</b>${o.top ? `<span>${esc(o.top)}</span>` : ''}`}${o.badge ? `<span class="vb">${esc(o.badge)}</span>` : ''}</div>
-    <div class="gt">${o.teams.map((n, i) => `<div class="team">${teamBadge(n, (o.logos || [])[i])}<span class="nm">${esc(n)}</span></div>`).join('')}</div>
+    <div class="gt">${o.teams.map((n, i) => `<div class="team">${teamBadge(n, (o.logos || [])[i])}<span class="tn"><span class="nm">${esc(n)}</span>${formDotsR((o.forms || [])[i])}</span></div>`).join('')}</div>
     <div class="go">${o.cells.map(c => { const val = c.q && isValue(c.p, c.q); return `<span class="oc ${val ? 'val' : ''}">${c.lab ? `<i>${c.lab}</i>` : ''}<b>${c.q ? c.q.toFixed(2) : pct(c.p)}</b><small>${c.q ? pct(c.p) : 'modello'}</small></span>`; }).join('')}</div>
 </a>`;
+}
+/** Forma recente come su bet365: pallini verdi (vittoria), grigi (pareggio), rossi (sconfitta); l'ultima partita a destra, sottolineata */
+function formDotsR(f) {
+  if (!f) return '';
+  return `<span class="fdots" title="Ultime partite (la piu' recente a destra)">${[...String(f)].map((r, i, a) => `<i class="${r === 'W' ? 'w' : r === 'L' ? 'l' : 'd'}${i === a.length - 1 ? ' last' : ''}"></i>`).join('')}</span>`;
 }
 function matchRow(m, lgName) {
   const o = matchOdds(m);
   const v = matchValue(m);
   return gameRow({ href: `#/partita/${esc(m.id)}`, t: m.t, id: m.id, top: lgName && lgName.length <= 14 ? lgName : (lgName || '').split(' ').map(w => w[0]).join('').slice(0, 4),
-    teams: [m.h, m.a], logos: m.hi ? [teamLogo('soccer', m.hi), teamLogo('soccer', m.ai)] : [], cells: m.p1 == null ? [] : [['1', m.p1, o && o.o1], ['X', m.px, o && o.ox], ['2', m.p2, o && o.o2]].map(([lab, p, q]) => ({ lab, p, q })),
+    teams: [m.h, m.a], forms: [m.fh, m.fa], logos: m.hi ? [teamLogo('soccer', m.hi), teamLogo('soccer', m.ai)] : [], cells: m.p1 == null ? [] : [['1', m.p1, o && o.o1], ['X', m.px, o && o.ox], ['2', m.p2, o && o.o2]].map(([lab, p, q]) => ({ lab, p, q })),
     badge: v.best !== null && v.best > 0 ? sgn(v.best) : '' });
 }
 function matchCard(m, lgName) {
@@ -1323,7 +1330,8 @@ function viewMatch(id) {
       ${isOpen ? `<div class="accb">${rs.map(rowHtml).join('')}</div>` : ''}</div>`;
   }).join('');
   const list = `<div class="card" style="gap:0"><div class="kicker" style="padding-bottom:4px">Mercati principali</div>${mainRows.map(rowHtml).join('')}</div>${acc}`;
-  const info = `<div class="grid3">
+  const formRow = m.fh || m.fa ? `<div class="formrow"><span>${esc(m.h)}${formDotsR(m.fh)}</span><span>${esc(m.a)}${formDotsR(m.fa)}</span></div>` : '';
+  const info = formRow + `<div class="grid3">
       <div class="kv"><span>Gol attesi</span><span class="model">${m.lh.toFixed(2)} – ${m.la.toFixed(2)}</span></div>
       <div class="kv"><span>Angoli attesi</span><span class="model">${m.mk_c ? m.mk_c.toFixed(1) : '—'}</span></div>
       <div class="kv"><span>Cartellini attesi</span><span class="model">${m.mk_k ? m.mk_k.toFixed(1) : '—'}</span></div></div>`;

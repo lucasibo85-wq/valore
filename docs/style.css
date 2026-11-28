@@ -303,3 +303,12 @@ input.search{height:40px}
 .tb.haslogo{background:transparent;color:transparent}
 .gt .tb{width:22px;height:22px}
 .hs img.ph{width:100%;height:100%;left:0;transform:none;object-fit:cover;object-position:center 15%}
+/* forma recente: pallini V/N/P */
+.fdots{display:flex;gap:3px;margin-top:3px}
+.fdots i{width:7px;height:7px;border-radius:50%;display:inline-block;position:relative}
+.fdots i.w{background:#2ED98C}.fdots i.d{background:#8D99A6}.fdots i.l{background:#FF5A5A}
+.fdots i.last::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:2px;border-radius:1px;background:var(--text2)}
+.gt .tn{display:flex;flex-direction:column;min-width:0}
+.formrow{display:flex;justify-content:space-between;gap:12px;font-size:13px;font-weight:600}
+.formrow>span{display:flex;flex-direction:column;gap:2px}
+.formrow>span:last-child{align-items:flex-end}
