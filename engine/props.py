@@ -274,7 +274,9 @@ def build(sport, app, logs, upcoming, previews, teams, today, hist, matches=None
         h_id, a_id = ev["home"]["id"], ev["away"]["id"]
         habbr, aabbr = tabbr(h_id), tabbr(a_id)
         odds_ev = ev.get("odds") or {}
-        game = {"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr, "hi": h_id, "ai": a_id, "hn": ev["home"]["name"],
+        game = {"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr, "hi": h_id, "ai": a_id,
+                "fh": models.team_form(matches or [], sport, h_id, ev["date"][:10]), "fa": models.team_form(matches or [], sport, a_id, ev["date"][:10]),
+                "hn": ev["home"]["name"],
                 "an": ev["away"]["name"], "odds": ev.get("odds")}
         if ev.get("state") == "in":
             game["live"] = 1

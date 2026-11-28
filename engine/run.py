@@ -949,6 +949,8 @@ def build_nba(app, logs, upcoming, previews, teams, today, odds_cache, hist, cal
         total = odds_ev.get("ou")
         hsp = spread_home(odds_ev, habbr, aabbr)
         game = {"id": ev["id"], "t": ev["date"], "h": habbr, "a": aabbr, "hi": ev["home"]["id"], "ai": ev["away"]["id"],
+                "fh": models.team_form(matches or [], "nba", ev["home"]["id"], ev["date"][:10]),
+                "fa": models.team_form(matches or [], "nba", ev["away"]["id"], ev["date"][:10]),
                 "hn": ev["home"]["name"], "an": ev["away"]["name"], "odds": ev.get("odds"), "tot": total, "sp": hsp}
         if ev.get("state") == "in":
             game["live"] = 1
@@ -1302,7 +1304,8 @@ def build_soccer(app, logs, matches, upcoming, previews, teams, today, odds_cach
         pv = previews.get(ev["id"], {})
         ref = pv.get("ref", "")
         mrow = {"id": ev["id"], "lg": league, "t": ev["date"], "h": tname(h), "a": tname(a),
-                "ha": tabbr(h), "aa": tabbr(a), "hi": h, "ai": a}
+                "ha": tabbr(h), "aa": tabbr(a), "hi": h, "ai": a,
+                "fh": models.team_form(matches, "soccer", h, ev["date"][:10]), "fa": models.team_form(matches, "soccer", a, ev["date"][:10])}
         if ev.get("state") == "in":
             mrow["live"] = 1
         hh = models.h2h_rows(soc_all, "soccer", h, a, pv.get("h2h"))

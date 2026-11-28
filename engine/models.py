@@ -540,3 +540,30 @@ def h2h_rows(matches, sport, hid, aid, extra=None, limit=12):
         out.append(row)
     out.sort(key=lambda r: r[0], reverse=True)
     return out[:limit]
+
+
+# ------------------------------------------------------------ forma recente (pallini V/N/P)
+_FORM = {}
+
+
+def team_form(matches, sport, tid, before, n=5):
+    """Ultimi n risultati della squadra prima di 'before' (tutte le competizioni), dal piu' vecchio al piu'
+    recente: 'W' vittoria, 'D' pareggio, 'L' sconfitta."""
+    key = (id(matches), len(matches), sport)
+    if key not in _FORM:
+        by = {}
+        for m in matches:
+            if m.get("sport") != sport or m.get("hs") in (None, "") or m.get("as") in (None, ""):
+                continue
+            try:
+                hs, as_ = float(m["hs"]), float(m["as"])
+            except (TypeError, ValueError):
+                continue
+            for t, gf, ga in ((m["hid"], hs, as_), (m["aid"], as_, hs)):
+                by.setdefault(t, []).append((m["date"], "W" if gf > ga else "L" if gf < ga else "D"))
+        for v in by.values():
+            v.sort()
+        _FORM.clear()
+        _FORM[key] = by
+    rows = [r for d, r in _FORM[key].get(tid, []) if d < before][-n:]
+    return "".join(rows)
