@@ -1,0 +1,410 @@
+{
+ "t": "2026-11-28T20:06:02",
+ "sample": {
+  "book": null,
+  "markets": []
+ },
+ "nba_game": "401910046",
+ "nba_rows": [
+  [
+   "AJ Dybantsa",
+   "ast",
+   3.5,
+   1.781,
+   2.12,
+   "William Hill IT",
+   0.5095,
+   26
+  ],
+  [
+   "Alex Sarr",
+   "ast",
+   1.5,
+   2.19,
+   2.0,
+   "William Hill IT",
+   0.406,
+   9
+  ],
+  [
+   "Anthony Black",
+   "ast",
+   4.5,
+   2.11,
+   2.0,
+   "William Hill IT",
+   0.4502,
+   24
+  ],
+  [
+   "Anthony Davis",
+   "ast",
+   1.5,
+   1.51,
+   2.56,
+   "William Hill IT",
+   0.6077,
+   23
+  ],
+  [
+   "Desmond Bane",
+   "ast",
+   3.5,
+   2.02,
+   2.0,
+   "William Hill IT",
+   0.4675,
+   27
+  ],
+  [
+   "Franz Wagner",
+   "ast",
+   7.5,
+   2.07,
+   2.0,
+   "William Hill IT",
+   0.456,
+   23
+  ],
+  [
+   "Jalen Suggs",
+   "ast",
+   4.5,
+   1.87,
+   2.07,
+   "William Hill IT",
+   0.5,
+   24
+  ],
+  [
+   "Kyshawn George",
+   "ast",
+   4.5,
+   2.19,
+   2.0,
+   "William Hill IT",
+   0.4237,
+   23
+  ],
+  [
+   "Trae Young",
+   "ast",
+   8.5,
+   2.09,
+   2.0,
+   "William Hill IT",
+   0.4494,
+   23
+  ],
+  [
+   "AJ Dybantsa",
+   "pts",
+   17.5,
+   1.82,
+   2.11,
+   "William Hill IT",
+   0.5082,
+   22
+  ],
+  [
+   "Alex Sarr",
+   "pts",
+   9.5,
+   2.01,
+   2.0,
+   "William Hill IT",
+   0.476,
+   11
+  ],
+  [
+   "Anthony Black",
+   "pts",
+   14.5,
+   1.98,
+   2.03,
+   "William Hill IT",
+   0.4898,
+   25
+  ],
+  [
+   "Anthony Davis",
+   "pts",
+   23.5,
+   1.901,
+   2.0,
+   "William Hill IT",
+   0.4859,
+   19
+  ],
+  [
+   "Desmond Bane",
+   "pts",
+   19.5,
+   1.962,
+   2.0,
+   "William Hill IT",
+   0.481,
+   24
+  ],
+  [
+   "Franz Wagner",
+   "pts",
+   24.5,
+   1.901,
+   2.08,
+   "William Hill IT",
+   0.5147,
+   17
+  ],
+  [
+   "Jalen Suggs",
+   "pts",
+   11.5,
+   1.917,
+   2.0,
+   "William Hill IT",
+   0.5,
+   21
+  ],
+  [
+   "Kyshawn George",
+   "pts",
+   16.5,
+   1.901,
+   2.0,
+   "William Hill IT",
+   0.5,
+   22
+  ],
+  [
+   "Trae Young",
+   "pts",
+   15.5,
+   1.847,
+   2.09,
+   "William Hill IT",
+   0.498,
+   23
+  ],
+  [
+   "Wendell Carter Jr.",
+   "pts",
+   11.5,
+   2.01,
+   2.05,
+   "William Hill IT",
+   0.4815,
+   23
+  ],
+  [
+   "AJ Dybantsa",
+   "pa",
+   21.5,
+   1.833,
+   2.06,
+   "William Hill IT",
+   0.5,
+   19
+  ],
+  [
+   "Alex Sarr",
+   "pa",
+   10.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.5,
+   5
+  ],
+  [
+   "Anthony Black",
+   "pa",
+   18.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.5102,
+   14
+  ],
+  [
+   "Anthony Davis",
+   "pa",
+   25.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.4905,
+   14
+  ],
+  [
+   "Desmond Bane",
+   "pa",
+   22.5,
+   1.8,
+   2.04,
+   "William Hill IT",
+   0.5095,
+   17
+  ],
+  [
+   "Franz Wagner",
+   "pa",
+   32.5,
+   1.847,
+   2.01,
+   "Snai",
+   0.5,
+   16
+  ],
+  [
+   "Jalen Suggs",
+   "pa",
+   16.5,
+   1.952,
+   2.0,
+   "William Hill IT",
+   0.4898,
+   17
+  ],
+  [
+   "Kyshawn George",
+   "pa",
+   20.5,
+   1.8,
+   2.0,
+   "William Hill IT",
+   0.5095,
+   15
+  ],
+  [
+   "Trae Young",
+   "pa",
+   23.5,
+   1.769,
+   2.0,
+   "Lottomatica",
+   0.5095,
+   15
+  ],
+  [
+   "AJ Dybantsa",
+   "pr",
+   25.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.4797,
+   17
+  ],
+  [
+   "Alex Sarr",
+   "pr",
+   15.5,
+   1.847,
+   2.0,
+   "William Hill IT",
+   0.4861,
+   7
+  ],
+  [
+   "Anthony Black",
+   "pr",
+   18.5,
+   1.833,
+   2.0,
+   "William Hill IT",
+   0.5086,
+   14
+  ],
+  [
+   "Anthony Davis",
+   "pr",
+   33.5,
+   1.8,
+   2.02,
+   "William Hill IT",
+   0.4936,
+   16
+  ],
+  [
+   "Desmond Bane",
+   "pr",
+   23.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.4832,
+   18
+  ],
+  [
+   "Franz Wagner",
+   "pr",
+   31.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.5,
+   15
+  ],
+  [
+   "Jalen Suggs",
+   "pr",
+   16.5,
+   1.952,
+   2.0,
+   "William Hill IT",
+   0.4786,
+   14
+  ],
+  [
+   "Kyshawn George",
+   "pr",
+   21.5,
+   1.926,
+   2.0,
+   "William Hill IT",
+   0.4821,
+   12
+  ],
+  [
+   "Trae Young",
+   "pr",
+   18.5,
+   1.901,
+   2.07,
+   "William Hill IT",
+   0.4797,
+   13
+  ],
+  [
+   "Wendell Carter Jr.",
+   "pr",
+   19.5,
+   1.87,
+   2.0,
+   "William Hill IT",
+   0.5,
+   16
+  ],
+  [
+   "AJ Dybantsa",
+   "pra",
+   28.5,
+   1.8,
+   2.0,
+   "William Hill IT",
+   0.519,
+   15
+  ],
+  [
+   "Alex Sarr",
+   "pra",
+   16.5,
+   2.0,
+   2.0,
+   "PrizePicks",
+   0.5,
+   8
+  ]
+ ]
+}

@@ -1,0 +1,5908 @@
+{
+ "nba": {
+  "18": {
+   "abbr": "NY",
+   "name": "New York Knicks"
+  },
+  "20": {
+   "abbr": "PHI",
+   "name": "Philadelphia 76ers"
+  },
+  "3": {
+   "abbr": "NO",
+   "name": "New Orleans Pelicans"
+  },
+  "111124": {
+   "abbr": "MEL",
+   "name": "Melbourne United"
+  },
+  "13": {
+   "abbr": "LAL",
+   "name": "Los Angeles Lakers"
+  },
+  "21": {
+   "abbr": "PHX",
+   "name": "Phoenix Suns"
+  },
+  "17": {
+   "abbr": "BKN",
+   "name": "Brooklyn Nets"
+  },
+  "131570": {
+   "abbr": "HAPOEL",
+   "name": "Hapoel Jerusalem"
+  },
+  "14": {
+   "abbr": "MIA",
+   "name": "Miami Heat"
+  },
+  "19": {
+   "abbr": "ORL",
+   "name": "Orlando Magic"
+  },
+  "7": {
+   "abbr": "DEN",
+   "name": "Denver Nuggets"
+  },
+  "16": {
+   "abbr": "MIN",
+   "name": "Minnesota Timberwolves"
+  },
+  "126120": {
+   "abbr": "Pnx",
+   "name": "Melbourne Pnx"
+  },
+  "30": {
+   "abbr": "CHA",
+   "name": "Charlotte Hornets"
+  },
+  "25": {
+   "abbr": "OKC",
+   "name": "Oklahoma City Thunder"
+  },
+  "9": {
+   "abbr": "GS",
+   "name": "Golden State Warriors"
+  },
+  "15": {
+   "abbr": "MIL",
+   "name": "Milwaukee Bucks"
+  },
+  "10": {
+   "abbr": "HOU",
+   "name": "Houston Rockets"
+  },
+  "1": {
+   "abbr": "ATL",
+   "name": "Atlanta Hawks"
+  },
+  "29": {
+   "abbr": "MEM",
+   "name": "Memphis Grizzlies"
+  },
+  "8": {
+   "abbr": "DET",
+   "name": "Detroit Pistons"
+  },
+  "24": {
+   "abbr": "SA",
+   "name": "San Antonio Spurs"
+  },
+  "111136": {
+   "abbr": "GUA",
+   "name": "Guangzhou Loong-Lions"
+  },
+  "6": {
+   "abbr": "DAL",
+   "name": "Dallas Mavericks"
+  },
+  "28": {
+   "abbr": "TOR",
+   "name": "Toronto Raptors"
+  },
+  "5": {
+   "abbr": "CLE",
+   "name": "Cleveland Cavaliers"
+  },
+  "4": {
+   "abbr": "CHI",
+   "name": "Chicago Bulls"
+  },
+  "11": {
+   "abbr": "IND",
+   "name": "Indiana Pacers"
+  },
+  "26": {
+   "abbr": "UTAH",
+   "name": "Utah Jazz"
+  },
+  "2": {
+   "abbr": "BOS",
+   "name": "Boston Celtics"
+  },
+  "22": {
+   "abbr": "POR",
+   "name": "Portland Trail Blazers"
+  },
+  "23": {
+   "abbr": "SAC",
+   "name": "Sacramento Kings"
+  },
+  "12": {
+   "abbr": "LAC",
+   "name": "LA Clippers"
+  },
+  "27": {
+   "abbr": "WSH",
+   "name": "Washington Wizards"
+  },
+  "132374": {
+   "abbr": "STARS",
+   "name": "Team Stars"
+  },
+  "111386": {
+   "abbr": "WORLD",
+   "name": "World"
+  },
+  "132375": {
+   "abbr": "STRIPES",
+   "name": "Team Stripes"
+  },
+  "134478": {
+   "abbr": "LON",
+   "name": "London Lions"
+  },
+  "130579": {
+   "abbr": "CHK",
+   "name": "Team Chuck"
+  },
+  "130581": {
+   "abbr": "KEN",
+   "name": "Team Kenny"
+  },
+  "130580": {
+   "abbr": "SHQ",
+   "name": "Team Shaq"
+  },
+  "130754": {
+   "abbr": "CAN",
+   "name": "Team Candace"
+  }
+ },
+ "soccer": {
+  "115": {
+   "abbr": "PAR",
+   "name": "Parma"
+  },
+  "109": {
+   "abbr": "FIO",
+   "name": "Fiorentina"
+  },
+  "113": {
+   "abbr": "LEC",
+   "name": "Lecce"
+  },
+  "2572": {
+   "abbr": "COMO",
+   "name": "Como"
+  },
+  "239": {
+   "abbr": "TOR",
+   "name": "Torino"
+  },
+  "2925": {
+   "abbr": "CAG",
+   "name": "Cagliari"
+  },
+  "118": {
+   "abbr": "UDI",
+   "name": "Udinese"
+  },
+  "112": {
+   "abbr": "LAZ",
+   "name": "Lazio"
+  },
+  "3956": {
+   "abbr": "PIS",
+   "name": "Pisa"
+  },
+  "111": {
+   "abbr": "JUV",
+   "name": "Juventus"
+  },
+  "103": {
+   "abbr": "MIL",
+   "name": "AC Milan"
+  },
+  "119": {
+   "abbr": "VER",
+   "name": "Hellas Verona"
+  },
+  "4050": {
+   "abbr": "CRE",
+   "name": "Cremonese"
+  },
+  "114": {
+   "abbr": "NAP",
+   "name": "Napoli"
+  },
+  "107": {
+   "abbr": "BOL",
+   "name": "Bologna"
+  },
+  "3997": {
+   "abbr": "SAS",
+   "name": "Sassuolo"
+  },
+  "105": {
+   "abbr": "ATA",
+   "name": "Atalanta"
+  },
+  "110": {
+   "abbr": "INT",
+   "name": "Internazionale"
+  },
+  "104": {
+   "abbr": "ROMA",
+   "name": "AS Roma"
+  },
+  "3263": {
+   "abbr": "GEN",
+   "name": "Genoa"
+  },
+  "4007": {
+   "abbr": "MON",
+   "name": "Monza"
+  },
+  "4057": {
+   "abbr": "FRO",
+   "name": "Frosinone"
+  },
+  "17530": {
+   "abbr": "VEN",
+   "name": "Venezia"
+  },
+  "2573": {
+   "abbr": "MOD",
+   "name": "Modena"
+  },
+  "4056": {
+   "abbr": "SPE",
+   "name": "Spezia"
+  },
+  "3290": {
+   "abbr": "PES",
+   "name": "Pescara"
+  },
+  "3988": {
+   "abbr": "CAR",
+   "name": "Carrarese"
+  },
+  "3991": {
+   "abbr": "MAN",
+   "name": "Mantova"
+  },
+  "3257": {
+   "abbr": "CAT",
+   "name": "Catanzaro"
+  },
+  "3337": {
+   "abbr": "CES",
+   "name": "Cesena"
+  },
+  "2574": {
+   "abbr": "EMP",
+   "name": "Empoli"
+  },
+  "3975": {
+   "abbr": "JVS",
+   "name": "Juve Stabia"
+  },
+  "11139": {
+   "abbr": "SUD",
+   "name": "Sudtirol"
+  },
+  "2734": {
+   "abbr": "SAM",
+   "name": "Sampdoria"
+  },
+  "3942": {
+   "abbr": "REG",
+   "name": "Reggiana"
+  },
+  "11137": {
+   "abbr": "ENT",
+   "name": "Virtus Entella"
+  },
+  "2923": {
+   "abbr": "PAL",
+   "name": "Palermo"
+  },
+  "3952": {
+   "abbr": "PAD",
+   "name": "Padova"
+  },
+  "106": {
+   "abbr": "BAR",
+   "name": "Bari"
+  },
+  "4055": {
+   "abbr": "AVE",
+   "name": "US Avellino"
+  },
+  "120": {
+   "abbr": "VIC",
+   "name": "Vicenza"
+  },
+  "4059": {
+   "abbr": "BEN",
+   "name": "Benevento"
+  },
+  "3345": {
+   "abbr": "ARE",
+   "name": "Arezzo"
+  },
+  "3346": {
+   "abbr": "ASC",
+   "name": "Ascoli"
+  },
+  "360": {
+   "abbr": "MAN",
+   "name": "Manchester United"
+  },
+  "361": {
+   "abbr": "NEW",
+   "name": "Newcastle United"
+  },
+  "393": {
+   "abbr": "NFO",
+   "name": "Nottingham Forest"
+  },
+  "382": {
+   "abbr": "MNC",
+   "name": "Manchester City"
+  },
+  "359": {
+   "abbr": "ARS",
+   "name": "Arsenal"
+  },
+  "331": {
+   "abbr": "BHA",
+   "name": "Brighton & Hove Albion"
+  },
+  "337": {
+   "abbr": "BRE",
+   "name": "Brentford"
+  },
+  "349": {
+   "abbr": "BOU",
+   "name": "AFC Bournemouth"
+  },
+  "379": {
+   "abbr": "BUR",
+   "name": "Burnley"
+  },
+  "368": {
+   "abbr": "EVE",
+   "name": "Everton"
+  },
+  "364": {
+   "abbr": "LIV",
+   "name": "Liverpool"
+  },
+  "380": {
+   "abbr": "WOL",
+   "name": "Wolverhampton Wanderers"
+  },
+  "371": {
+   "abbr": "WHU",
+   "name": "West Ham United"
+  },
+  "370": {
+   "abbr": "FUL",
+   "name": "Fulham"
+  },
+  "363": {
+   "abbr": "CHE",
+   "name": "Chelsea"
+  },
+  "362": {
+   "abbr": "AVL",
+   "name": "Aston Villa"
+  },
+  "366": {
+   "abbr": "SUN",
+   "name": "Sunderland"
+  },
+  "357": {
+   "abbr": "LEE",
+   "name": "Leeds United"
+  },
+  "384": {
+   "abbr": "CRY",
+   "name": "Crystal Palace"
+  },
+  "367": {
+   "abbr": "TOT",
+   "name": "Tottenham Hotspur"
+  },
+  "388": {
+   "abbr": "COV",
+   "name": "Coventry City"
+  },
+  "306": {
+   "abbr": "HUL",
+   "name": "Hull City"
+  },
+  "373": {
+   "abbr": "IPS",
+   "name": "Ipswich Town"
+  },
+  "392": {
+   "abbr": "BIR",
+   "name": "Birmingham City"
+  },
+  "374": {
+   "abbr": "DER",
+   "name": "Derby County"
+  },
+  "391": {
+   "abbr": "MIL",
+   "name": "Millwall"
+  },
+  "318": {
+   "abbr": "SWA",
+   "name": "Swansea City"
+  },
+  "375": {
+   "abbr": "LEI",
+   "name": "Leicester City"
+  },
+  "395": {
+   "abbr": "WAT",
+   "name": "Watford"
+  },
+  "369": {
+   "abbr": "MID",
+   "name": "Middlesbrough"
+  },
+  "365": {
+   "abbr": "BLK",
+   "name": "Blackburn Rovers"
+  },
+  "381": {
+   "abbr": "NOR",
+   "name": "Norwich City"
+  },
+  "372": {
+   "abbr": "CHA",
+   "name": "Charlton Athletic"
+  },
+  "311": {
+   "abbr": "OXF",
+   "name": "Oxford United"
+  },
+  "376": {
+   "abbr": "SOU",
+   "name": "Southampton"
+  },
+  "385": {
+   "abbr": "POR",
+   "name": "Portsmouth"
+  },
+  "334": {
+   "abbr": "QPR",
+   "name": "Queens Park Rangers"
+  },
+  "399": {
+   "abbr": "SHW",
+   "name": "Sheffield Wednesday"
+  },
+  "336": {
+   "abbr": "STK",
+   "name": "Stoke City"
+  },
+  "394": {
+   "abbr": "PNE",
+   "name": "Preston North End"
+  },
+  "383": {
+   "abbr": "WBA",
+   "name": "West Bromwich Albion"
+  },
+  "333": {
+   "abbr": "BRC",
+   "name": "Bristol City"
+  },
+  "352": {
+   "abbr": "WXM",
+   "name": "Wrexham"
+  },
+  "398": {
+   "abbr": "SHU",
+   "name": "Sheffield United"
+  },
+  "358": {
+   "abbr": "BOL",
+   "name": "Bolton Wanderers"
+  },
+  "314": {
+   "abbr": "LCN",
+   "name": "Lincoln City"
+  },
+  "347": {
+   "abbr": "CAR",
+   "name": "Cardiff City"
+  },
+  "101": {
+   "abbr": "RAY",
+   "name": "Rayo Vallecano"
+  },
+  "2922": {
+   "abbr": "GET",
+   "name": "Getafe"
+  },
+  "85": {
+   "abbr": "CEL",
+   "name": "Celta Vigo"
+  },
+  "94": {
+   "abbr": "VAL",
+   "name": "Valencia"
+  },
+  "97": {
+   "abbr": "OSA",
+   "name": "Osasuna"
+  },
+  "93": {
+   "abbr": "ATH",
+   "name": "Athletic Club"
+  },
+  "3751": {
+   "abbr": "ELC",
+   "name": "Elche"
+  },
+  "102": {
+   "abbr": "VIL",
+   "name": "Villarreal"
+  },
+  "88": {
+   "abbr": "ESP",
+   "name": "Espanyol"
+  },
+  "83": {
+   "abbr": "BAR",
+   "name": "Barcelona"
+  },
+  "243": {
+   "abbr": "SEV",
+   "name": "Sevilla"
+  },
+  "1538": {
+   "abbr": "LEV",
+   "name": "Levante"
+  },
+  "86": {
+   "abbr": "RMA",
+   "name": "Real Madrid"
+  },
+  "244": {
+   "abbr": "BET",
+   "name": "Real Betis"
+  },
+  "96": {
+   "abbr": "ALA",
+   "name": "Alavés"
+  },
+  "92": {
+   "abbr": "OVI",
+   "name": "Real Oviedo"
+  },
+  "84": {
+   "abbr": "MLL",
+   "name": "Mallorca"
+  },
+  "9812": {
+   "abbr": "GIR",
+   "name": "Girona"
+  },
+  "89": {
+   "abbr": "RSO",
+   "name": "Real Sociedad"
+  },
+  "1068": {
+   "abbr": "ATM",
+   "name": "Atlético Madrid"
+  },
+  "87": {
+   "abbr": "RAC",
+   "name": "Racing Santander"
+  },
+  "90": {
+   "abbr": "DEP",
+   "name": "Deportivo"
+  },
+  "99": {
+   "abbr": "MCF",
+   "name": "Málaga"
+  },
+  "125": {
+   "abbr": "SGE",
+   "name": "Eintracht Frankfurt"
+  },
+  "124": {
+   "abbr": "DOR",
+   "name": "Borussia Dortmund"
+  },
+  "6418": {
+   "abbr": "HDH",
+   "name": "1. FC Heidenheim 1846"
+  },
+  "122": {
+   "abbr": "KOE",
+   "name": "FC Cologne"
+  },
+  "598": {
+   "abbr": "FCU",
+   "name": "1. FC Union Berlin"
+  },
+  "2950": {
+   "abbr": "M05",
+   "name": "Mainz"
+  },
+  "126": {
+   "abbr": "SCF",
+   "name": "SC Freiburg"
+  },
+  "127": {
+   "abbr": "HSV",
+   "name": "Hamburg SV"
+  },
+  "131": {
+   "abbr": "B04",
+   "name": "Bayer Leverkusen"
+  },
+  "134": {
+   "abbr": "VFB",
+   "name": "VfB Stuttgart"
+  },
+  "268": {
+   "abbr": "BMG",
+   "name": "Borussia Mönchengladbach"
+  },
+  "3841": {
+   "abbr": "FCA",
+   "name": "FC Augsburg"
+  },
+  "132": {
+   "abbr": "MUN",
+   "name": "Bayern Munich"
+  },
+  "138": {
+   "abbr": "WOB",
+   "name": "VfL Wolfsburg"
+  },
+  "137": {
+   "abbr": "SVW",
+   "name": "Werder Bremen"
+  },
+  "270": {
+   "abbr": "STP",
+   "name": "St. Pauli"
+  },
+  "11420": {
+   "abbr": "RBL",
+   "name": "RB Leipzig"
+  },
+  "7911": {
+   "abbr": "TSG",
+   "name": "TSG Hoffenheim"
+  },
+  "3307": {
+   "abbr": "SCP",
+   "name": "SC Paderborn 07"
+  },
+  "10388": {
+   "abbr": "ELV",
+   "name": "SV Elversberg"
+  },
+  "133": {
+   "abbr": "S04",
+   "name": "Schalke 04"
+  },
+  "179": {
+   "abbr": "TOU",
+   "name": "Toulouse"
+  },
+  "175": {
+   "abbr": "RCL",
+   "name": "Lens"
+  },
+  "174": {
+   "abbr": "MON",
+   "name": "AS Monaco"
+  },
+  "167": {
+   "abbr": "LYON",
+   "name": "Lyon"
+  },
+  "2502": {
+   "abbr": "NICE",
+   "name": "Nice"
+  },
+  "180": {
+   "abbr": "STR",
+   "name": "Strasbourg"
+  },
+  "166": {
+   "abbr": "LILL",
+   "name": "Lille"
+  },
+  "169": {
+   "abbr": "REN",
+   "name": "Stade Rennais"
+  },
+  "176": {
+   "abbr": "OLM",
+   "name": "Marseille"
+  },
+  "165": {
+   "abbr": "NAN",
+   "name": "Nantes"
+  },
+  "6997": {
+   "abbr": "BRE",
+   "name": "Brest"
+  },
+  "172": {
+   "abbr": "AUX",
+   "name": "AJ Auxerre"
+  },
+  "3236": {
+   "abbr": "HAC",
+   "name": "Le Havre AC"
+  },
+  "7868": {
+   "abbr": "ANG",
+   "name": "Angers"
+  },
+  "273": {
+   "abbr": "LOR",
+   "name": "Lorient"
+  },
+  "177": {
+   "abbr": "METZ",
+   "name": "Metz"
+  },
+  "160": {
+   "abbr": "PSG",
+   "name": "Paris Saint-Germain"
+  },
+  "6851": {
+   "abbr": "PAR",
+   "name": "Paris FC"
+  },
+  "2697": {
+   "abbr": "MNS",
+   "name": "Le Mans"
+  },
+  "170": {
+   "abbr": "TRY",
+   "name": "Troyes"
+  },
+  "12698": {
+   "abbr": "FCF",
+   "name": "FC Famalicao"
+  },
+  "21610": {
+   "abbr": "EST",
+   "name": "Estrela"
+  },
+  "12216": {
+   "abbr": "EPF",
+   "name": "Estoril"
+  },
+  "21613": {
+   "abbr": "ALV",
+   "name": "Alverca"
+  },
+  "15784": {
+   "abbr": "FCA",
+   "name": "Arouca"
+  },
+  "3699": {
+   "abbr": "GVFC",
+   "name": "Gil Vicente"
+  },
+  "21581": {
+   "abbr": "CPAC",
+   "name": "Casa Pia"
+  },
+  "5309": {
+   "abbr": "VSC",
+   "name": "Vitória de Guimaraes"
+  },
+  "2994": {
+   "abbr": "SCB",
+   "name": "Braga"
+  },
+  "1929": {
+   "abbr": "SLB",
+   "name": "Benfica"
+  },
+  "2250": {
+   "abbr": "SCP",
+   "name": "Sporting CP"
+  },
+  "3822": {
+   "abbr": "RAFC",
+   "name": "Rio Ave"
+  },
+  "437": {
+   "abbr": "FCP",
+   "name": "FC Porto"
+  },
+  "22064": {
+   "abbr": "AVS",
+   "name": "AVS"
+  },
+  "3472": {
+   "abbr": "CDN",
+   "name": "C.D. Nacional"
+  },
+  "12706": {
+   "abbr": "CDT",
+   "name": "Tondela"
+  },
+  "3696": {
+   "abbr": "MFC",
+   "name": "Moreirense"
+  },
+  "12215": {
+   "abbr": "CDSC",
+   "name": "Santa Clara"
+  },
+  "552": {
+   "abbr": "MAR",
+   "name": "Maritimo"
+  },
+  "21607": {
+   "abbr": "ACV",
+   "name": "Académico de Viseu"
+  },
+  "140": {
+   "abbr": "AZ",
+   "name": "AZ Alkmaar"
+  },
+  "2727": {
+   "abbr": "VOL",
+   "name": "FC Volendam"
+  },
+  "152": {
+   "abbr": "TWE",
+   "name": "FC Twente"
+  },
+  "2565": {
+   "abbr": "PEC",
+   "name": "PEC Zwolle"
+  },
+  "148": {
+   "abbr": "PSV",
+   "name": "PSV Eindhoven"
+  },
+  "2566": {
+   "abbr": "EXC",
+   "name": "Excelsior"
+  },
+  "145": {
+   "abbr": "GRO",
+   "name": "FC Groningen"
+  },
+  "141": {
+   "abbr": "NAC",
+   "name": "NAC Breda"
+  },
+  "146": {
+   "abbr": "HEE",
+   "name": "Heerenveen"
+  },
+  "142": {
+   "abbr": "FEY",
+   "name": "Feyenoord Rotterdam"
+  },
+  "3706": {
+   "abbr": "GAE",
+   "name": "Go Ahead Eagles"
+  },
+  "143": {
+   "abbr": "FOR",
+   "name": "Fortuna Sittard"
+  },
+  "3735": {
+   "abbr": "TEL",
+   "name": "Telstar"
+  },
+  "139": {
+   "abbr": "AJA",
+   "name": "Ajax Amsterdam"
+  },
+  "151": {
+   "abbr": "SPA",
+   "name": "Sparta Rotterdam"
+  },
+  "3708": {
+   "abbr": "HER",
+   "name": "Heracles Almelo"
+  },
+  "147": {
+   "abbr": "NEC",
+   "name": "NEC Nijmegen"
+  },
+  "153": {
+   "abbr": "UTR",
+   "name": "FC Utrecht"
+  },
+  "3736": {
+   "abbr": "CAM",
+   "name": "SC Cambuur"
+  },
+  "156": {
+   "abbr": "WIL",
+   "name": "Willem II"
+  },
+  "2726": {
+   "abbr": "ADO",
+   "name": "ADO Den Haag"
+  },
+  "938": {
+   "abbr": "GENK",
+   "name": "Racing Genk"
+  },
+  "570": {
+   "abbr": "BRU",
+   "name": "Club Brugge"
+  },
+  "3610": {
+   "abbr": "CBK",
+   "name": "Cercle Brugge KSV"
+  },
+  "5807": {
+   "abbr": "USG",
+   "name": "Union St.-Gilloise"
+  },
+  "559": {
+   "abbr": "STL",
+   "name": "Standard Liege"
+  },
+  "936": {
+   "abbr": "STVV",
+   "name": "Sint-Truidense"
+  },
+  "441": {
+   "abbr": "AND",
+   "name": "Anderlecht"
+  },
+  "3616": {
+   "abbr": "CHA",
+   "name": "Royal Charleroi SC"
+  },
+  "17544": {
+   "abbr": "ANT",
+   "name": "Antwerp"
+  },
+  "4691": {
+   "abbr": "ZUL",
+   "name": "Zulte-Waregem"
+  },
+  "131235": {
+   "abbr": "RLL",
+   "name": "RAAL La Louvière"
+  },
+  "5579": {
+   "abbr": "OHL",
+   "name": "OH Leuven"
+  },
+  "7879": {
+   "abbr": "KVM",
+   "name": "KV Mechelen"
+  },
+  "7878": {
+   "abbr": "DEN",
+   "name": "Dender"
+  },
+  "3611": {
+   "abbr": "GENT",
+   "name": "KAA Gent"
+  },
+  "606": {
+   "abbr": "KVCW",
+   "name": "KVC Westerlo"
+  },
+  "5786": {
+   "abbr": "KVK",
+   "name": "KV Kortrijk"
+  },
+  "22269": {
+   "abbr": "LOM",
+   "name": "Lommel SK"
+  },
+  "13450": {
+   "abbr": "WAA",
+   "name": "Waasland-Beveren"
+  },
+  "7914": {
+   "abbr": "IBFK",
+   "name": "Istanbul Basaksehir"
+  },
+  "20736": {
+   "abbr": "KAR",
+   "name": "Fatih Karagümrük"
+  },
+  "432": {
+   "abbr": "GAL",
+   "name": "Galatasaray"
+  },
+  "20070": {
+   "abbr": "GAZ",
+   "name": "Gaziantep FK"
+  },
+  "6870": {
+   "abbr": "KAS",
+   "name": "Kasimpasa"
+  },
+  "3794": {
+   "abbr": "ANT",
+   "name": "Antalyaspor"
+  },
+  "996": {
+   "abbr": "GEN",
+   "name": "Genclerbirligi"
+  },
+  "11429": {
+   "abbr": "SAM",
+   "name": "Samsunspor"
+  },
+  "995": {
+   "abbr": "KOC",
+   "name": "Kocaelispor"
+  },
+  "997": {
+   "abbr": "TRAB",
+   "name": "Trabzonspor"
+  },
+  "9078": {
+   "abbr": "ALA",
+   "name": "Alanyaspor"
+  },
+  "436": {
+   "abbr": "FEN",
+   "name": "Fenerbahce"
+  },
+  "7648": {
+   "abbr": "KNY",
+   "name": "Konyaspor"
+  },
+  "20729": {
+   "abbr": "EYU",
+   "name": "Eyupspor"
+  },
+  "1895": {
+   "abbr": "BES",
+   "name": "Besiktas"
+  },
+  "3643": {
+   "abbr": "KAY",
+   "name": "Kayserispor"
+  },
+  "789": {
+   "abbr": "GOZ",
+   "name": "Goztepe"
+  },
+  "7656": {
+   "abbr": "CAY",
+   "name": "Caykur Rizespor"
+  },
+  "132334": {
+   "abbr": "COR",
+   "name": "Çorum FK"
+  },
+  "132335": {
+   "abbr": "AMED",
+   "name": "Amed SFK"
+  },
+  "19267": {
+   "abbr": "ERZ",
+   "name": "Erzurum BB"
+  },
+  "258": {
+   "abbr": "HIBS",
+   "name": "Hibernian"
+  },
+  "262": {
+   "abbr": "HOM",
+   "name": "Heart of Midlothian"
+  },
+  "261": {
+   "abbr": "DUN",
+   "name": "Dundee"
+  },
+  "254": {
+   "abbr": "FALK",
+   "name": "Falkirk"
+  },
+  "259": {
+   "abbr": "LIV",
+   "name": "Livingston"
+  },
+  "256": {
+   "abbr": "CEL",
+   "name": "Celtic"
+  },
+  "257": {
+   "abbr": "RAN",
+   "name": "Rangers"
+  },
+  "266": {
+   "abbr": "MOT",
+   "name": "Motherwell"
+  },
+  "250": {
+   "abbr": "STM",
+   "name": "St Mirren"
+  },
+  "260": {
+   "abbr": "KIL",
+   "name": "Kilmarnock"
+  },
+  "263": {
+   "abbr": "ABE",
+   "name": "Aberdeen"
+  },
+  "264": {
+   "abbr": "DUN",
+   "name": "Dundee United"
+  },
+  "267": {
+   "abbr": "STJ",
+   "name": "St Johnstone"
+  },
+  "2528": {
+   "abbr": "KAI",
+   "name": "Kairat Almaty"
+  },
+  "2980": {
+   "abbr": "BODO",
+   "name": "Bodo/Glimt"
+  },
+  "909": {
+   "abbr": "KBH",
+   "name": "F.C. København"
+  },
+  "435": {
+   "abbr": "OLY",
+   "name": "Olympiacos"
+  },
+  "10414": {
+   "abbr": "QAR",
+   "name": "FK Qarabag"
+  },
+  "22281": {
+   "abbr": "PAF",
+   "name": "Pafos"
+  },
+  "494": {
+   "abbr": "SLP",
+   "name": "Slavia Prague"
+  },
+  "887": {
+   "abbr": "AEK",
+   "name": "AEK Athens"
+  },
+  "4411": {
+   "abbr": "LAS",
+   "name": "LASK Linz"
+  },
+  "510": {
+   "abbr": "VFK",
+   "name": "Viking FK"
+  },
+  "521": {
+   "abbr": "SLB",
+   "name": "Slovan Bratislava"
+  },
+  "493": {
+   "abbr": "SHK",
+   "name": "Shakhtar Donetsk"
+  },
+  "21922": {
+   "abbr": "SAB",
+   "name": "Sabah FK"
+  },
+  "3746": {
+   "abbr": "STG",
+   "name": "SK Sturm Graz"
+  },
+  "2720": {
+   "abbr": "MAL",
+   "name": "Malmö FF"
+  },
+  "2290": {
+   "abbr": "RSB",
+   "name": "Red Star Belgrade"
+  },
+  "605": {
+   "abbr": "PAOK",
+   "name": "PAOK"
+  },
+  "524": {
+   "abbr": "MTA",
+   "name": "Maccabi Tel-Aviv"
+  },
+  "620": {
+   "abbr": "SKBR",
+   "name": "SK Brann"
+  },
+  "572": {
+   "abbr": "MID",
+   "name": "FC Midtjylland"
+  },
+  "11706": {
+   "abbr": "PLZ",
+   "name": "Viktoria Plzen"
+  },
+  "2722": {
+   "abbr": "YB",
+   "name": "Young Boys"
+  },
+  "597": {
+   "abbr": "DZG",
+   "name": "Dinamo Zagreb"
+  },
+  "484": {
+   "abbr": "FCSB",
+   "name": "FCSB"
+  },
+  "622": {
+   "abbr": "FER",
+   "name": "Ferencvaros"
+  },
+  "443": {
+   "abbr": "PAO",
+   "name": "Panathinaikos"
+  },
+  "13018": {
+   "abbr": "LUD",
+   "name": "Ludogorets Razgrad"
+  },
+  "2790": {
+   "abbr": "SLZ",
+   "name": "RB Salzburg"
+  },
+  "989": {
+   "abbr": "FCB",
+   "name": "FC Basel"
+  },
+  "20024": {
+   "abbr": "ARA",
+   "name": "Ararat-Armenia"
+  },
+  "433": {
+   "abbr": "SPP",
+   "name": "Sparta Prague"
+  },
+  "617": {
+   "abbr": "OMON",
+   "name": "Omonia Nicosia"
+  },
+  "3362": {
+   "abbr": "NKC",
+   "name": "NK Celje"
+  },
+  "13083": {
+   "abbr": "HBE",
+   "name": "Hapoel Be'er"
+  },
+  "11505": {
+   "abbr": "JAG",
+   "name": "Jagiellonia Bialystok"
+  },
+  "490": {
+   "abbr": "LEV",
+   "name": "Levski Sofia"
+  },
+  "1010": {
+   "abbr": "OFI",
+   "name": "OFI Crete"
+  },
+  "2990": {
+   "abbr": "LECH",
+   "name": "Lech Poznan"
+  },
+  "987": {
+   "abbr": "LSK",
+   "name": "Lillestrom"
+  },
+  "21615": {
+   "abbr": "TOR",
+   "name": "Torreense"
+  },
+  "20712": {
+   "abbr": "NOA",
+   "name": "FC Noah"
+  },
+  "8169": {
+   "abbr": "KUPS",
+   "name": "KuPS Kuopio"
+  },
+  "609": {
+   "abbr": "SIG",
+   "name": "Sigma Olomouc"
+  },
+  "11551": {
+   "abbr": "FCL",
+   "name": "Lausanne Sports"
+  },
+  "5239": {
+   "abbr": "ZRIN",
+   "name": "Zrinjski Mostar"
+  },
+  "19243": {
+   "abbr": "DRI",
+   "name": "Drita Gjilan"
+  },
+  "8151": {
+   "abbr": "SHK",
+   "name": "KF Shkëndija"
+  },
+  "2988": {
+   "abbr": "RIJE",
+   "name": "Rijeka"
+  },
+  "4039": {
+   "abbr": "AEK",
+   "name": "AEK Larnaca"
+  },
+  "21005": {
+   "abbr": "RAK",
+   "name": "Raków Czestochowa"
+  },
+  "10834": {
+   "abbr": "CSKA",
+   "name": "CSKA Sofia"
+  },
+  "8089": {
+   "abbr": "CRA",
+   "name": "Universitatea Craiova"
+  },
+  "21943": {
+   "abbr": "EGN",
+   "name": "Egnatia"
+  },
+  "7672": {
+   "abbr": "LUG",
+   "name": "FC Lugano"
+  },
+  "489": {
+   "abbr": "HAJ",
+   "name": "Hajduk Split"
+  },
+  "7853": {
+   "abbr": "AGF",
+   "name": "AGF"
+  },
+  "20301": {
+   "abbr": "MJA",
+   "name": "Mjällby AIF"
+  },
+  "20703": {
+   "abbr": "IDE",
+   "name": "Inter D'Escaldes"
+  },
+  "20710": {
+   "abbr": "BBL",
+   "name": "Borac Banja Luka"
+  },
+  "19246": {
+   "abbr": "RIG",
+   "name": "Riga FC"
+  },
+  "20028": {
+   "abbr": "ZAL",
+   "name": "Kauno Zalgiris"
+  },
+  "3024": {
+   "abbr": "THUN",
+   "name": "FC Thun"
+  },
+  "3101": {
+   "abbr": "FCN",
+   "name": "FC Nordsjælland"
+  },
+  "7922": {
+   "abbr": "JABL",
+   "name": "Jablonec"
+  },
+  "20025": {
+   "abbr": "IBE",
+   "name": "Iberia 1999"
+  },
+  "17856": {
+   "abbr": "LRI",
+   "name": "Lincoln Red Imps"
+  },
+  "21812": {
+   "abbr": "STL",
+   "name": "St. Louis CITY SC"
+  },
+  "21300": {
+   "abbr": "CLT",
+   "name": "Charlotte FC"
+  },
+  "18267": {
+   "abbr": "CIN",
+   "name": "FC Cincinnati"
+  },
+  "18418": {
+   "abbr": "ATL",
+   "name": "Atlanta United FC"
+  },
+  "193": {
+   "abbr": "DC",
+   "name": "D.C. United"
+  },
+  "10739": {
+   "abbr": "PHI",
+   "name": "Philadelphia Union"
+  },
+  "12011": {
+   "abbr": "ORL",
+   "name": "Orlando City SC"
+  },
+  "190": {
+   "abbr": "RBNY",
+   "name": "Red Bull New York"
+  },
+  "9727": {
+   "abbr": "VAN",
+   "name": "Vancouver Whitecaps"
+  },
+  "4771": {
+   "abbr": "RSL",
+   "name": "Real Salt Lake"
+  },
+  "20906": {
+   "abbr": "ATX",
+   "name": "Austin FC"
+  },
+  "17362": {
+   "abbr": "MIN",
+   "name": "Minnesota United FC"
+  },
+  "185": {
+   "abbr": "DAL",
+   "name": "FC Dallas"
+  },
+  "7318": {
+   "abbr": "TOR",
+   "name": "Toronto FC"
+  },
+  "6077": {
+   "abbr": "HOU",
+   "name": "Houston Dynamo FC"
+  },
+  "182": {
+   "abbr": "CHI",
+   "name": "Chicago Fire FC"
+  },
+  "18986": {
+   "abbr": "NSH",
+   "name": "Nashville SC"
+  },
+  "189": {
+   "abbr": "NE",
+   "name": "New England Revolution"
+  },
+  "18966": {
+   "abbr": "LAFC",
+   "name": "LAFC"
+  },
+  "20232": {
+   "abbr": "MIA",
+   "name": "Inter Miami CF"
+  },
+  "9723": {
+   "abbr": "POR",
+   "name": "Portland Timbers"
+  },
+  "183": {
+   "abbr": "CLB",
+   "name": "Columbus Crew"
+  },
+  "22529": {
+   "abbr": "SD",
+   "name": "San Diego FC"
+  },
+  "9720": {
+   "abbr": "MTL",
+   "name": "CF Montréal"
+  },
+  "191": {
+   "abbr": "SJ",
+   "name": "San Jose Earthquakes"
+  },
+  "186": {
+   "abbr": "SKC",
+   "name": "Sporting Kansas City"
+  },
+  "187": {
+   "abbr": "LA",
+   "name": "LA Galaxy"
+  },
+  "17606": {
+   "abbr": "NYC",
+   "name": "New York City FC"
+  },
+  "9726": {
+   "abbr": "SEA",
+   "name": "Seattle Sounders FC"
+  },
+  "184": {
+   "abbr": "COL",
+   "name": "Colorado Rapids"
+  },
+  "9817": {
+   "abbr": "MLS",
+   "name": "MLS All-Stars"
+  },
+  "20279": {
+   "abbr": "LMX",
+   "name": "Liga MX All-Stars"
+  },
+  "7632": {
+   "abbr": "CAM",
+   "name": "Atlético-MG"
+  },
+  "2029": {
+   "abbr": "PAL",
+   "name": "Palmeiras"
+  },
+  "3456": {
+   "abbr": "CFC",
+   "name": "Coritiba"
+  },
+  "6079": {
+   "abbr": "BRA",
+   "name": "Red Bull Bragantino"
+  },
+  "1936": {
+   "abbr": "INT",
+   "name": "Internacional"
+  },
+  "3458": {
+   "abbr": "CAP",
+   "name": "Athletico-PR"
+  },
+  "3457": {
+   "abbr": "VIT",
+   "name": "Vitória"
+  },
+  "4936": {
+   "abbr": "REMO",
+   "name": "Remo"
+  },
+  "3445": {
+   "abbr": "FLU",
+   "name": "Fluminense"
+  },
+  "6273": {
+   "abbr": "GRE",
+   "name": "Grêmio"
+  },
+  "9318": {
+   "abbr": "CHA",
+   "name": "Chapecoense"
+  },
+  "2674": {
+   "abbr": "SAN",
+   "name": "Santos"
+  },
+  "874": {
+   "abbr": "COR",
+   "name": "Corinthians"
+  },
+  "9967": {
+   "abbr": "BAH",
+   "name": "Bahia"
+  },
+  "2026": {
+   "abbr": "SAO",
+   "name": "São Paulo"
+  },
+  "819": {
+   "abbr": "FLA",
+   "name": "Flamengo"
+  },
+  "9169": {
+   "abbr": "MIR",
+   "name": "Mirassol"
+  },
+  "3454": {
+   "abbr": "VAS",
+   "name": "Vasco da Gama"
+  },
+  "6086": {
+   "abbr": "BOT",
+   "name": "Botafogo"
+  },
+  "2022": {
+   "abbr": "CRU",
+   "name": "Cruzeiro"
+  },
+  "9739": {
+   "abbr": "ALDO",
+   "name": "Aldosivi"
+  },
+  "8950": {
+   "abbr": "DYJ",
+   "name": "Defensa y Justicia"
+  },
+  "235": {
+   "abbr": "BAN",
+   "name": "Banfield"
+  },
+  "10": {
+   "abbr": "HUR",
+   "name": "Huracán"
+  },
+  "20": {
+   "abbr": "USF",
+   "name": "Unión (Santa Fe)"
+  },
+  "7764": {
+   "abbr": "PLA",
+   "name": "Platense"
+  },
+  "11989": {
+   "abbr": "CTR",
+   "name": "Central Córdoba (Santiago del Estero)"
+  },
+  "11972": {
+   "abbr": "GMZ",
+   "name": "Gimnasia (Mendoza)"
+  },
+  "2975": {
+   "abbr": "IACC",
+   "name": "Instituto (Córdoba)"
+  },
+  "21": {
+   "abbr": "VEL",
+   "name": "Vélez Sarsfield"
+  },
+  "18": {
+   "abbr": "SLO",
+   "name": "San Lorenzo"
+  },
+  "12": {
+   "abbr": "LAN",
+   "name": "Lanús"
+  },
+  "11": {
+   "abbr": "IND",
+   "name": "Independiente"
+  },
+  "8": {
+   "abbr": "EST",
+   "name": "Estudiantes de La Plata"
+  },
+  "9744": {
+   "abbr": "RIV",
+   "name": "Independiente Rivadavia"
+  },
+  "9785": {
+   "abbr": "CAT",
+   "name": "Atlético Tucumán"
+  },
+  "19": {
+   "abbr": "TALL",
+   "name": "Talleres (Córdoba)"
+  },
+  "14": {
+   "abbr": "NOB",
+   "name": "Newell's Old Boys"
+  },
+  "10060": {
+   "abbr": "BAR",
+   "name": "Barracas Central"
+  },
+  "16": {
+   "abbr": "RIV",
+   "name": "River Plate"
+  },
+  "9": {
+   "abbr": "GLP",
+   "name": "Gimnasia La Plata"
+  },
+  "15": {
+   "abbr": "RAC",
+   "name": "Racing Club"
+  },
+  "17": {
+   "abbr": "ROS",
+   "name": "Rosario Central"
+  },
+  "4": {
+   "abbr": "BEL",
+   "name": "Belgrano (Córdoba)"
+  },
+  "5": {
+   "abbr": "CABJ",
+   "name": "Boca Juniors"
+  },
+  "17702": {
+   "abbr": "RIE",
+   "name": "Deportivo Riestra"
+  },
+  "3": {
+   "abbr": "ARGJ",
+   "name": "Argentinos Juniors"
+  },
+  "10158": {
+   "abbr": "SARM",
+   "name": "Sarmiento (Junín)"
+  },
+  "7767": {
+   "abbr": "TIG",
+   "name": "Tigre"
+  },
+  "19685": {
+   "abbr": "AAE",
+   "name": "Estudiantes de Río Cuarto"
+  },
+  "20702": {
+   "abbr": "MAZ",
+   "name": "Mazatlán FC"
+  },
+  "17851": {
+   "abbr": "JUA",
+   "name": "FC Juárez"
+  },
+  "216": {
+   "abbr": "ATS",
+   "name": "Atlas"
+  },
+  "231": {
+   "abbr": "PUE",
+   "name": "Puebla"
+  },
+  "10125": {
+   "abbr": "TIJ",
+   "name": "Tijuana"
+  },
+  "227": {
+   "abbr": "AME",
+   "name": "América"
+  },
+  "219": {
+   "abbr": "GDL",
+   "name": "Guadalajara"
+  },
+  "234": {
+   "abbr": "PAC",
+   "name": "Pachuca"
+  },
+  "228": {
+   "abbr": "LEO",
+   "name": "León"
+  },
+  "218": {
+   "abbr": "CAZ",
+   "name": "Cruz Azul"
+  },
+  "225": {
+   "abbr": "SAN",
+   "name": "Santos"
+  },
+  "229": {
+   "abbr": "NCX",
+   "name": "Necaxa"
+  },
+  "220": {
+   "abbr": "MTY",
+   "name": "Monterrey"
+  },
+  "223": {
+   "abbr": "TOL",
+   "name": "Toluca"
+  },
+  "233": {
+   "abbr": "UNAM",
+   "name": "Pumas UNAM"
+  },
+  "222": {
+   "abbr": "QRO",
+   "name": "Querétaro"
+  },
+  "15720": {
+   "abbr": "ASL",
+   "name": "Atlético de San Luis"
+  },
+  "232": {
+   "abbr": "UANL",
+   "name": "Tigres UANL"
+  },
+  "226": {
+   "abbr": "ATL",
+   "name": "Atlante"
+  },
+  "8118": {
+   "abbr": "SON",
+   "name": "Sønderjyske Fodbold"
+  },
+  "607": {
+   "abbr": "SIF",
+   "name": "Silkeborg IF"
+  },
+  "3153": {
+   "abbr": "VIB",
+   "name": "Viborg FF"
+  },
+  "575": {
+   "abbr": "BRO",
+   "name": "Brøndby IF"
+  },
+  "3132": {
+   "abbr": "RAN",
+   "name": "Randers FC"
+  },
+  "12498": {
+   "abbr": "VEJ",
+   "name": "Vejle Boldklub"
+  },
+  "130912": {
+   "abbr": "FRD",
+   "name": "FC Fredericia"
+  },
+  "11550": {
+   "abbr": "OBK",
+   "name": "Odense Boldklub"
+  },
+  "7860": {
+   "abbr": "LBK",
+   "name": "Lyngby Boldklub"
+  },
+  "3585": {
+   "abbr": "ACH",
+   "name": "AC Horsens"
+  },
+  "21380": {
+   "abbr": "HAM",
+   "name": "Hamarkameratene"
+  },
+  "2715": {
+   "abbr": "MOL",
+   "name": "Molde"
+  },
+  "438": {
+   "abbr": "ROS",
+   "name": "Rosenborg"
+  },
+  "6672": {
+   "abbr": "KRI",
+   "name": "Kristiansund BK"
+  },
+  "3278": {
+   "abbr": "AAL",
+   "name": "Aalesund"
+  },
+  "22165": {
+   "abbr": "KFUM",
+   "name": "KFUM Oslo"
+  },
+  "6750": {
+   "abbr": "IKS",
+   "name": "IK Start"
+  },
+  "2791": {
+   "abbr": "VAL",
+   "name": "Vålerenga"
+  },
+  "3279": {
+   "abbr": "SAN",
+   "name": "Sandefjord"
+  },
+  "5270": {
+   "abbr": "TRO",
+   "name": "Tromso"
+  },
+  "3039": {
+   "abbr": "FRE",
+   "name": "Fredrikstad"
+  },
+  "5002": {
+   "abbr": "SAR",
+   "name": "Sarpsborg FK"
+  },
+  "20856": {
+   "abbr": "DEG",
+   "name": "Degerfors IF"
+  },
+  "8547": {
+   "abbr": "SIR",
+   "name": "IK Sirius"
+  },
+  "2495": {
+   "abbr": "HAM",
+   "name": "Hammarby IF"
+  },
+  "994": {
+   "abbr": "AIK",
+   "name": "AIK"
+  },
+  "3017": {
+   "abbr": "HBK",
+   "name": "Halmstads BK"
+  },
+  "3052": {
+   "abbr": "KFF",
+   "name": "Kalmar FF"
+  },
+  "22163": {
+   "abbr": "VAS",
+   "name": "Västerås SK"
+  },
+  "131552": {
+   "abbr": "ÖRG",
+   "name": "Örgryte IS"
+  },
+  "7834": {
+   "abbr": "BKH",
+   "name": "BK Häcken"
+  },
+  "8221": {
+   "abbr": "BRO",
+   "name": "IF Brommapojkarna"
+  },
+  "529": {
+   "abbr": "ELF",
+   "name": "IF Elfsborg"
+  },
+  "2556": {
+   "abbr": "GOT",
+   "name": "IFK Göteborg"
+  },
+  "8222": {
+   "abbr": "GAIS",
+   "name": "GAIS"
+  },
+  "2339": {
+   "abbr": "DJU",
+   "name": "Djurgården"
+  },
+  "1382": {
+   "abbr": "VIE",
+   "name": "Austria Vienna"
+  },
+  "18794": {
+   "abbr": "WST",
+   "name": "WSG Swarovski Tirol"
+  },
+  "519": {
+   "abbr": "VIE",
+   "name": "Rapid Vienna"
+  },
+  "6907": {
+   "abbr": "HAR",
+   "name": "TSV Hartberg"
+  },
+  "4405": {
+   "abbr": "SCR",
+   "name": "SC Rheindorf Altach"
+  },
+  "21950": {
+   "abbr": "BWL",
+   "name": "FC Blau-Weiß Linz"
+  },
+  "13294": {
+   "abbr": "WOL",
+   "name": "Wolfsberger"
+  },
+  "21846": {
+   "abbr": "GRA",
+   "name": "Grazer AK"
+  },
+  "3759": {
+   "abbr": "SJR",
+   "name": "SV Josko Ried"
+  },
+  "21540": {
+   "abbr": "ALU",
+   "name": "Austria Lustenau"
+  },
+  "5276": {
+   "abbr": "LEV",
+   "name": "Levadiakos"
+  },
+  "20043": {
+   "abbr": "VOL",
+   "name": "Volos NFC"
+  },
+  "8354": {
+   "abbr": "AST",
+   "name": "Asteras Tripoli"
+  },
+  "11553": {
+   "abbr": "ARI",
+   "name": "Aris"
+  },
+  "21970": {
+   "abbr": "PAN",
+   "name": "Panserraikos FC"
+  },
+  "21969": {
+   "abbr": "KIF",
+   "name": "Kifisia"
+  },
+  "10418": {
+   "abbr": "LAR",
+   "name": "Larissa FC"
+  },
+  "11431": {
+   "abbr": "PAN",
+   "name": "Panetolikos"
+  },
+  "6790": {
+   "abbr": "ATRO",
+   "name": "Atromitos"
+  },
+  "2575": {
+   "abbr": "IRAK",
+   "name": "Iraklis"
+  },
+  "132429": {
+   "abbr": "KAL",
+   "name": "Kalamata"
+  },
+  "2533": {
+   "abbr": "ZEN",
+   "name": "Zenit St Petersburg"
+  },
+  "21949": {
+   "abbr": "BAL",
+   "name": "FC Baltika Kaliningrad"
+  },
+  "18285": {
+   "abbr": "ORE",
+   "name": "Gazovik Orenburg"
+  },
+  "22271": {
+   "abbr": "AKT",
+   "name": "Akron Tolyatti"
+  },
+  "11336": {
+   "abbr": "FCK",
+   "name": "Krasnodar"
+  },
+  "3852": {
+   "abbr": "ROS",
+   "name": "Rostov"
+  },
+  "442": {
+   "abbr": "LMO",
+   "name": "Lokomotiv Moscow"
+  },
+  "13150": {
+   "abbr": "NIZ",
+   "name": "Nizhny Novgorod"
+  },
+  "22300": {
+   "abbr": "DMA",
+   "name": "Dynamo Makhachkala"
+  },
+  "3851": {
+   "abbr": "RUB",
+   "name": "Rubin Kazan"
+  },
+  "596": {
+   "abbr": "DMO",
+   "name": "Dinamo Moscow"
+  },
+  "3850": {
+   "abbr": "KSS",
+   "name": "Krylia Sovetov"
+  },
+  "2991": {
+   "abbr": "GRZ",
+   "name": "Akhmat Grozny"
+  },
+  "1963": {
+   "abbr": "CSK",
+   "name": "CSKA Moscow"
+  },
+  "20019": {
+   "abbr": "SCH",
+   "name": "Sochi"
+  },
+  "1941": {
+   "abbr": "SPM",
+   "name": "Spartak Moscow"
+  },
+  "21539": {
+   "abbr": "VOR",
+   "name": "Fakel Voronezh"
+  },
+  "21927": {
+   "abbr": "ROD",
+   "name": "Rodina Moscow"
+  },
+  "21964": {
+   "abbr": "HAZ",
+   "name": "Al Hazem"
+  },
+  "22023": {
+   "abbr": "NAJ",
+   "name": "Al Najma"
+  },
+  "8363": {
+   "abbr": "ETT",
+   "name": "Al Ettifaq"
+  },
+  "21829": {
+   "abbr": "KHA",
+   "name": "Al Khaleej"
+  },
+  "929": {
+   "abbr": "HIL",
+   "name": "Al Hilal"
+  },
+  "817": {
+   "abbr": "NSR",
+   "name": "Al Nassr"
+  },
+  "21966": {
+   "abbr": "OKH",
+   "name": "Al Okhdood"
+  },
+  "22028": {
+   "abbr": "KHO",
+   "name": "Al Kholood"
+  },
+  "13033": {
+   "abbr": "FAT",
+   "name": "Al Fateh"
+  },
+  "21965": {
+   "abbr": "RIY",
+   "name": "Al Riyadh"
+  },
+  "21828": {
+   "abbr": "DAM",
+   "name": "Damac"
+  },
+  "2276": {
+   "abbr": "ITT",
+   "name": "Al Ittihad"
+  },
+  "22022": {
+   "abbr": "QAD",
+   "name": "Al Qadsiah"
+  },
+  "21827": {
+   "abbr": "FAY",
+   "name": "Al Fayha"
+  },
+  "8346": {
+   "abbr": "AHL",
+   "name": "Al Ahli"
+  },
+  "18459": {
+   "abbr": "TAA",
+   "name": "Al Taawoun"
+  },
+  "793": {
+   "abbr": "SHA",
+   "name": "Al Shabab"
+  },
+  "130899": {
+   "abbr": "NEOM",
+   "name": "Neom SC"
+  },
+  "21833": {
+   "abbr": "ABH",
+   "name": "Abha"
+  },
+  "131746": {
+   "abbr": "DIR",
+   "name": "Al Diriyah"
+  },
+  "21446": {
+   "abbr": "ALF",
+   "name": "Al Faisaly"
+  },
+  "21361": {
+   "abbr": "KYO",
+   "name": "Kyoto Sanga"
+  },
+  "7477": {
+   "abbr": "VIS",
+   "name": "Vissel Kobe"
+  },
+  "19001": {
+   "abbr": "VVN",
+   "name": "V-Varen Nagasaki"
+  },
+  "7114": {
+   "abbr": "SAN",
+   "name": "Sanfrecce Hiroshima"
+  },
+  "7116": {
+   "abbr": "YOK",
+   "name": "Yokohama F. Marinos"
+  },
+  "22167": {
+   "abbr": "ZEL",
+   "name": "Machida Zelvia"
+  },
+  "7111": {
+   "abbr": "JEF",
+   "name": "JEF United Ichihara-Chiba"
+  },
+  "3385": {
+   "abbr": "URA",
+   "name": "Urawa Red Diamonds"
+  },
+  "3384": {
+   "abbr": "TOK",
+   "name": "FC Tokyo"
+  },
+  "7115": {
+   "abbr": "KAN",
+   "name": "Kashima Antlers"
+  },
+  "7109": {
+   "abbr": "CER",
+   "name": "Cerezo Osaka"
+  },
+  "7102": {
+   "abbr": "GAM",
+   "name": "Gamba Osaka"
+  },
+  "7107": {
+   "abbr": "AVF",
+   "name": "Avispa Fukuoka"
+  },
+  "22522": {
+   "abbr": "OKA",
+   "name": "Fagiano Okayama"
+  },
+  "7108": {
+   "abbr": "NAG",
+   "name": "Nagoya Grampus"
+  },
+  "7104": {
+   "abbr": "SHI",
+   "name": "Shimizu S-Pulse"
+  },
+  "7112": {
+   "abbr": "KAW",
+   "name": "Kawasaki Frontale"
+  },
+  "7476": {
+   "abbr": "KRE",
+   "name": "Kashiwa Reysol"
+  },
+  "3393": {
+   "abbr": "TYKV",
+   "name": "Tokyo Verdy 1969"
+  },
+  "131701": {
+   "abbr": "MITO",
+   "name": "Mito Hollyhock"
+  },
+  "21355": {
+   "abbr": "CHE",
+   "name": "Chengdu Rongcheng"
+  },
+  "22199": {
+   "abbr": "SHX",
+   "name": "Shenzhen Xinpengcheng"
+  },
+  "7521": {
+   "abbr": "SHT",
+   "name": "Shandong Taishan"
+  },
+  "131705": {
+   "abbr": "LIA",
+   "name": "Liaoning Tieren"
+  },
+  "8239": {
+   "abbr": "TIG",
+   "name": "Tianjin Jinmen Tiger"
+  },
+  "131704": {
+   "abbr": "CHO",
+   "name": "Chongqing Tonglianglong"
+  },
+  "977": {
+   "abbr": "SFC",
+   "name": "Shanghai Shenhua FC"
+  },
+  "22537": {
+   "abbr": "DYI",
+   "name": "Dalian Yingbo"
+  },
+  "15515": {
+   "abbr": "SHP",
+   "name": "Shanghai Port FC"
+  },
+  "8240": {
+   "abbr": "HEN",
+   "name": "Henan"
+  },
+  "22536": {
+   "abbr": "YUN",
+   "name": "Yunnan Yukun"
+  },
+  "21910": {
+   "abbr": "QIN",
+   "name": "Qingdao Hainiu"
+  },
+  "18203": {
+   "abbr": "ZHE",
+   "name": "Zhejiang Professional FC"
+  },
+  "22198": {
+   "abbr": "QWC",
+   "name": "Qingdao West Coast"
+  },
+  "21506": {
+   "abbr": "WTT",
+   "name": "Wuhan Three Towns"
+  },
+  "2052": {
+   "abbr": "BEI",
+   "name": "Beijing Guoan"
+  },
+  "20774": {
+   "abbr": "MBSG",
+   "name": "Mohun Bagan Super Giant"
+  },
+  "17997": {
+   "abbr": "KER",
+   "name": "Kerala Blasters FC"
+  },
+  "18003": {
+   "abbr": "FC Goa",
+   "name": "FC GOA"
+  },
+  "22069": {
+   "abbr": "ITKA",
+   "name": "Inter Kashi"
+  },
+  "18850": {
+   "abbr": "JFC",
+   "name": "Jamshedpur FC"
+  },
+  "20842": {
+   "abbr": "MOH",
+   "name": "Mohammedan SC"
+  },
+  "18851": {
+   "abbr": "BFC",
+   "name": "Bengaluru FC"
+  },
+  "131703": {
+   "abbr": "SCD",
+   "name": "Sporting Club Delhi"
+  },
+  "8897": {
+   "abbr": "EBFC",
+   "name": "East Bengal FC"
+  },
+  "18004": {
+   "abbr": "NEU",
+   "name": "NorthEast United FC"
+  },
+  "18002": {
+   "abbr": "MCFC",
+   "name": "Mumbai City FC"
+  },
+  "18000": {
+   "abbr": "CFC",
+   "name": "Chennaiyin FC"
+  },
+  "18894": {
+   "abbr": "PFC",
+   "name": "Punjab FC"
+  },
+  "17998": {
+   "abbr": "OFC",
+   "name": "Odisha FC"
+  },
+  "8896": {
+   "abbr": "CHU",
+   "name": "Churchill Brothers"
+  },
+  "11143": {
+   "abbr": "MBC",
+   "name": "Melbourne City FC"
+  },
+  "5323": {
+   "abbr": "NEW",
+   "name": "Newcastle Jets"
+  },
+  "22344": {
+   "abbr": "AUC",
+   "name": "Auckland FC"
+  },
+  "5322": {
+   "abbr": "PER",
+   "name": "Perth Glory FC"
+  },
+  "5326": {
+   "abbr": "BRI",
+   "name": "Brisbane Roar FC"
+  },
+  "13696": {
+   "abbr": "WSW",
+   "name": "Western Sydney Wanderers FC"
+  },
+  "5321": {
+   "abbr": "ADL",
+   "name": "Adelaide United FC"
+  },
+  "5328": {
+   "abbr": "MBV",
+   "name": "Melbourne Victory"
+  },
+  "5325": {
+   "abbr": "CCM",
+   "name": "Central Coast Mariners FC"
+  },
+  "19340": {
+   "abbr": "MAC",
+   "name": "Macarthur FC"
+  },
+  "5327": {
+   "abbr": "SYD",
+   "name": "Sydney FC"
+  },
+  "8352": {
+   "abbr": "WEL",
+   "name": "Wellington Phoenix"
+  },
+  "7134": {
+   "abbr": "AWFC",
+   "name": "Al Wahda FC"
+  },
+  "8217": {
+   "abbr": "NAS",
+   "name": "FC Nasaf"
+  },
+  "9655": {
+   "abbr": "SHO",
+   "name": "Al-Shorta SC"
+  },
+  "12008": {
+   "abbr": "ALD",
+   "name": "Al Duhail"
+  },
+  "8371": {
+   "abbr": "SHA",
+   "name": "Sharjah"
+  },
+  "790": {
+   "abbr": "SAA",
+   "name": "Shabab Al Ahli"
+  },
+  "17689": {
+   "abbr": "JDT",
+   "name": "Johor Darul Ta'zim"
+  },
+  "6972": {
+   "abbr": "SEO",
+   "name": "FC Seoul"
+  },
+  "7138": {
+   "abbr": "BUR",
+   "name": "Buriram United"
+  },
+  "15107": {
+   "abbr": "TRA",
+   "name": "Tractor"
+  },
+  "7135": {
+   "abbr": "ALS",
+   "name": "Al Sadd"
+  },
+  "7129": {
+   "abbr": "ALG",
+   "name": "Al-Gharafa"
+  },
+  "131373": {
+   "abbr": "GAN",
+   "name": "Gangwon FC"
+  },
+  "7120": {
+   "abbr": "ULS",
+   "name": "Ulsan HD"
+  },
+  "7530": {
+   "abbr": "NEF",
+   "name": "Neftchi Fergana"
+  },
+  "20912": {
+   "abbr": "AQAJ",
+   "name": "Al-Quwa Al-Jawiya"
+  },
+  "21575": {
+   "abbr": "ALS",
+   "name": "Al-Shamal"
+  },
+  "7123": {
+   "abbr": "PAK",
+   "name": "Pakhtakor"
+  },
+  "8365": {
+   "abbr": "WAS",
+   "name": "Al Wasl"
+  },
+  "7525": {
+   "abbr": "EST",
+   "name": "Esteghlal FC"
+  },
+  "133171": {
+   "abbr": "DHC",
+   "name": "Daejeon Hana Citizen FC"
+  },
+  "131375": {
+   "abbr": "CAHN",
+   "name": "Cong An Ha Noi"
+  },
+  "17760": {
+   "abbr": "RCH",
+   "name": "Ratchaburi FC"
+  },
+  "9693": {
+   "abbr": "POH",
+   "name": "Pohang Steelers"
+  },
+  "7128": {
+   "abbr": "AlN",
+   "name": "Al Ain"
+  },
+  "7119": {
+   "abbr": "JHM",
+   "name": "Jeonbuk Hyundai Motors"
+  },
+  "17757": {
+   "abbr": "PORT",
+   "name": "Port FC"
+  },
+  "9973": {
+   "abbr": "VIL",
+   "name": "Vila Nova"
+  },
+  "9970": {
+   "abbr": "CRB",
+   "name": "CRB"
+  },
+  "9969": {
+   "abbr": "CEA",
+   "name": "Ceará"
+  },
+  "11268": {
+   "abbr": "BER",
+   "name": "São Bernardo"
+  },
+  "18187": {
+   "abbr": "OPE",
+   "name": "Operário PR"
+  },
+  "10357": {
+   "abbr": "AGO",
+   "name": "Atlético Goianiense"
+  },
+  "10281": {
+   "abbr": "BFC",
+   "name": "Botafogo-SP"
+  },
+  "6272": {
+   "abbr": "FOR",
+   "name": "Fortaleza"
+  },
+  "17313": {
+   "abbr": "CUI",
+   "name": "Cuiabá"
+  },
+  "7635": {
+   "abbr": "SPO",
+   "name": "Sport"
+  },
+  "9966": {
+   "abbr": "AVA",
+   "name": "Avaí"
+  },
+  "6270": {
+   "abbr": "JUV",
+   "name": "Juventude"
+  },
+  "7633": {
+   "abbr": "NAU",
+   "name": "Náutico"
+  },
+  "9971": {
+   "abbr": "CRI",
+   "name": "Criciúma"
+  },
+  "20851": {
+   "abbr": "ACMG",
+   "name": "Athletic"
+  },
+  "3459": {
+   "abbr": "PON",
+   "name": "Ponte Preta"
+  },
+  "3395": {
+   "abbr": "GOI",
+   "name": "Goiás"
+  },
+  "6154": {
+   "abbr": "AMG",
+   "name": "América Mineiro"
+  },
+  "18127": {
+   "abbr": "NOV",
+   "name": "Novorizontino"
+  },
+  "17333": {
+   "abbr": "LON",
+   "name": "Londrina"
+  },
+  "5486": {
+   "abbr": "PER",
+   "name": "Deportivo Pereira"
+  },
+  "7915": {
+   "abbr": "LLA",
+   "name": "Llaneros FC"
+  },
+  "4928": {
+   "abbr": "FOR",
+   "name": "Fortaleza CEIF"
+  },
+  "9761": {
+   "abbr": "AFC",
+   "name": "Alianza FC"
+  },
+  "8109": {
+   "abbr": "AME",
+   "name": "América de Cali"
+  },
+  "7445": {
+   "abbr": "BOG",
+   "name": "Internacional de Bogotá"
+  },
+  "5264": {
+   "abbr": "NAL",
+   "name": "Atlético Nacional"
+  },
+  "5480": {
+   "abbr": "CHI",
+   "name": "Boyacá Chicó FC"
+  },
+  "6137": {
+   "abbr": "BUC",
+   "name": "Atlético Bucaramanga"
+  },
+  "5484": {
+   "abbr": "MIL",
+   "name": "Millonarios"
+  },
+  "5485": {
+   "abbr": "PAS",
+   "name": "Deportivo Pasto"
+  },
+  "2690": {
+   "abbr": "DIM",
+   "name": "Independiente Medellín"
+  },
+  "10309": {
+   "abbr": "COR",
+   "name": "Jaguares de Córdoba"
+  },
+  "2672": {
+   "abbr": "DCI",
+   "name": "Deportivo Cali"
+  },
+  "4815": {
+   "abbr": "JUN",
+   "name": "Atlético Junior"
+  },
+  "5489": {
+   "abbr": "TOL",
+   "name": "Deportes Tolima"
+  },
+  "5488": {
+   "abbr": "SFE",
+   "name": "Independiente Santa Fe"
+  },
+  "9762": {
+   "abbr": "AGD",
+   "name": "Águilas Doradas"
+  },
+  "6101": {
+   "abbr": "CUC",
+   "name": "Cúcuta Deportivo"
+  },
+  "2919": {
+   "abbr": "CAL",
+   "name": "Once Caldas"
+  },
+  "4139": {
+   "abbr": "U. de Chile",
+   "name": "Universidad de Chile"
+  },
+  "4138": {
+   "abbr": "AUD",
+   "name": "Audax Italiano"
+  },
+  "19195": {
+   "abbr": "LIM",
+   "name": "Deportes Limache"
+  },
+  "2688": {
+   "abbr": "COL",
+   "name": "Colo Colo"
+  },
+  "5362": {
+   "abbr": "UdeC",
+   "name": "Universidad de Concepción"
+  },
+  "8186": {
+   "abbr": "COQ",
+   "name": "Coquimbo Unido"
+  },
+  "4133": {
+   "abbr": "COB",
+   "name": "Cobresal"
+  },
+  "4134": {
+   "abbr": "HUA",
+   "name": "Huachipato"
+  },
+  "4137": {
+   "abbr": "LSE",
+   "name": "La Serena"
+  },
+  "885": {
+   "abbr": "CDUC",
+   "name": "Universidad Católica"
+  },
+  "4422": {
+   "abbr": "PAL",
+   "name": "Palestino"
+  },
+  "7427": {
+   "abbr": "ÑUB",
+   "name": "Ñublense"
+  },
+  "4129": {
+   "abbr": "EVE",
+   "name": "Everton CD"
+  },
+  "10144": {
+   "abbr": "ULC",
+   "name": "Unión La Calera"
+  },
+  "6072": {
+   "abbr": "OHI",
+   "name": "O'Higgins"
+  },
+  "8110": {
+   "abbr": "CON",
+   "name": "Deportes Concepcion"
+  },
+  "2687": {
+   "abbr": "STR",
+   "name": "The Strongest"
+  },
+  "4818": {
+   "abbr": "TAC",
+   "name": "Deportivo Táchira"
+  },
+  "6097": {
+   "abbr": "MAY",
+   "name": "2 de Mayo"
+  },
+  "2680": {
+   "abbr": "ALM",
+   "name": "Alianza Lima"
+  },
+  "8416": {
+   "abbr": "JUV",
+   "name": "Juventud"
+  },
+  "9283": {
+   "abbr": "UCA",
+   "name": "Universidad Católica (Quito)"
+  },
+  "6037": {
+   "abbr": "CAR",
+   "name": "Carabobo"
+  },
+  "2673": {
+   "abbr": "SCR",
+   "name": "Sporting Cristal"
+  },
+  "5492": {
+   "abbr": "LIV",
+   "name": "Liverpool"
+  },
+  "2686": {
+   "abbr": "BAR",
+   "name": "Barcelona SC"
+  },
+  "10311": {
+   "abbr": "POT",
+   "name": "Nacional Potosí"
+  },
+  "7385": {
+   "abbr": "GUA",
+   "name": "Guaraní"
+  },
+  "17090": {
+   "abbr": "LGA",
+   "name": "Deportivo La Guaira"
+  },
+  "2681": {
+   "abbr": "BOL",
+   "name": "Bolívar"
+  },
+  "19425": {
+   "abbr": "CAR",
+   "name": "Always Ready"
+  },
+  "4816": {
+   "abbr": "LDU",
+   "name": "Liga de Quito"
+  },
+  "2685": {
+   "abbr": "UNI",
+   "name": "Universitario"
+  },
+  "2684": {
+   "abbr": "NAC",
+   "name": "Nacional"
+  },
+  "11995": {
+   "abbr": "CFC",
+   "name": "Cusco FC"
+  },
+  "2671": {
+   "abbr": "CPT",
+   "name": "Cerro Porteño"
+  },
+  "17086": {
+   "abbr": "IDV",
+   "name": "Independiente del Valle"
+  },
+  "10094": {
+   "abbr": "UCV",
+   "name": "UCV FC"
+  },
+  "2670": {
+   "abbr": "LIB",
+   "name": "Libertad"
+  },
+  "2683": {
+   "abbr": "PEN",
+   "name": "Peñarol"
+  },
+  "20889": {
+   "abbr": "CIP",
+   "name": "Independiente Petrolero"
+  },
+  "9497": {
+   "abbr": "GUA",
+   "name": "Guabirá"
+  },
+  "19002": {
+   "abbr": "MCT",
+   "name": "Montevideo City Torque"
+  },
+  "1007": {
+   "abbr": "DSC",
+   "name": "Defensor Sporting"
+  },
+  "18995": {
+   "abbr": "APC",
+   "name": "Academia Puerto Cabello"
+  },
+  "6041": {
+   "abbr": "MSC",
+   "name": "Monagas SC"
+  },
+  "5267": {
+   "abbr": "AAT",
+   "name": "Alianza Atlético"
+  },
+  "21819": {
+   "abbr": "GAR",
+   "name": "Deportivo Garcilaso"
+  },
+  "6047": {
+   "abbr": "BLO",
+   "name": "Blooming"
+  },
+  "22137": {
+   "abbr": "BULO",
+   "name": "San Antonio Bulo Bulo"
+  },
+  "4811": {
+   "abbr": "CFC",
+   "name": "Caracas FC"
+  },
+  "13481": {
+   "abbr": "MET",
+   "name": "Metropolitanos"
+  },
+  "7466": {
+   "abbr": "CST",
+   "name": "Sportivo Trinidense"
+  },
+  "2675": {
+   "abbr": "OLI",
+   "name": "Club Olimpia"
+  },
+  "4812": {
+   "abbr": "CLU",
+   "name": "Deportivo Cuenca"
+  },
+  "21843": {
+   "abbr": "LIB",
+   "name": "Libertad (Ecuador)"
+  },
+  "9999": {
+   "abbr": "BOS",
+   "name": "Boston River"
+  },
+  "9903": {
+   "abbr": "RAC",
+   "name": "Racing (Montevideo)"
+  },
+  "5584": {
+   "abbr": "NAC",
+   "name": "Nacional Asunción"
+  },
+  "22517": {
+   "abbr": "DEP",
+   "name": "Deportivo Recoleta"
+  },
+  "3372": {
+   "abbr": "CIE",
+   "name": "Cienciano del Cusco"
+  },
+  "7312": {
+   "abbr": "MGR",
+   "name": "Melgar"
+  },
+  "20695": {
+   "abbr": "ORS",
+   "name": "Orense"
+  },
+  "18439": {
+   "abbr": "MAC",
+   "name": "Macará"
+  },
+  "7084": {
+   "abbr": "MSU",
+   "name": "Mamelodi Sundowns"
+  },
+  "19000": {
+   "abbr": "ORB",
+   "name": "Orbit College"
+  },
+  "7081": {
+   "abbr": "KAI",
+   "name": "Kaizer Chiefs"
+  },
+  "7077": {
+   "abbr": "ARR",
+   "name": "Golden Arrows"
+  },
+  "20814": {
+   "abbr": "SEK",
+   "name": "Sekhukhune United FC"
+  },
+  "18615": {
+   "abbr": "STE",
+   "name": "Stellenbosch"
+  },
+  "19298": {
+   "abbr": "TSG",
+   "name": "TS Galaxy FC"
+  },
+  "13317": {
+   "abbr": "MAR",
+   "name": "Marumo Gallants"
+  },
+  "18825": {
+   "abbr": "RBFC",
+   "name": "Richards Bay FC"
+  },
+  "131361": {
+   "abbr": "SIW",
+   "name": "Siwelele"
+  },
+  "11913": {
+   "abbr": "CHI",
+   "name": "Chippa United"
+  },
+  "7085": {
+   "abbr": "ORL",
+   "name": "Orlando Pirates"
+  },
+  "7079": {
+   "abbr": "AMA",
+   "name": "AmaZulu"
+  },
+  "22348": {
+   "abbr": "DUR",
+   "name": "Durban City"
+  },
+  "7099": {
+   "abbr": "PCFC",
+   "name": "Polokwane City FC"
+  },
+  "18611": {
+   "abbr": "MAG",
+   "name": "Magesi FC"
+  },
+  "21990": {
+   "abbr": "MIL",
+   "name": "Milford FC"
+  },
+  "22350": {
+   "abbr": "KRU",
+   "name": "Kruger United"
+  },
+  "16721": {
+   "abbr": "GIB",
+   "name": "Gibraltar"
+  },
+  "456": {
+   "abbr": "LVA",
+   "name": "Latvia"
+  },
+  "453": {
+   "abbr": "MLT",
+   "name": "Malta"
+  },
+  "582": {
+   "abbr": "LUX",
+   "name": "Luxembourg"
+  },
+  "587": {
+   "abbr": "AND",
+   "name": "Andorra"
+  },
+  "474": {
+   "abbr": "AUT",
+   "name": "Austria"
+  },
+  "461": {
+   "abbr": "ISR",
+   "name": "Israel"
+  },
+  "18272": {
+   "abbr": "KOS",
+   "name": "Kosovo"
+  },
+  "476": {
+   "abbr": "IRL",
+   "name": "Republic of Ireland"
+  },
+  "589": {
+   "abbr": "LIE",
+   "name": "Liechtenstein"
+  },
+  "460": {
+   "abbr": "LTU",
+   "name": "Lithuania"
+  },
+  "449": {
+   "abbr": "NED",
+   "name": "Netherlands"
+  },
+  "481": {
+   "abbr": "GER",
+   "name": "Germany"
+  },
+  "464": {
+   "abbr": "NOR",
+   "name": "Norway"
+  },
+  "479": {
+   "abbr": "DEN",
+   "name": "Denmark"
+  },
+  "482": {
+   "abbr": "POR",
+   "name": "Portugal"
+  },
+  "578": {
+   "abbr": "WAL",
+   "name": "Wales"
+  },
+  "6757": {
+   "abbr": "SRB",
+   "name": "Serbia"
+  },
+  "455": {
+   "abbr": "GRE",
+   "name": "Greece"
+  },
+  "579": {
+   "abbr": "ARM",
+   "name": "Armenia"
+  },
+  "584": {
+   "abbr": "GEO",
+   "name": "Georgia"
+  },
+  "586": {
+   "abbr": "NIR",
+   "name": "Northern Ireland"
+  },
+  "480": {
+   "abbr": "HUN",
+   "name": "Hungary"
+  },
+  "457": {
+   "abbr": "UKR",
+   "name": "Ukraine"
+  },
+  "162": {
+   "abbr": "ITA",
+   "name": "Italy"
+  },
+  "459": {
+   "abbr": "BEL",
+   "name": "Belgium"
+  },
+  "6775": {
+   "abbr": "MNE",
+   "name": "Montenegro"
+  },
+  "445": {
+   "abbr": "CYP",
+   "name": "Cyprus"
+  },
+  "471": {
+   "abbr": "POL",
+   "name": "Poland"
+  },
+  "452": {
+   "abbr": "BIH",
+   "name": "Bosnia-Herzegovina"
+  },
+  "466": {
+   "abbr": "SWE",
+   "name": "Sweden"
+  },
+  "473": {
+   "abbr": "ROU",
+   "name": "Romania"
+  },
+  "465": {
+   "abbr": "TUR",
+   "name": "Türkiye"
+  },
+  "478": {
+   "abbr": "FRA",
+   "name": "France"
+  },
+  "472": {
+   "abbr": "SVN",
+   "name": "Slovenia"
+  },
+  "580": {
+   "abbr": "SCO",
+   "name": "Scotland"
+  },
+  "462": {
+   "abbr": "BUL",
+   "name": "Bulgaria"
+  },
+  "447": {
+   "abbr": "FRO",
+   "name": "Faroe Islands"
+  },
+  "2619": {
+   "abbr": "KAZ",
+   "name": "Kazakhstan"
+  },
+  "470": {
+   "abbr": "ISL",
+   "name": "Iceland"
+  },
+  "444": {
+   "abbr": "EST",
+   "name": "Estonia"
+  },
+  "588": {
+   "abbr": "SMR",
+   "name": "San Marino"
+  },
+  "458": {
+   "abbr": "FIN",
+   "name": "Finland"
+  },
+  "585": {
+   "abbr": "ALB",
+   "name": "Albania"
+  },
+  "583": {
+   "abbr": "BLR",
+   "name": "Belarus"
+  },
+  "450": {
+   "abbr": "CZE",
+   "name": "Czechia"
+  },
+  "477": {
+   "abbr": "CRO",
+   "name": "Croatia"
+  },
+  "448": {
+   "abbr": "ENG",
+   "name": "England"
+  },
+  "164": {
+   "abbr": "ESP",
+   "name": "Spain"
+  },
+  "463": {
+   "abbr": "MKD",
+   "name": "North Macedonia"
+  },
+  "475": {
+   "abbr": "SUI",
+   "name": "Switzerland"
+  },
+  "468": {
+   "abbr": "SVK",
+   "name": "Slovakia"
+  },
+  "483": {
+   "abbr": "MDA",
+   "name": "Moldova"
+  },
+  "581": {
+   "abbr": "AZE",
+   "name": "Azerbaijan"
+  },
+  "2659": {
+   "abbr": "PAN",
+   "name": "Panama"
+  },
+  "203": {
+   "abbr": "MEX",
+   "name": "Mexico"
+  },
+  "204": {
+   "abbr": "BOL",
+   "name": "Bolivia"
+  },
+  "2570": {
+   "abbr": "UZB",
+   "name": "Uzbekistan"
+  },
+  "658": {
+   "abbr": "CHN",
+   "name": "China"
+  },
+  "2627": {
+   "abbr": "TRI",
+   "name": "Trinidad and Tobago"
+  },
+  "6725": {
+   "abbr": "NAM",
+   "name": "Namibia"
+  },
+  "6724": {
+   "abbr": "KGZ",
+   "name": "Kyrgyz Republic"
+  },
+  "8938": {
+   "abbr": "EQG",
+   "name": "Equatorial Guinea"
+  },
+  "2645": {
+   "abbr": "USVI",
+   "name": "US Virgin Islands"
+  },
+  "4886": {
+   "abbr": "ASA",
+   "name": "American Samoa"
+  },
+  "2850": {
+   "abbr": "COD",
+   "name": "Congo DR"
+  },
+  "2643": {
+   "abbr": "BER",
+   "name": "Bermuda"
+  },
+  "11766": {
+   "abbr": "PUR",
+   "name": "Puerto Rico"
+  },
+  "10529": {
+   "abbr": "GUA",
+   "name": "Guam"
+  },
+  "2642": {
+   "abbr": "ARU",
+   "name": "Aruba"
+  },
+  "6722": {
+   "abbr": "MAC",
+   "name": "Macau"
+  },
+  "7349": {
+   "abbr": "VIE",
+   "name": "Vietnam"
+  },
+  "5783": {
+   "abbr": "BAN",
+   "name": "Bangladesh"
+  },
+  "4384": {
+   "abbr": "SIN",
+   "name": "Singapore"
+  },
+  "5778": {
+   "abbr": "TAN",
+   "name": "Tanzania"
+  },
+  "4397": {
+   "abbr": "UAE",
+   "name": "United Arab Emirates"
+  },
+  "4398": {
+   "abbr": "QAT",
+   "name": "Qatar"
+  },
+  "205": {
+   "abbr": "BRA",
+   "name": "Brazil"
+  },
+  "2728": {
+   "abbr": "MTQ",
+   "name": "Martinique"
+  },
+  "2647": {
+   "abbr": "CUB",
+   "name": "Cuba"
+  },
+  "2640": {
+   "abbr": "BAH",
+   "name": "Bahamas"
+  },
+  "8942": {
+   "abbr": "AIA",
+   "name": "Anguilla"
+  },
+  "10596": {
+   "abbr": "SMN",
+   "name": "St. Martin"
+  },
+  "2637": {
+   "abbr": "BRB",
+   "name": "Barbados"
+  },
+  "208": {
+   "abbr": "COL",
+   "name": "Colombia"
+  },
+  "2646": {
+   "abbr": "CAY",
+   "name": "Cayman Islands"
+  },
+  "2644": {
+   "abbr": "BVI",
+   "name": "British Virgin Islands"
+  },
+  "2649": {
+   "abbr": "DOM",
+   "name": "Dominican Republic"
+  },
+  "2650": {
+   "abbr": "SLV",
+   "name": "El Salvador"
+  },
+  "19314": {
+   "abbr": "BOE",
+   "name": "Bonaire"
+  },
+  "13584": {
+   "abbr": "VIN",
+   "name": "St. Vincent and the Grenadines"
+  },
+  "207": {
+   "abbr": "CHI",
+   "name": "Chile"
+  },
+  "2597": {
+   "abbr": "CPV",
+   "name": "Cape Verde"
+  },
+  "11678": {
+   "abbr": "CUW",
+   "name": "Curaçao"
+  },
+  "2666": {
+   "abbr": "NZL",
+   "name": "New Zealand"
+  },
+  "4861": {
+   "abbr": "SOL",
+   "name": "Solomon Islands"
+  },
+  "628": {
+   "abbr": "AUS",
+   "name": "Australia"
+  },
+  "656": {
+   "abbr": "CMR",
+   "name": "Cameroon"
+  },
+  "213": {
+   "abbr": "VEN",
+   "name": "Venezuela"
+  },
+  "469": {
+   "abbr": "IRN",
+   "name": "Iran"
+  },
+  "657": {
+   "abbr": "NGA",
+   "name": "Nigeria"
+  },
+  "4895": {
+   "abbr": "IDN",
+   "name": "Indonesia"
+  },
+  "2662": {
+   "abbr": "SKN",
+   "name": "St. Kitts and Nevis"
+  },
+  "4231": {
+   "abbr": "GAB",
+   "name": "Gabon"
+  },
+  "2661": {
+   "abbr": "LCA",
+   "name": "St. Lucia"
+  },
+  "2844": {
+   "abbr": "BEN",
+   "name": "Benin"
+  },
+  "4205": {
+   "abbr": "LBR",
+   "name": "Liberia"
+  },
+  "4356": {
+   "abbr": "TOG",
+   "name": "Togo"
+  },
+  "2847": {
+   "abbr": "GUI",
+   "name": "Guinea"
+  },
+  "2848": {
+   "abbr": "KEN",
+   "name": "Kenya"
+  },
+  "454": {
+   "abbr": "RUS",
+   "name": "Russia"
+  },
+  "2658": {
+   "abbr": "NCA",
+   "name": "Nicaragua"
+  },
+  "4469": {
+   "abbr": "GHA",
+   "name": "Ghana"
+  },
+  "467": {
+   "abbr": "RSA",
+   "name": "South Africa"
+  },
+  "2917": {
+   "abbr": "JOR",
+   "name": "Jordan"
+  },
+  "214": {
+   "abbr": "CRC",
+   "name": "Costa Rica"
+  },
+  "655": {
+   "abbr": "KSA",
+   "name": "Saudi Arabia"
+  },
+  "2620": {
+   "abbr": "EGY",
+   "name": "Egypt"
+  },
+  "8937": {
+   "abbr": "NIG",
+   "name": "Niger"
+  },
+  "2621": {
+   "abbr": "LBY",
+   "name": "Libya"
+  },
+  "210": {
+   "abbr": "PAR",
+   "name": "Paraguay"
+  },
+  "2653": {
+   "abbr": "GUY",
+   "name": "Guyana"
+  },
+  "13582": {
+   "abbr": "DMA",
+   "name": "Dominica"
+  },
+  "2851": {
+   "abbr": "RWA",
+   "name": "Rwanda"
+  },
+  "2651": {
+   "abbr": "GRN",
+   "name": "Grenada"
+  },
+  "624": {
+   "abbr": "ALG",
+   "name": "Algeria"
+  },
+  "2652": {
+   "abbr": "GUA",
+   "name": "Guatemala"
+  },
+  "212": {
+   "abbr": "URU",
+   "name": "Uruguay"
+  },
+  "2869": {
+   "abbr": "MAR",
+   "name": "Morocco"
+  },
+  "209": {
+   "abbr": "ECU",
+   "name": "Ecuador"
+  },
+  "2641": {
+   "abbr": "BLZ",
+   "name": "Belize"
+  },
+  "18243": {
+   "abbr": "SMA",
+   "name": "Sint Maarten"
+  },
+  "202": {
+   "abbr": "ARG",
+   "name": "Argentina"
+  },
+  "8940": {
+   "abbr": "MTN",
+   "name": "Mauritania"
+  },
+  "8601": {
+   "abbr": "COM",
+   "name": "Comoros"
+  },
+  "4277": {
+   "abbr": "ZAM",
+   "name": "Zambia"
+  },
+  "4325": {
+   "abbr": "MWI",
+   "name": "Malawi"
+  },
+  "5533": {
+   "abbr": "MAD",
+   "name": "Madagascar"
+  },
+  "451": {
+   "abbr": "KOR",
+   "name": "South Korea"
+  },
+  "4789": {
+   "abbr": "CIV",
+   "name": "Ivory Coast"
+  },
+  "654": {
+   "abbr": "SEN",
+   "name": "Senegal"
+  },
+  "211": {
+   "abbr": "PER",
+   "name": "Peru"
+  },
+  "206": {
+   "abbr": "CAN",
+   "name": "Canada"
+  },
+  "627": {
+   "abbr": "JPN",
+   "name": "Japan"
+  },
+  "660": {
+   "abbr": "USA",
+   "name": "United States"
+  },
+  "2654": {
+   "abbr": "HAI",
+   "name": "Haiti"
+  },
+  "659": {
+   "abbr": "TUN",
+   "name": "Tunisia"
+  },
+  "8600": {
+   "abbr": "SLE",
+   "name": "Sierra Leone"
+  },
+  "4214": {
+   "abbr": "ZIM",
+   "name": "Zimbabwe"
+  },
+  "2849": {
+   "abbr": "MLI",
+   "name": "Mali"
+  },
+  "215": {
+   "abbr": "HON",
+   "name": "Honduras"
+  },
+  "7368": {
+   "abbr": "GAM",
+   "name": "Gambia"
+  },
+  "4319": {
+   "abbr": "SUD",
+   "name": "Sudan"
+  },
+  "5779": {
+   "abbr": "BDI",
+   "name": "Burundi"
+  },
+  "1038": {
+   "abbr": "JAM",
+   "name": "Jamaica"
+  },
+  "4385": {
+   "abbr": "IND",
+   "name": "India"
+  },
+  "4375": {
+   "abbr": "IRQ",
+   "name": "Iraq"
+  },
+  "4388": {
+   "abbr": "LIB",
+   "name": "Lebanon"
+  },
+  "8663": {
+   "abbr": "MGL",
+   "name": "Mongolia"
+  },
+  "7347": {
+   "abbr": "PHI",
+   "name": "Philippines"
+  },
+  "4390": {
+   "abbr": "MDV",
+   "name": "Maldives"
+  },
+  "5781": {
+   "abbr": "PAK",
+   "name": "Pakistan"
+  },
+  "5518": {
+   "abbr": "CAM",
+   "name": "Cambodia"
+  },
+  "5784": {
+   "abbr": "BHU",
+   "name": "Bhutan"
+  },
+  "6640": {
+   "abbr": "LES",
+   "name": "Lesotho"
+  },
+  "4211": {
+   "abbr": "UGA",
+   "name": "Uganda"
+  },
+  "653": {
+   "abbr": "ANG",
+   "name": "Angola"
+  },
+  "4245": {
+   "abbr": "BOT",
+   "name": "Botswana"
+  },
+  "1928": {
+   "abbr": "HKG",
+   "name": "Hong Kong"
+  },
+  "4396": {
+   "abbr": "THA",
+   "name": "Thailand"
+  },
+  "841": {
+   "abbr": "KUW",
+   "name": "Kuwait"
+  },
+  "2841": {
+   "abbr": "OMA",
+   "name": "Oman"
+  },
+  "4380": {
+   "abbr": "SYR",
+   "name": "Syria"
+  },
+  "4381": {
+   "abbr": "BHR",
+   "name": "Bahrain"
+  },
+  "2845": {
+   "abbr": "BKA",
+   "name": "Burkina Faso"
+  },
+  "4862": {
+   "abbr": "FIJ",
+   "name": "Fiji"
+  },
+  "4864": {
+   "abbr": "VAN",
+   "name": "Vanuatu"
+  },
+  "6770": {
+   "abbr": "MYA",
+   "name": "Myanmar"
+  },
+  "6167": {
+   "abbr": "PLE",
+   "name": "Palestine"
+  },
+  "5777": {
+   "abbr": "ETH",
+   "name": "Ethiopia"
+  },
+  "5780": {
+   "abbr": "AFG",
+   "name": "Afghanistan"
+  },
+  "8939": {
+   "abbr": "MOZ",
+   "name": "Mozambique"
+  },
+  "10528": {
+   "abbr": "CTA",
+   "name": "Central African Republic"
+  },
+  "4885": {
+   "abbr": "PNG",
+   "name": "Papua New Guinea"
+  },
+  "4888": {
+   "abbr": "NCD",
+   "name": "New Caledonia"
+  },
+  "6723": {
+   "abbr": "TJK",
+   "name": "Tajikistan"
+  },
+  "11808": {
+   "abbr": "STP",
+   "name": "Sao Tome and Principe"
+  },
+  "4884": {
+   "abbr": "COK",
+   "name": "Cook Islands"
+  },
+  "4863": {
+   "abbr": "TAH",
+   "name": "Tahiti"
+  },
+  "6726": {
+   "abbr": "SEY",
+   "name": "Seychelles"
+  },
+  "5782": {
+   "abbr": "SRI",
+   "name": "Sri Lanka"
+  },
+  "7507": {
+   "abbr": "TKM",
+   "name": "Turkmenistan"
+  },
+  "5534": {
+   "abbr": "MRI",
+   "name": "Mauritius"
+  },
+  "5775": {
+   "abbr": "DJI",
+   "name": "Djibouti"
+  },
+  "14561": {
+   "abbr": "TPE",
+   "name": "Chinese Taipei"
+  },
+  "2664": {
+   "abbr": "SUR",
+   "name": "Suriname"
+  },
+  "6686": {
+   "abbr": "SWZ",
+   "name": "Eswatini"
+  },
+  "6014": {
+   "abbr": "YEM",
+   "name": "Yemen"
+  },
+  "2405": {
+   "abbr": "MAS",
+   "name": "Malaysia"
+  },
+  "2665": {
+   "abbr": "TCA",
+   "name": "Turks and Caicos Islands"
+  },
+  "2655": {
+   "abbr": "MSR",
+   "name": "Montserrat"
+  },
+  "2638": {
+   "abbr": "ATG",
+   "name": "Antigua and Barbuda"
+  },
+  "7657": {
+   "abbr": "GDL",
+   "name": "Guadeloupe"
+  },
+  "10532": {
+   "abbr": "GUF",
+   "name": "French Guiana"
+  },
+  "3258": {
+   "abbr": "CAT",
+   "name": "Catania"
+  },
+  "4002": {
+   "abbr": "POT",
+   "name": "Potenza"
+  },
+  "131836": {
+   "abbr": "BRE",
+   "name": "Union Brescia"
+  },
+  "4347": {
+   "abbr": "RAV",
+   "name": "Ravenna"
+  },
+  "4703": {
+   "abbr": "SAL",
+   "name": "Salford City"
+  },
+  "341": {
+   "abbr": "SWI",
+   "name": "Swindon Town"
+  },
+  "2567": {
+   "abbr": "BRT",
+   "name": "Burton Albion"
+  },
+  "304": {
+   "abbr": "MNF",
+   "name": "Mansfield Town"
+  },
+  "386": {
+   "abbr": "GRI",
+   "name": "Grimsby Town"
+  },
+  "350": {
+   "abbr": "WGA",
+   "name": "Wigan Athletic"
+  },
+  "131494": {
+   "abbr": "MFC",
+   "name": "Macclesfield FC"
+  },
+  "348": {
+   "abbr": "PTV",
+   "name": "Port Vale"
+  },
+  "308": {
+   "abbr": "BRI",
+   "name": "Bristol Rovers"
+  },
+  "351": {
+   "abbr": "CAM",
+   "name": "Cambridge United"
+  },
+  "4489": {
+   "abbr": "OXC",
+   "name": "Oxford City"
+  },
+  "2731": {
+   "abbr": "ACC",
+   "name": "Accrington Stanley"
+  },
+  "344": {
+   "abbr": "WYC",
+   "name": "Wycombe Wanderers"
+  },
+  "10167": {
+   "abbr": "HOR",
+   "name": "AFC Hornchurch"
+  },
+  "346": {
+   "abbr": "BLP",
+   "name": "Blackpool"
+  },
+  "280": {
+   "abbr": "BAR",
+   "name": "Barnet"
+  },
+  "345": {
+   "abbr": "TRN",
+   "name": "Tranmere Rovers"
+  },
+  "397": {
+   "abbr": "BAR",
+   "name": "Barnsley"
+  },
+  "632": {
+   "abbr": "ALD",
+   "name": "Aldershot Town"
+  },
+  "2595": {
+   "abbr": "BOR",
+   "name": "Boreham Wood"
+  },
+  "387": {
+   "abbr": "BRD",
+   "name": "Bradford City"
+  },
+  "20771": {
+   "abbr": "MAR",
+   "name": "Marine"
+  },
+  "3129": {
+   "abbr": "BRO",
+   "name": "Bromley"
+  },
+  "402": {
+   "abbr": "ROT",
+   "name": "Rotherham United"
+  },
+  "132415": {
+   "abbr": "AFC",
+   "name": "AFC Rushden & Diamonds"
+  },
+  "322": {
+   "abbr": "CAR",
+   "name": "Carlisle United"
+  },
+  "320": {
+   "abbr": "CHL",
+   "name": "Cheltenham Town"
+  },
+  "312": {
+   "abbr": "HAL",
+   "name": "FC Halifax Town"
+  },
+  "343": {
+   "abbr": "CHES",
+   "name": "Chesterfield"
+  },
+  "284": {
+   "abbr": "YEO",
+   "name": "Yeovil Town"
+  },
+  "339": {
+   "abbr": "COL",
+   "name": "Colchester United"
+  },
+  "649": {
+   "abbr": "Worcester Ci",
+   "name": "Worcester City"
+  },
+  "396": {
+   "abbr": "CAX",
+   "name": "Crewe Alexandra"
+  },
+  "3802": {
+   "abbr": "WIM",
+   "name": "AFC Wimbledon"
+  },
+  "293": {
+   "abbr": "DOV",
+   "name": "Dover Athletic"
+  },
+  "3887": {
+   "abbr": "WEA",
+   "name": "Wealdstone"
+  },
+  "3897": {
+   "abbr": "ELH",
+   "name": "Eastleigh"
+  },
+  "302": {
+   "abbr": "SHR",
+   "name": "Shrewsbury Town"
+  },
+  "3891": {
+   "abbr": "FLE",
+   "name": "Fleetwood Town"
+  },
+  "303": {
+   "abbr": "RCH",
+   "name": "Rochdale"
+  },
+  "389": {
+   "abbr": "GIL",
+   "name": "Gillingham"
+  },
+  "642": {
+   "abbr": "BRW",
+   "name": "Barrow"
+  },
+  "2588": {
+   "abbr": "GUI",
+   "name": "Guiseley"
+  },
+  "3231": {
+   "abbr": "SUT",
+   "name": "Sutton United"
+  },
+  "19262": {
+   "abbr": "HAR",
+   "name": "Harrogate Town"
+  },
+  "13884": {
+   "abbr": "FYL",
+   "name": "AFC Fylde"
+  },
+  "335": {
+   "abbr": "HUD",
+   "name": "Huddersfield Town"
+  },
+  "324": {
+   "abbr": "EXE",
+   "name": "Exeter City"
+  },
+  "319": {
+   "abbr": "KID",
+   "name": "Kidderminster Harriers"
+  },
+  "279": {
+   "abbr": "DON",
+   "name": "Doncaster Rovers"
+  },
+  "309": {
+   "abbr": "LEY",
+   "name": "Leyton Orient"
+  },
+  "22468": {
+   "abbr": "HAR",
+   "name": "Harborough Town"
+  },
+  "301": {
+   "abbr": "LTN",
+   "name": "Luton Town"
+  },
+  "282": {
+   "abbr": "FGR",
+   "name": "Forest Green Rovers"
+  },
+  "390": {
+   "abbr": "MKD",
+   "name": "Milton Keynes Dons"
+  },
+  "635": {
+   "abbr": "NEW",
+   "name": "Newport County"
+  },
+  "401": {
+   "abbr": "WAL",
+   "name": "Walsall"
+  },
+  "285": {
+   "abbr": "STE",
+   "name": "Stevenage"
+  },
+  "307": {
+   "abbr": "PLY",
+   "name": "Plymouth Argyle"
+  },
+  "21711": {
+   "abbr": "ALV",
+   "name": "Alvechurch"
+  },
+  "313": {
+   "abbr": "SCU",
+   "name": "Scunthorpe United"
+  },
+  "132144": {
+   "abbr": "SAL",
+   "name": "Salisbury FC"
+  },
+  "133366": {
+   "abbr": "SHO",
+   "name": "Sholing"
+  },
+  "315": {
+   "abbr": "YORK",
+   "name": "York City"
+  },
+  "353": {
+   "abbr": "NHT",
+   "name": "Northampton Town"
+  },
+  "633": {
+   "abbr": "ALT",
+   "name": "Altrincham"
+  },
+  "340": {
+   "abbr": "NCO",
+   "name": "Notts County"
+  },
+  "342": {
+   "abbr": "PET",
+   "name": "Peterborough United"
+  },
+  "338": {
+   "abbr": "REA",
+   "name": "Reading"
+  },
+  "2589": {
+   "abbr": "STF",
+   "name": "Stafford Rangers"
+  },
+  "20770": {
+   "abbr": "CRWD",
+   "name": "Cray Wanderers"
+  },
+  "400": {
+   "abbr": "STO",
+   "name": "Stockport County"
+  },
+  "133370": {
+   "abbr": "WIM",
+   "name": "Wimborne Town"
+  },
+  "2594": {
+   "abbr": "CRA",
+   "name": "Crawley Town"
+  },
+  "332": {
+   "abbr": "OLD",
+   "name": "Oldham Athletic"
+  },
+  "132948": {
+   "abbr": "PLY",
+   "name": "Plymouth Parkway"
+  },
+  "132350": {
+   "abbr": "BER",
+   "name": "Berkhamsted"
+  },
+  "2737": {
+   "abbr": "ALB",
+   "name": "Albacete"
+  },
+  "20776": {
+   "abbr": "ANA",
+   "name": "Anaitasuna"
+  },
+  "133838": {
+   "abbr": "TED",
+   "name": "CD Tedeón"
+  },
+  "131403": {
+   "abbr": "CAL",
+   "name": "Atlético Calatayud"
+  },
+  "22372": {
+   "abbr": "BAZ",
+   "name": "CD Baztán"
+  },
+  "133844": {
+   "abbr": "UBL",
+   "name": "UB Lebrijana"
+  },
+  "133851": {
+   "abbr": "C6J",
+   "name": "Ceuta 6 de Junio"
+  },
+  "133842": {
+   "abbr": "RIB",
+   "name": "Ribadesella"
+  },
+  "133850": {
+   "abbr": "SDN",
+   "name": "SD Noja"
+  },
+  "133832": {
+   "abbr": "APN",
+   "name": "Atlético Pinatarense"
+  },
+  "131419": {
+   "abbr": "MEL",
+   "name": "Atlético Melilla"
+  },
+  "133847": {
+   "abbr": "ACA",
+   "name": "Auriense Cented Academy"
+  },
+  "133836": {
+   "abbr": "CSJ",
+   "name": "CD San José"
+  },
+  "133831": {
+   "abbr": "SPH",
+   "name": "Sporting Hortaleza"
+  },
+  "133833": {
+   "abbr": "AUG",
+   "name": "Atlético Unión Güímar"
+  },
+  "133840": {
+   "abbr": "CFSR",
+   "name": "CF San Rafael"
+  },
+  "18334": {
+   "abbr": "AEP",
+   "name": "AE Prat"
+  },
+  "133841": {
+   "abbr": "CPT",
+   "name": "CP Talayuela"
+  },
+  "133843": {
+   "abbr": "SDA",
+   "name": "Sporting de Alcázar"
+  },
+  "131412": {
+   "abbr": "MAR",
+   "name": "Maracena"
+  },
+  "133846": {
+   "abbr": "UET",
+   "name": "Tavernes de la Valldigna"
+  },
+  "22432": {
+   "abbr": "CUA",
+   "name": "CD Cuarte"
+  },
+  "133839": {
+   "abbr": "CF ",
+   "name": "CF Calamocha"
+  },
+  "21290": {
+   "abbr": "CEE",
+   "name": "CE Europa"
+  },
+  "6856": {
+   "abbr": "SES",
+   "name": "Sestao"
+  },
+  "133845": {
+   "abbr": "UDC",
+   "name": "UD Castellonense"
+  },
+  "6832": {
+   "abbr": "ALM",
+   "name": "Almería"
+  },
+  "131463": {
+   "abbr": "ALC",
+   "name": "Alcalá"
+  },
+  "98": {
+   "abbr": "LPA",
+   "name": "Las Palmas"
+  },
+  "131465": {
+   "abbr": "TORD",
+   "name": "Atlético Tordesillas"
+  },
+  "4515": {
+   "abbr": "MIR",
+   "name": "Mirandés"
+  },
+  "133834": {
+   "abbr": "CDL",
+   "name": "Ciudad De Lucena"
+  },
+  "9028": {
+   "abbr": "MAJ",
+   "name": "Rayo Majadahonda"
+  },
+  "6825": {
+   "abbr": "GSCF",
+   "name": "Gimnastica Segoviana"
+  },
+  "10629": {
+   "abbr": "CLE",
+   "name": "Cultural Leonesa"
+  },
+  "20824": {
+   "abbr": "LLA",
+   "name": "Llanera"
+  },
+  "5463": {
+   "abbr": "PON",
+   "name": "Ponferradina"
+  },
+  "9141": {
+   "abbr": "DON",
+   "name": "Don Benito"
+  },
+  "22430": {
+   "abbr": "EXT",
+   "name": "CD Extremadura"
+  },
+  "21722": {
+   "abbr": "MNR",
+   "name": "Manresa"
+  },
+  "5424": {
+   "abbr": "AND",
+   "name": "Sant Andreu"
+  },
+  "22080": {
+   "abbr": "ARO",
+   "name": "Arosa"
+  },
+  "3748": {
+   "abbr": "PON",
+   "name": "Pontevedra"
+  },
+  "21717": {
+   "abbr": "PASO",
+   "name": "Atlético Paso"
+  },
+  "8447": {
+   "abbr": "COR",
+   "name": "Córdoba"
+  },
+  "12585": {
+   "abbr": "TUD",
+   "name": "CD Tudelano"
+  },
+  "91": {
+   "abbr": "ZAR",
+   "name": "Real Zaragoza"
+  },
+  "21713": {
+   "abbr": "MNC",
+   "name": "Manacor"
+  },
+  "2571": {
+   "abbr": "HUE",
+   "name": "Recreativo Huelva"
+  },
+  "100": {
+   "abbr": "NUM",
+   "name": "Numancia"
+  },
+  "7041": {
+   "abbr": "PEN",
+   "name": "Peña Sport"
+  },
+  "5413": {
+   "abbr": "HUE",
+   "name": "Huesca"
+  },
+  "14263": {
+   "abbr": "BAL",
+   "name": "Atlético Baleares"
+  },
+  "7320": {
+   "abbr": "ELD",
+   "name": "Eldense"
+  },
+  "8961": {
+   "abbr": "COR",
+   "name": "Coruxo"
+  },
+  "17565": {
+   "abbr": "ZAM",
+   "name": "Zamora CF"
+  },
+  "9414": {
+   "abbr": "POB",
+   "name": "Poblense"
+  },
+  "5404": {
+   "abbr": "CEU",
+   "name": "Ceuta"
+  },
+  "18342": {
+   "abbr": "SEB",
+   "name": "San Sebastián de los Reyes"
+  },
+  "20821": {
+   "abbr": "COR",
+   "name": "Coria"
+  },
+  "131466": {
+   "abbr": "CIE",
+   "name": "Cieza"
+  },
+  "3747": {
+   "abbr": "GRA",
+   "name": "Granada"
+  },
+  "9449": {
+   "abbr": "ANT",
+   "name": "Antequera CF"
+  },
+  "21299": {
+   "abbr": "AGU",
+   "name": "Aguilas"
+  },
+  "17888": {
+   "abbr": "LAR",
+   "name": "CD Laredo"
+  },
+  "12597": {
+   "abbr": "BUR",
+   "name": "Burgos"
+  },
+  "17569": {
+   "abbr": "VAR",
+   "name": "CD Varea"
+  },
+  "20179": {
+   "abbr": "AND",
+   "name": "FC Andorra"
+  },
+  "4475": {
+   "abbr": "CON",
+   "name": "Conquense"
+  },
+  "4438": {
+   "abbr": "CAS",
+   "name": "Castellón"
+  },
+  "22084": {
+   "abbr": "COV",
+   "name": "Covadonga"
+  },
+  "95": {
+   "abbr": "VLL",
+   "name": "Real Valladolid"
+  },
+  "6858": {
+   "abbr": "GUI",
+   "name": "Guijuelo"
+  },
+  "3788": {
+   "abbr": "RSG",
+   "name": "Sporting Gijón"
+  },
+  "22439": {
+   "abbr": "AVI",
+   "name": "Real Ávila"
+  },
+  "19294": {
+   "abbr": "SAL",
+   "name": "Unionistas de Salamanca"
+  },
+  "17570": {
+   "abbr": "TOR",
+   "name": "Gimnástica Torrelavega"
+  },
+  "131474": {
+   "abbr": "UDO",
+   "name": "UD Ourense"
+  },
+  "3835": {
+   "abbr": "XER",
+   "name": "Xerez"
+  },
+  "3842": {
+   "abbr": "CAD",
+   "name": "Cádiz"
+  },
+  "133835": {
+   "abbr": "CDP",
+   "name": "CD Pamplona"
+  },
+  "3752": {
+   "abbr": "EIB",
+   "name": "Eibar"
+  },
+  "12587": {
+   "abbr": "AMO",
+   "name": "Amorebieta"
+  },
+  "7206": {
+   "abbr": "LOG",
+   "name": "UD Logroñés"
+  },
+  "22043": {
+   "abbr": "MLL",
+   "name": "Mijas Las Lagunas"
+  },
+  "5401": {
+   "abbr": "JAEN",
+   "name": "Real Jaen CF"
+  },
+  "17573": {
+   "abbr": "TRI",
+   "name": "Trival Valderas"
+  },
+  "17534": {
+   "abbr": "LEG",
+   "name": "Leganés"
+  },
+  "21291": {
+   "abbr": "CSP",
+   "name": "CS Puertollano"
+  },
+  "19288": {
+   "abbr": "NAV",
+   "name": "CD Artistico Navalcarnero"
+  },
+  "133837": {
+   "abbr": "CDT",
+   "name": "CD Tarancon"
+  },
+  "22440": {
+   "abbr": "SAL",
+   "name": "Salamanca UDS"
+  },
+  "7884": {
+   "abbr": "KSV",
+   "name": "Holstein Kiel"
+  },
+  "129": {
+   "abbr": "BSC",
+   "name": "Hertha Berlin"
+  },
+  "9867": {
+   "abbr": "PRM",
+   "name": "Preußen Münster"
+  },
+  "4471": {
+   "abbr": "KSC",
+   "name": "Karlsruher SC"
+  },
+  "131787": {
+   "abbr": "STT",
+   "name": "SC St. Tönis"
+  },
+  "6610": {
+   "abbr": "SVW",
+   "name": "SV Waldhof Mannheim"
+  },
+  "130": {
+   "abbr": "FCK",
+   "name": "Kaiserslautern"
+  },
+  "128": {
+   "abbr": "FCH",
+   "name": "Hansa Rostock"
+  },
+  "123": {
+   "abbr": "COT",
+   "name": "Energie Cottbus"
+  },
+  "3769": {
+   "abbr": "WEH",
+   "name": "SV Wehen Wiesbaden"
+  },
+  "3849": {
+   "abbr": "ERZ",
+   "name": "FC Erzgebirge Aue"
+  },
+  "131218": {
+   "abbr": "HEM",
+   "name": "Hemelingen"
+  },
+  "2428": {
+   "abbr": "H96",
+   "name": "Hannover 96"
+  },
+  "18747": {
+   "abbr": "LSKH",
+   "name": "Lüneburger SK Hansa"
+  },
+  "3308": {
+   "abbr": "DUI",
+   "name": "MSV Duisburg"
+  },
+  "18741": {
+   "abbr": "FCS",
+   "name": "Saarbrücken"
+  },
+  "17492": {
+   "abbr": "VKO",
+   "name": "Viktoria Köln"
+  },
+  "269": {
+   "abbr": "FCN",
+   "name": "1. FC Nürnberg"
+  },
+  "7891": {
+   "abbr": "ET",
+   "name": "Eintracht Trier"
+  },
+  "6631": {
+   "abbr": "SGSG",
+   "name": "SG Sonnenhof Großaspch"
+  },
+  "2506": {
+   "abbr": "DSC",
+   "name": "Arminia Bielefeld"
+  },
+  "135": {
+   "abbr": "TSV",
+   "name": "TSV 1860 Munich"
+  },
+  "3070": {
+   "abbr": "SGF",
+   "name": "SpVgg Greuther Fürth"
+  },
+  "121": {
+   "abbr": "BOC",
+   "name": "VfL Bochum"
+  },
+  "19233": {
+   "abbr": "SSV",
+   "name": "SSV Jeddeloh II"
+  },
+  "7277": {
+   "abbr": "BSC",
+   "name": "Bahlinger SC 1929"
+  },
+  "10382": {
+   "abbr": "FCM",
+   "name": "1. FC Magdeburg"
+  },
+  "9865": {
+   "abbr": "CZJ",
+   "name": "FC Carl Zeiss Jena"
+  },
+  "3812": {
+   "abbr": "SVD",
+   "name": "SV Darmstadt 98"
+  },
+  "21508": {
+   "abbr": "SCH",
+   "name": "Schott"
+  },
+  "3067": {
+   "abbr": "EBS",
+   "name": "TSV Eintracht Braunschweig"
+  },
+  "131786": {
+   "abbr": "VFBK",
+   "name": "VFB Krieschow"
+  },
+  "21957": {
+   "abbr": "WRH",
+   "name": "Westfalia Rhynern"
+  },
+  "7017": {
+   "abbr": "SGD",
+   "name": "Dynamo Dresden"
+  },
+  "22272": {
+   "abbr": "LUB",
+   "name": "1. FC Phönix Lübeck"
+  },
+  "9707": {
+   "abbr": "F95",
+   "name": "Fortuna Düsseldorf"
+  },
+  "9705": {
+   "abbr": "RWE",
+   "name": "Rot-Weiss Essen"
+  },
+  "6325": {
+   "abbr": "SCV",
+   "name": "SC Verl 1924"
+  },
+  "20735": {
+   "abbr": "VSGA",
+   "name": "VSG Altglienicke"
+  },
+  "17491": {
+   "abbr": "FWK",
+   "name": "Würzburger Kickers"
+  },
+  "6318": {
+   "abbr": "HAL",
+   "name": "Hallescher FC"
+  },
+  "131785": {
+   "abbr": "HEB",
+   "name": "HEBC Hamburg"
+  },
+  "7013": {
+   "abbr": "OSN",
+   "name": "VfL Osnabruck"
+  },
+  "3243": {
+   "abbr": "REIM",
+   "name": "Stade de Reims"
+  },
+  "3266": {
+   "abbr": "SLFC",
+   "name": "Stade Laval"
+  },
+  "274": {
+   "abbr": "MON",
+   "name": "Montpellier"
+  },
+  "3335": {
+   "abbr": "AMI",
+   "name": "SC Amiens"
+  },
+  "134140": {
+   "abbr": "SCB",
+   "name": "Sporting Club Baie-Mahault"
+  },
+  "134141": {
+   "abbr": "SLA",
+   "name": "Siroco Les Abymes"
+  },
+  "134139": {
+   "abbr": "ODC",
+   "name": "Olympique De Cayenne"
+  },
+  "134137": {
+   "abbr": "AEM",
+   "name": "AS Etoile Matoury"
+  },
+  "134117": {
+   "abbr": "CHA",
+   "name": "Chambéry Savoie"
+  },
+  "6994": {
+   "abbr": "GRE",
+   "name": "Grenoble"
+  },
+  "3170": {
+   "abbr": "DIJO",
+   "name": "Dijon FCO"
+  },
+  "17483": {
+   "abbr": "ORL",
+   "name": "Orléans"
+  },
+  "134079": {
+   "abbr": "NEU",
+   "name": "Neuvillette-Jamin"
+  },
+  "6732": {
+   "abbr": "VAFC",
+   "name": "Valenciennes"
+  },
+  "22476": {
+   "abbr": "SPGL",
+   "name": "US Saint-Philbert-de-Grand-Lieu"
+  },
+  "16917": {
+   "abbr": "LRY",
+   "name": "La Roche-sur-Yon"
+  },
+  "134128": {
+   "abbr": "BAL",
+   "name": "Balagne"
+  },
+  "18906": {
+   "abbr": "PUY",
+   "name": "Le Puy"
+  },
+  "21804": {
+   "abbr": "DBN",
+   "name": "Diables Noirs"
+  },
+  "134109": {
+   "abbr": "TOU",
+   "name": "Tourcoing"
+  },
+  "10675": {
+   "abbr": "VER",
+   "name": "Versailles 78"
+  },
+  "7719": {
+   "abbr": "AVE",
+   "name": "Rodez Aveyron"
+  },
+  "134069": {
+   "abbr": "CA ",
+   "name": "CA Boulay"
+  },
+  "272": {
+   "abbr": "SOC",
+   "name": "Sochaux"
+  },
+  "134153": {
+   "abbr": "CRU",
+   "name": "Rhone Crussol Foot"
+  },
+  "9021": {
+   "abbr": "FRE",
+   "name": "Frejus"
+  },
+  "134147": {
+   "abbr": "CHA",
+   "name": "Chalon-sur-Saone"
+  },
+  "18101": {
+   "abbr": "HLY",
+   "name": "Hauts Lyonnais"
+  },
+  "134091": {
+   "abbr": "CHO",
+   "name": "Choisy Au Bac"
+  },
+  "2927": {
+   "abbr": "CAN",
+   "name": "Caen"
+  },
+  "11313": {
+   "abbr": "FON",
+   "name": "Fontenay Foot"
+  },
+  "3171": {
+   "abbr": "CLE",
+   "name": "Clermont Foot"
+  },
+  "134108": {
+   "abbr": "FIR",
+   "name": "Firminy"
+  },
+  "18066": {
+   "abbr": "ANN",
+   "name": "Annecy"
+  },
+  "16916": {
+   "abbr": "ICC",
+   "name": "IC Croix"
+  },
+  "21303": {
+   "abbr": "EST",
+   "name": "ES Thaon"
+  },
+  "9024": {
+   "abbr": "PSV",
+   "name": "Le Poire SV"
+  },
+  "11303": {
+   "abbr": "VER",
+   "name": "Vertou"
+  },
+  "134146": {
+   "abbr": "PON",
+   "name": "Pont-de-Cheruy"
+  },
+  "11895": {
+   "abbr": "FBBP",
+   "name": "Bourg-Peronnas"
+  },
+  "134152": {
+   "abbr": "SEB",
+   "name": "Saint Sebastien"
+  },
+  "134121": {
+   "abbr": "POU",
+   "name": "La Baule-Le Pouliguen"
+  },
+  "134125": {
+   "abbr": "TIN",
+   "name": "Tinteniac St Domineuc"
+  },
+  "7718": {
+   "abbr": "CON",
+   "name": "Concarneau"
+  },
+  "134088": {
+   "abbr": "KOE",
+   "name": "Koetzingue"
+  },
+  "18901": {
+   "abbr": "BIE",
+   "name": "Biesheim"
+  },
+  "7725": {
+   "abbr": "AMN",
+   "name": "Amneville"
+  },
+  "134097": {
+   "abbr": "SUN",
+   "name": "Sundhoffen"
+  },
+  "134090": {
+   "abbr": "ASP",
+   "name": "Asptt Dijon"
+  },
+  "9011": {
+   "abbr": "SEL",
+   "name": "Selongey"
+  },
+  "11880": {
+   "abbr": "CHA",
+   "name": "FC Chambly"
+  },
+  "7729": {
+   "abbr": "CHA",
+   "name": "Chateaubriant"
+  },
+  "134074": {
+   "abbr": "PAT",
+   "name": "Horizon Patho"
+  },
+  "134080": {
+   "abbr": "CON",
+   "name": "Contres"
+  },
+  "20275": {
+   "abbr": "ELM",
+   "name": "ESA Linas-Montlhery"
+  },
+  "134134": {
+   "abbr": "COU",
+   "name": "Cournon"
+  },
+  "134063": {
+   "abbr": "CHA",
+   "name": "Chassieu Declines FC"
+  },
+  "7732": {
+   "abbr": "DUN",
+   "name": "Dunkerque"
+  },
+  "7721": {
+   "abbr": "USQR",
+   "name": "US Quevilly"
+  },
+  "134127": {
+   "abbr": "GDR",
+   "name": "Grau-Du-Roi"
+  },
+  "134135": {
+   "abbr": "RIV",
+   "name": "Riviera"
+  },
+  "19393": {
+   "abbr": "PON",
+   "name": "GSI Pontivy"
+  },
+  "10677": {
+   "abbr": "RTA",
+   "name": "Rennes TA"
+  },
+  "134126": {
+   "abbr": "TOU",
+   "name": "Le Touquet"
+  },
+  "9017": {
+   "abbr": "AVR",
+   "name": "Avranches"
+  },
+  "134150": {
+   "abbr": "LLD",
+   "name": "Lyon-la-Duchere"
+  },
+  "22138": {
+   "abbr": "USF",
+   "name": "US Feurs"
+  },
+  "134101": {
+   "abbr": "PAY",
+   "name": "Pays de Saint-Omer"
+  },
+  "21817": {
+   "abbr": "VIR",
+   "name": "AF Virois"
+  },
+  "18064": {
+   "abbr": "BES",
+   "name": "Racing Besancon"
+  },
+  "18120": {
+   "abbr": "MET",
+   "name": "Am. du Personnel Municipal Metz"
+  },
+  "134082": {
+   "abbr": "SAG",
+   "name": "Sag Cestas"
+  },
+  "7733": {
+   "abbr": "BAY",
+   "name": "Bayonne"
+  },
+  "18068": {
+   "abbr": "STB",
+   "name": "Saint-Brieuc"
+  },
+  "9009": {
+   "abbr": "ROU",
+   "name": "Rouen"
+  },
+  "10689": {
+   "abbr": "STO",
+   "name": "St-Ouen L'Aumone"
+  },
+  "7869": {
+   "abbr": "BOU",
+   "name": "Boulogne"
+  },
+  "131572": {
+   "abbr": "SB",
+   "name": "Stade Béthunois"
+  },
+  "3267": {
+   "abbr": "ASNL",
+   "name": "AS Nancy Lorraine"
+  },
+  "21773": {
+   "abbr": "SKO",
+   "name": "Strasbourg Koenigshoffen"
+  },
+  "134120": {
+   "abbr": "OBE",
+   "name": "Oberlauterbach"
+  },
+  "134142": {
+   "abbr": "CHM",
+   "name": "US Cheminots Paray-Foot"
+  },
+  "10235": {
+   "abbr": "VIL",
+   "name": "Villefranche"
+  },
+  "7296": {
+   "abbr": "VES",
+   "name": "Vesoul"
+  },
+  "18400": {
+   "abbr": "F91",
+   "name": "FC Fleury 91"
+  },
+  "10232": {
+   "abbr": "VIT",
+   "name": "Vitre"
+  },
+  "134087": {
+   "abbr": "MIL",
+   "name": "Saint-Pierre Milizac"
+  },
+  "10680": {
+   "abbr": "BAL",
+   "name": "Balma"
+  },
+  "134106": {
+   "abbr": "CAS",
+   "name": "Castanet"
+  },
+  "14381": {
+   "abbr": "AFL",
+   "name": "Avenir Foot Lozere"
+  },
+  "134067": {
+   "abbr": "ENT",
+   "name": "Entente Crest-Aouste"
+  },
+  "134107": {
+   "abbr": "BOU",
+   "name": "Boulazac"
+  },
+  "17621": {
+   "abbr": "ANG",
+   "name": "Anglet Genets"
+  },
+  "16925": {
+   "abbr": "BRE",
+   "name": "Bressuire"
+  },
+  "20272": {
+   "abbr": "CHA",
+   "name": "FC Challans"
+  },
+  "134149": {
+   "abbr": "BRI",
+   "name": "Brive"
+  },
+  "7720": {
+   "abbr": "ANG",
+   "name": "Angouleme"
+  },
+  "134068": {
+   "abbr": "CER",
+   "name": "Cercle Paul Bert Brequigny Football"
+  },
+  "134071": {
+   "abbr": "MLN",
+   "name": "Montlucon Football"
+  },
+  "10225": {
+   "abbr": "CHA",
+   "name": "Chauny"
+  },
+  "134113": {
+   "abbr": "USPV",
+   "name": "Le Pays Du Valois"
+  },
+  "134130": {
+   "abbr": "CLA",
+   "name": "Claira / St Laurent"
+  },
+  "134144": {
+   "abbr": "PUI",
+   "name": "Puissalicon Magalas"
+  },
+  "134118": {
+   "abbr": "BUX",
+   "name": "ES Buxerolles"
+  },
+  "12957": {
+   "abbr": "SAB",
+   "name": "Sablé FC"
+  },
+  "134122": {
+   "abbr": "LOU",
+   "name": "FC Lourdes"
+  },
+  "10678": {
+   "abbr": "PAU",
+   "name": "Pau"
+  },
+  "21772": {
+   "abbr": "LAN",
+   "name": "Lannion"
+  },
+  "171": {
+   "abbr": "EAG",
+   "name": "Guingamp"
+  },
+  "134132": {
+   "abbr": "MAC",
+   "name": "St Andre St Macaire"
+  },
+  "134103": {
+   "abbr": "NUE",
+   "name": "Nueillaubiers"
+  },
+  "134148": {
+   "abbr": "BOR",
+   "name": "Stade Bordelais"
+  },
+  "134105": {
+   "abbr": "MUR",
+   "name": "Mazeres Uzos Rontignon"
+  },
+  "134065": {
+   "abbr": "CAM",
+   "name": "Olympique des Membres de Cambrai Amerique"
+  },
+  "134076": {
+   "abbr": "TEF",
+   "name": "AS Tefana"
+  },
+  "10683": {
+   "abbr": "THI",
+   "name": "Thionville"
+  },
+  "134123": {
+   "abbr": "CHA",
+   "name": "Chatou"
+  },
+  "134085": {
+   "abbr": "ULS",
+   "name": "Les Ulis"
+  },
+  "134066": {
+   "abbr": "ESA",
+   "name": "ESAP Metz"
+  },
+  "134129": {
+   "abbr": "REI",
+   "name": "Reipertswiller"
+  },
+  "134102": {
+   "abbr": "MAS",
+   "name": "Massay"
+  },
+  "134098": {
+   "abbr": "MON",
+   "name": "Montlouis"
+  },
+  "134131": {
+   "abbr": "MON",
+   "name": "Montigny-Les-Metz"
+  },
+  "14439": {
+   "abbr": "PON",
+   "name": "Pontarlier"
+  },
+  "131576": {
+   "abbr": "MON",
+   "name": "Montreuil FC"
+  },
+  "20876": {
+   "abbr": "LOO",
+   "name": "Loon Plage FC"
+  },
+  "16735": {
+   "abbr": "NES",
+   "name": "Neslois"
+  },
+  "134119": {
+   "abbr": "FUR",
+   "name": "Furiani-Agliani"
+  },
+  "134064": {
+   "abbr": "CHA",
+   "name": "Olympique Charleville Prix AM"
+  },
+  "16913": {
+   "abbr": "OLM",
+   "name": "Olympique Marcquois"
+  },
+  "132434": {
+   "abbr": "PAR",
+   "name": "Paris 13 Atletico"
+  },
+  "11884": {
+   "abbr": "RSFC",
+   "name": "Red Star FC 93"
+  },
+  "134078": {
+   "abbr": "CHA",
+   "name": "Racing Chambery"
+  },
+  "3200": {
+   "abbr": "CHA",
+   "name": "Chamois Niortais FC"
+  },
+  "134133": {
+   "abbr": "FCR",
+   "name": "Riom"
+  },
+  "19388": {
+   "abbr": "LIM",
+   "name": "FC Limonest"
+  },
+  "134115": {
+   "abbr": "RIV",
+   "name": "Rives 82"
+  },
+  "10685": {
+   "abbr": "TRE",
+   "name": "Trelissac FC"
+  },
+  "134070": {
+   "abbr": "ROC",
+   "name": "Rochefort FC"
+  },
+  "134093": {
+   "abbr": "PAP",
+   "name": "Juventus Papus"
+  },
+  "134114": {
+   "abbr": "KEL",
+   "name": "Saint-Die Kellermann"
+  },
+  "134138": {
+   "abbr": "PAU",
+   "name": "Saint-Pauloise FC"
+  },
+  "21769": {
+   "abbr": "LAT",
+   "name": "La Tamponnaise"
+  },
+  "134151": {
+   "abbr": "REN",
+   "name": "Saint-Renan"
+  },
+  "168": {
+   "abbr": "SED",
+   "name": "Sedan"
+  },
+  "18085": {
+   "abbr": "BOU",
+   "name": "Bourges Foot"
+  },
+  "18907": {
+   "abbr": "SEN",
+   "name": "Senlis"
+  },
+  "19386": {
+   "abbr": "SPS",
+   "name": "Saint-Pryvé Saint Hilaire"
+  },
+  "134072": {
+   "abbr": "SEY",
+   "name": "Seyssinet"
+  },
+  "7730": {
+   "abbr": "NIM",
+   "name": "Nimes"
+  },
+  "134124": {
+   "abbr": "TAT",
+   "name": "St Martin Tatinghem"
+  },
+  "22139": {
+   "abbr": "RCF",
+   "name": "Racing Club de France"
+  },
+  "134111": {
+   "abbr": "CAS",
+   "name": "Stade Castelbourgeois"
+  },
+  "19390": {
+   "abbr": "SPO",
+   "name": "Stade Pontivy"
+  },
+  "10693": {
+   "abbr": "PLA",
+   "name": "Plabennec"
+  },
+  "134116": {
+   "abbr": "TAL",
+   "name": "Talange"
+  },
+  "134110": {
+   "abbr": "BAU",
+   "name": "Baume-Les-Dames"
+  },
+  "134086": {
+   "abbr": "TRM",
+   "name": "Tremblay"
+  },
+  "134077": {
+   "abbr": "MAI",
+   "name": "Maisons-Alfort"
+  },
+  "17623": {
+   "abbr": "USM",
+   "name": "US Marseille Endoume"
+  },
+  "132785": {
+   "abbr": "SCT",
+   "name": "SC Toulon"
+  },
+  "134094": {
+   "abbr": "VAL",
+   "name": "Val Yerres Crosne"
+  },
+  "134092": {
+   "abbr": "COS",
+   "name": "Union Cosnoise"
+  },
+  "134084": {
+   "abbr": "VAN",
+   "name": "Vandruvre"
+  },
+  "9010": {
+   "abbr": "EPI",
+   "name": "Epinal"
+  },
+  "134081": {
+   "abbr": "VEA",
+   "name": "Veauche"
+  },
+  "134089": {
+   "abbr": "JAR",
+   "name": "St Paul en Jarez"
+  },
+  "134075": {
+   "abbr": "VER",
+   "name": "Verson"
+  },
+  "4744": {
+   "abbr": "CAL",
+   "name": "Calais"
+  },
+  "134112": {
+   "abbr": "VIO",
+   "name": "Violaines"
+  },
+  "134145": {
+   "abbr": "VER",
+   "name": "Vermelles"
+  },
+  "134083": {
+   "abbr": "LOU",
+   "name": "Perros-Louannec"
+  },
+  "7574": {
+   "abbr": "VAN",
+   "name": "Vannes OC"
+  },
+  "134099": {
+   "abbr": "SOT",
+   "name": "Stade Sotteville"
+  },
+  "134104": {
+   "abbr": "USF",
+   "name": "USF Fecamp"
+  },
+  "134096": {
+   "abbr": "PAI",
+   "name": "Atlas Paillade"
+  },
+  "21306": {
+   "abbr": "ASC",
+   "name": "AS Cannes"
+  },
+  "20871": {
+   "abbr": "RUV",
+   "name": "Rumilly Vallières"
+  },
+  "178": {
+   "abbr": "ASSE",
+   "name": "Saint-Étienne"
+  },
+  "5464": {
+   "abbr": "POR",
+   "name": "Portugalete"
+  },
+  "8678": {
+   "abbr": "RUN",
+   "name": "Real Unión Irun"
+  },
+  "21723": {
+   "abbr": "UTB",
+   "name": "Utebo"
+  },
+  "11487": {
+   "abbr": "CDS",
+   "name": "CD Sabadell"
+  },
+  "6827": {
+   "abbr": "ALC",
+   "name": "Alcoyano"
+  },
+  "5535": {
+   "abbr": "BDJ",
+   "name": "Badajoz"
+  },
+  "245": {
+   "abbr": "TEN",
+   "name": "Tenerife"
+  },
+  "22437": {
+   "abbr": "MIN",
+   "name": "CD Minera"
+  },
+  "5419": {
+   "abbr": "CAR",
+   "name": "FC Cartagena"
+  },
+  "131470": {
+   "abbr": "REUS",
+   "name": "Reus FC Reddis"
+  },
+  "5421": {
+   "abbr": "BAR",
+   "name": "Barakaldo"
+  },
+  "131554": {
+   "abbr": "TBD Away",
+   "name": "TBD Away"
+  },
+  "17657": {
+   "abbr": "FRA",
+   "name": "Club Franciscain"
+  }
+ },
+ "nfl": {
+  "2": {
+   "abbr": "BUF",
+   "name": "Buffalo Bills"
+  },
+  "15": {
+   "abbr": "MIA",
+   "name": "Miami Dolphins"
+  },
+  "5": {
+   "abbr": "CLE",
+   "name": "Cleveland Browns"
+  },
+  "9": {
+   "abbr": "GB",
+   "name": "Green Bay Packers"
+  },
+  "10": {
+   "abbr": "TEN",
+   "name": "Tennessee Titans"
+  },
+  "11": {
+   "abbr": "IND",
+   "name": "Indianapolis Colts"
+  },
+  "16": {
+   "abbr": "MIN",
+   "name": "Minnesota Vikings"
+  },
+  "4": {
+   "abbr": "CIN",
+   "name": "Cincinnati Bengals"
+  },
+  "17": {
+   "abbr": "NE",
+   "name": "New England Patriots"
+  },
+  "23": {
+   "abbr": "PIT",
+   "name": "Pittsburgh Steelers"
+  },
+  "21": {
+   "abbr": "PHI",
+   "name": "Philadelphia Eagles"
+  },
+  "14": {
+   "abbr": "LAR",
+   "name": "Los Angeles Rams"
+  },
+  "27": {
+   "abbr": "TB",
+   "name": "Tampa Bay Buccaneers"
+  },
+  "20": {
+   "abbr": "NYJ",
+   "name": "New York Jets"
+  },
+  "28": {
+   "abbr": "WSH",
+   "name": "Washington Commanders"
+  },
+  "13": {
+   "abbr": "LV",
+   "name": "Las Vegas Raiders"
+  },
+  "29": {
+   "abbr": "CAR",
+   "name": "Carolina Panthers"
+  },
+  "1": {
+   "abbr": "ATL",
+   "name": "Atlanta Falcons"
+  },
+  "30": {
+   "abbr": "JAX",
+   "name": "Jacksonville Jaguars"
+  },
+  "34": {
+   "abbr": "HOU",
+   "name": "Houston Texans"
+  },
+  "24": {
+   "abbr": "LAC",
+   "name": "Los Angeles Chargers"
+  },
+  "7": {
+   "abbr": "DEN",
+   "name": "Denver Broncos"
+  },
+  "26": {
+   "abbr": "SEA",
+   "name": "Seattle Seahawks"
+  },
+  "18": {
+   "abbr": "NO",
+   "name": "New Orleans Saints"
+  },
+  "3": {
+   "abbr": "CHI",
+   "name": "Chicago Bears"
+  },
+  "6": {
+   "abbr": "DAL",
+   "name": "Dallas Cowboys"
+  },
+  "25": {
+   "abbr": "SF",
+   "name": "San Francisco 49ers"
+  },
+  "22": {
+   "abbr": "ARI",
+   "name": "Arizona Cardinals"
+  },
+  "19": {
+   "abbr": "NYG",
+   "name": "New York Giants"
+  },
+  "12": {
+   "abbr": "KC",
+   "name": "Kansas City Chiefs"
+  },
+  "33": {
+   "abbr": "BAL",
+   "name": "Baltimore Ravens"
+  },
+  "8": {
+   "abbr": "DET",
+   "name": "Detroit Lions"
+  },
+  "31": {
+   "abbr": "AFC",
+   "name": "AFC"
+  },
+  "32": {
+   "abbr": "NFC",
+   "name": "NFC"
+  }
+ },
+ "mlb": {
+  "20": {
+   "abbr": "WSH",
+   "name": "Washington Nationals"
+  },
+  "15": {
+   "abbr": "ATL",
+   "name": "Atlanta Braves"
+  },
+  "23": {
+   "abbr": "PIT",
+   "name": "Pittsburgh Pirates"
+  },
+  "16": {
+   "abbr": "CHC",
+   "name": "Chicago Cubs"
+  },
+  "6": {
+   "abbr": "DET",
+   "name": "Detroit Tigers"
+  },
+  "5": {
+   "abbr": "CLE",
+   "name": "Cleveland Guardians"
+  },
+  "2": {
+   "abbr": "BOS",
+   "name": "Boston Red Sox"
+  },
+  "11": {
+   "abbr": "ATH",
+   "name": "Athletics"
+  },
+  "21": {
+   "abbr": "NYM",
+   "name": "New York Mets"
+  },
+  "25": {
+   "abbr": "SD",
+   "name": "San Diego Padres"
+  },
+  "30": {
+   "abbr": "TB",
+   "name": "Tampa Bay Rays"
+  },
+  "14": {
+   "abbr": "TOR",
+   "name": "Toronto Blue Jays"
+  },
+  "8": {
+   "abbr": "MIL",
+   "name": "Milwaukee Brewers"
+  },
+  "3": {
+   "abbr": "LAA",
+   "name": "Los Angeles Angels"
+  },
+  "4": {
+   "abbr": "CHW",
+   "name": "Chicago White Sox"
+  },
+  "1": {
+   "abbr": "BAL",
+   "name": "Baltimore Orioles"
+  },
+  "9": {
+   "abbr": "MIN",
+   "name": "Minnesota Twins"
+  },
+  "10": {
+   "abbr": "NYY",
+   "name": "New York Yankees"
+  },
+  "7": {
+   "abbr": "KC",
+   "name": "Kansas City Royals"
+  },
+  "12": {
+   "abbr": "SEA",
+   "name": "Seattle Mariners"
+  },
+  "24": {
+   "abbr": "STL",
+   "name": "St. Louis Cardinals"
+  },
+  "17": {
+   "abbr": "CIN",
+   "name": "Cincinnati Reds"
+  },
+  "18": {
+   "abbr": "HOU",
+   "name": "Houston Astros"
+  },
+  "13": {
+   "abbr": "TEX",
+   "name": "Texas Rangers"
+  },
+  "27": {
+   "abbr": "COL",
+   "name": "Colorado Rockies"
+  },
+  "28": {
+   "abbr": "MIA",
+   "name": "Miami Marlins"
+  },
+  "29": {
+   "abbr": "ARI",
+   "name": "Arizona Diamondbacks"
+  },
+  "26": {
+   "abbr": "SF",
+   "name": "San Francisco Giants"
+  },
+  "19": {
+   "abbr": "LAD",
+   "name": "Los Angeles Dodgers"
+  },
+  "22": {
+   "abbr": "PHI",
+   "name": "Philadelphia Phillies"
+  }
+ },
+ "nhl": {
+  "2": {
+   "abbr": "BUF",
+   "name": "Buffalo Sabres"
+  },
+  "14": {
+   "abbr": "OTT",
+   "name": "Ottawa Senators"
+  },
+  "5": {
+   "abbr": "DET",
+   "name": "Detroit Red Wings"
+  },
+  "26": {
+   "abbr": "FLA",
+   "name": "Florida Panthers"
+  },
+  "19": {
+   "abbr": "STL",
+   "name": "St. Louis Blues"
+  },
+  "4": {
+   "abbr": "CHI",
+   "name": "Chicago Blackhawks"
+  },
+  "129764": {
+   "abbr": "UTA",
+   "name": "Utah Mammoth"
+  },
+  "3": {
+   "abbr": "CGY",
+   "name": "Calgary Flames"
+  },
+  "21": {
+   "abbr": "TOR",
+   "name": "Toronto Maple Leafs"
+  },
+  "13": {
+   "abbr": "NYR",
+   "name": "New York Rangers"
+  },
+  "10": {
+   "abbr": "MTL",
+   "name": "Montreal Canadiens"
+  },
+  "27": {
+   "abbr": "NSH",
+   "name": "Nashville Predators"
+  },
+  "124292": {
+   "abbr": "SEA",
+   "name": "Seattle Kraken"
+  },
+  "11": {
+   "abbr": "NJ",
+   "name": "New Jersey Devils"
+  },
+  "15": {
+   "abbr": "PHI",
+   "name": "Philadelphia Flyers"
+  },
+  "28": {
+   "abbr": "WPG",
+   "name": "Winnipeg Jets"
+  },
+  "29": {
+   "abbr": "CBJ",
+   "name": "Columbus Blue Jackets"
+  },
+  "17": {
+   "abbr": "COL",
+   "name": "Colorado Avalanche"
+  },
+  "12": {
+   "abbr": "NYI",
+   "name": "New York Islanders"
+  },
+  "6": {
+   "abbr": "EDM",
+   "name": "Edmonton Oilers"
+  },
+  "9": {
+   "abbr": "DAL",
+   "name": "Dallas Stars"
+  },
+  "22": {
+   "abbr": "VAN",
+   "name": "Vancouver Canucks"
+  },
+  "37": {
+   "abbr": "VGK",
+   "name": "Vegas Golden Knights"
+  },
+  "1": {
+   "abbr": "BOS",
+   "name": "Boston Bruins"
+  },
+  "25": {
+   "abbr": "ANA",
+   "name": "Anaheim Ducks"
+  },
+  "7": {
+   "abbr": "CAR",
+   "name": "Carolina Hurricanes"
+  },
+  "8": {
+   "abbr": "LA",
+   "name": "Los Angeles Kings"
+  },
+  "16": {
+   "abbr": "PIT",
+   "name": "Pittsburgh Penguins"
+  },
+  "20": {
+   "abbr": "TB",
+   "name": "Tampa Bay Lightning"
+  },
+  "23": {
+   "abbr": "WSH",
+   "name": "Washington Capitals"
+  },
+  "30": {
+   "abbr": "MIN",
+   "name": "Minnesota Wild"
+  },
+  "18": {
+   "abbr": "SJ",
+   "name": "San Jose Sharks"
+  }
+ }
+}
